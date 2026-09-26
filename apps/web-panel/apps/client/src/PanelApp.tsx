@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { defaultSettings, type ViewId, type WallDeckSettings } from "@walldeck/contracts";
 import { api } from "./api";
+import { connectEvents } from "./events";
 import { nativeBridge } from "./native";
 import { inactivityTarget, viewAfterSwipeDown, viewAfterTap } from "./view-manager";
 import { viewRegistry } from "./views/registry";
@@ -8,7 +9,7 @@ import { viewRegistry } from "./views/registry";
 export function PanelApp({ forcedView }: { forcedView?: ViewId }) {
   const [viewId, setViewId] = useState<ViewId>("photos");
   const [settings, setSettings] = useState<WallDeckSettings>(defaultSettings);
-  const connection = useRef<WebSocket | null>(null);
+  const connection = useRef<ReturnType<typeof connectEvents> | null>(null);
   const touchStart = useRef<{ x: number; y: number; time: number } | null>(null);
   const idleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -18,15 +19,13 @@ export function PanelApp({ forcedView }: { forcedView?: ViewId }) {
     }
     if (!forcedView) api.views().then((views) => setViewId(views.current)).catch(() => undefined);
     api.settings().then(setSettings).catch(() => undefined);
-    const protocol = location.protocol === "https:" ? "wss:" : "ws:";
-    const socket = new WebSocket(`${protocol}//${location.host}/api/events`);
-    connection.current = socket;
-    socket.onmessage = (event) => {
+    const socket = connectEvents((event) => {
       const message = JSON.parse(event.data) as { type: string; viewId?: ViewId; settings?: WallDeckSettings };
       if (!forcedView && (message.type === "snapshot" || message.type === "view.activated") && message.viewId) setViewId(message.viewId);
       if (message.type === "panel.activity") window.dispatchEvent(new Event("walldeck:remoteActivity"));
       if (message.type === "settings.changed" && message.settings) setSettings(message.settings);
-    };
+    }, () => { api.settings().then(setSettings).catch(() => undefined); });
+    connection.current = socket;
     return () => {
       socket.close();
       if (nativeBridge.available) nativeBridge.call("keepAwake", { enabled: false }).catch(() => undefined);
@@ -53,7 +52,7 @@ export function PanelApp({ forcedView }: { forcedView?: ViewId }) {
     let lastSent = 0;
     const activity = () => {
       resetInactivity();
-      if (Date.now() - lastSent > 500 && connection.current?.readyState === WebSocket.OPEN) {
+      if (Date.now() - lastSent > 500 && connection.current) {
         lastSent = Date.now();
         connection.current.send(JSON.stringify({ type: "panel.activity" }));
       }

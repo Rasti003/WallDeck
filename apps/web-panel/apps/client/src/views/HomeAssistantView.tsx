@@ -1,19 +1,18 @@
 import { useEffect, useState } from "react";
 import type { HomeAssistantStatus } from "@walldeck/contracts";
 import { api } from "../api";
+import { connectEvents } from "../events";
 
 export function HomeAssistantView() {
   const [status, setStatus] = useState<HomeAssistantStatus | null>(null);
 
   useEffect(() => {
     api.homeAssistant.config().then(setStatus).catch(() => undefined);
-    const protocol = location.protocol === "https:" ? "wss:" : "ws:";
-    const socket = new WebSocket(`${protocol}//${location.host}/api/events`);
-    socket.onmessage = (event) => {
+    const socket = connectEvents((event) => {
       const message = JSON.parse(event.data) as { type: string; status?: HomeAssistantStatus; homeAssistant?: HomeAssistantStatus };
       if (message.type === "ha.statusChanged" && message.status) setStatus(message.status);
       if (message.type === "snapshot" && message.homeAssistant) setStatus(message.homeAssistant);
-    };
+    });
     return () => socket.close();
   }, []);
 

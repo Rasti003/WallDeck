@@ -9,6 +9,7 @@ import {
   type WallDeckSettings,
 } from "@walldeck/contracts";
 import { api } from "./api";
+import { connectEvents } from "./events";
 
 const positions: { value: WallDeckSettings["overlay"]["position"]; label: string }[] = [
   { value: "top-left", label: "Góra — lewo" }, { value: "top-center", label: "Góra — środek" },
@@ -51,9 +52,7 @@ export function AdminApp() {
   useEffect(() => { if (haStatus?.configured) api.homeAssistant.overlay().then(setHaLiveStates).catch(() => undefined); }, [haStatus?.configured]);
 
   useEffect(() => {
-    const protocol = location.protocol === "https:" ? "wss:" : "ws:";
-    const socket = new WebSocket(`${protocol}//${location.host}/api/events`);
-    socket.onmessage = (event) => {
+    const socket = connectEvents((event) => {
       const message = JSON.parse(event.data) as { type: string; viewId?: ViewId; status?: HomeAssistantStatus; homeAssistant?: HomeAssistantStatus; entities?: HomeAssistantSelectedState[]; homeAssistantStates?: HomeAssistantSelectedState[] };
       if ((message.type === "snapshot" || message.type === "view.activated") && message.viewId) setViews(current => ({ ...current, current: message.viewId! }));
       const next = message.type === "snapshot" ? message.homeAssistant : message.status;
@@ -63,7 +62,7 @@ export function AdminApp() {
       }
       if (message.type === "snapshot" && message.homeAssistantStates) setHaLiveStates(message.homeAssistantStates);
       if (message.type === "ha.stateChanged" && message.entities) setHaLiveStates(message.entities);
-    };
+    });
     return () => socket.close();
   }, []);
 
@@ -79,9 +78,11 @@ export function AdminApp() {
   }
 
   async function activate(viewId: ViewId) {
-    const result = await api.activateView(viewId);
-    setViews((current) => ({ ...current, current: result.current }));
-    setStatus(`Aktywowano widok: ${viewId}`);
+    try {
+      const result = await api.activateView(viewId);
+      setViews((current) => ({ ...current, current: result.current }));
+      setStatus(`Aktywowano widok: ${viewId}`);
+    } catch (error) { setStatus(`Nie udało się przełączyć widoku: ${String(error)}`); }
   }
 
   async function testHomeAssistant() {

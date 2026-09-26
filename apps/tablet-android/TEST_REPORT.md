@@ -35,6 +35,10 @@
 
 ## Asystent demo — 2026-09-26
 
+### Ponowne połączenie — 2026-09-26
+
+Xiaomi 2603ARP14G / Android 16: przed poprawką API aktywowało `assistant-demo`, ale DOM WebView pozostawał na `photos` po wcześniejszym restarcie backendu. Po załadowaniu poprawki wykonano kolejny rzeczywisty restart backendu, bez odświeżania WebView. Admin otrzymał snapshot `photos`, a kliknięcie „Asystent demo” w adminie przełączyło fizyczny WebView na `assistant-demo` (potwierdzone odczytem DOM przez ADB/CDP). PASS.
+
 - Xiaomi `2603ARP14G`, Android 16, fizyczny WebView przez ADB/CDP: PASS. Skrypt powtarzalny: `scripts/assistant-smoke.mjs` (wymaga forward portu 9222 do socketu debug WebView i otwartego `/panel`).
 - Nowy frontend załadowany bez zmiany APK; aktywacja `assistant-demo` przez API i WebSocket: PASS.
 - Osiem stanów, attention → listening po 750 ms, success → idle po 2200 ms: PASS.

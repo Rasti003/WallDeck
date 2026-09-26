@@ -2,6 +2,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { HomeAssistantSelectedState, PhotoItem, WallDeckSettings, WeatherNow } from "@walldeck/contracts";
 import { api } from "../api";
+import { connectEvents } from "../events";
 import { useLandscape, useNow } from "../hooks";
 import { createPhotoLayout, type PhotoLayout } from "./photo-layout";
 
@@ -104,14 +105,12 @@ export function PhotoAlbumView() {
   }, [photos, landscapeScreen, settings?.photoIntervalSeconds]);
 
   useEffect(() => {
-    const protocol = location.protocol === "https:" ? "wss:" : "ws:";
-    const socket = new WebSocket(`${protocol}//${location.host}/api/events`);
-    socket.onmessage = (event) => {
+    const socket = connectEvents((event) => {
       const message = JSON.parse(event.data) as { type: string; settings?: WallDeckSettings; entities?: HomeAssistantSelectedState[]; homeAssistantStates?: HomeAssistantSelectedState[] };
       if (message.type === "settings.changed" && message.settings) setSettings(message.settings);
       if (message.type === "ha.stateChanged") setHomeAssistant(message.entities ?? []);
       if (message.type === "snapshot") setHomeAssistant(message.homeAssistantStates ?? []);
-    };
+    }, () => { api.settings().then(setSettings).catch(() => undefined); });
     return () => socket.close();
   }, []);
 

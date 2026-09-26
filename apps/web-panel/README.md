@@ -15,6 +15,8 @@ Każdy widok ma własne ustawienie jasności. Po aktywacji widoku klient wysyła
 
 ## Uruchomienie
 
+Panel, admin, album i widok HA automatycznie wznawiają WebSocket po rozłączeniu (od 1 do 15 sekund między próbami, z niewielką losową zwłoką). Snapshot przywraca aktualny widok i stan HA; panel oraz album ponownie pobierają ustawienia. Po wdrożeniu tej poprawki starsze, już otwarte karty trzeba jednorazowo odświeżyć.
+
 Serwer rozpoznaje pliki frontendu przy każdym żądaniu, dzięki czemu nowe nazwy assetów po buildzie nie wymagają restartu backendu. HTML wymaga rewalidacji cache. Brakujący plik JS/CSS zwraca 404, a fallback SPA dotyczy wyłącznie tras ekranów. Test `apps/server/test/client.test.mjs` odtwarza publikację assetu po uruchomieniu serwera.
 
 Wymagane są Node.js 22+ i pnpm 11.

@@ -32,6 +32,8 @@ WallDeck Server jest jedynym klientem Home Assistant. Konfigurację podaje się 
 
 ## Prototyp twarzy asystenta
 
+Wspólny transport `connectEvents` wznawia połączenie WebSocket po restarcie serwera lub rozłączeniu, stosując ograniczony exponential backoff z jitterem. Nowy socket odbiera snapshot widoku i HA; panel i album odświeżają ustawienia przez REST. Demontaż komponentu zamyka socket i usuwa zaplanowane ponowne połączenie. Admin pokazuje błąd nieudanej komendy aktywacji.
+
 Serwowanie frontendu: `registerClient` rozwiązuje pliki dynamicznie, również po przebudowie Vite w działającym serwerze. HTML ma `Cache-Control: no-cache`; fallback HTML obejmuje tylko znane trasy SPA. Nieznane API i brakujące assety zwracają 404, aby przeglądarka nie otrzymała HTML zamiast modułu JavaScript.
 
 Specyfikacja: [Notion, sekcja 15](https://www.notion.so/3e7827a850e3816ab406dabf341c372a). Widok `assistant-demo` dołącza do wspólnego rejestru widoków, walidacji API, reguł i jasności per widok. Trasa `/assistant-demo` wymusza lokalny podgląd; aktywacja przez API pokazuje go na zwykłym `/panel`.
