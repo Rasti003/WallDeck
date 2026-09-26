@@ -10,3 +10,6 @@
 @media(max-width:1050px){.music-layout{grid-template-columns:1fr 1.15fr}.music-next{grid-column:1/-1;border-left:0;border-top:1px solid #ffffff12;padding:20px 0 0;display:grid;grid-template-columns:1fr 2fr 1fr;gap:24px}.music-next nav{margin:0}.music-next h2{font-size:22px}.music-queue-empty>span{display:none}}
 @media(max-width:650px){.music-header{flex-wrap:wrap;gap:16px}.music-connection{width:100%;margin:0}.music-layout{grid-template-columns:1fr}.music-art{max-width:360px;width:100%;margin:auto}.music-next{grid-template-columns:1fr}.music-view{padding:22px}.music-now h1{font-size:38px}.music-sheet{padding:30px 22px}}
 @media(prefers-reduced-motion:reduce){.music-view *{transition:none!important;animation:none!important}}
+
+/* Equal outer tracks keep Play centered on the full-width seek bar. */
+.music-controls{display:grid;grid-template-columns:minmax(0,1fr) 44px 72px 44px minmax(0,1fr);column-gap:12px}.music-controls>.music-secondary-controls{justify-self:start}.music-controls>.music-volume{justify-self:end}.music-controls>.music-play{justify-self:center}@media(max-width:650px){.music-controls{column-gap:6px}.music-secondary-controls{flex-direction:column;gap:0}}

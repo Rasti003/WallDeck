@@ -135,3 +135,5 @@ Music includes a glass volume popover: live slider, ±5%, mute/restore, displaye
 Music volume opens from an icon-only button at the right end of playback controls. Shuffle and repeat are grouped as secondary controls on the left.
 
 Shuffle, repeat and volume use borderless icon controls matching track navigation.
+
+Playback controls use symmetric grid tracks: Play stays centered on the seek bar regardless of shuffle/repeat and volume widths. Narrow layouts stack the two secondary icons.
