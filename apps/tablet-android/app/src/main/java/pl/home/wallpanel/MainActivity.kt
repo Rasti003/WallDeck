@@ -44,6 +44,9 @@ class MainActivity : ComponentActivity() {
     private val store by lazy { ConfigStore(applicationContext) }
     private val audio by lazy { getSystemService(AudioManager::class.java) }
     private val sensorManager by lazy { getSystemService(SensorManager::class.java) }
+    private val cameraLightSampler by lazy {
+        CameraLightSampler(this) { level -> runOnUiThread { event("cameraLightChanged", JSONObject().put("brightnessPercent", level)) } }
+    }
     private val lightSensor by lazy { sensorManager.getSensorList(Sensor.TYPE_ALL).firstOrNull { it.type == Sensor.TYPE_LIGHT } }
     @Volatile private var ambientLightLux: Float? = null
     private val lightListener = object : SensorEventListener {
@@ -134,13 +137,19 @@ class MainActivity : ComponentActivity() {
     }
     override fun onResume() {
         super.onResume()
+        cameraLightSampler.onResume()
         lightSensor?.let {
             sensorManager.registerListener(lightListener, it, SensorManager.SENSOR_DELAY_NORMAL)
         }
     }
     override fun onPause() {
+        cameraLightSampler.onPause()
         sensorManager.unregisterListener(lightListener)
         super.onPause()
+    }
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == CAMERA_LIGHT_PERMISSION_REQUEST && grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED) cameraLightSampler.permissionGranted()
     }
     private fun showConfig() {
         if (dialog?.isShowing == true) return
@@ -276,9 +285,18 @@ class MainActivity : ComponentActivity() {
             require(id is String && (id as String).length <= 128) { "INVALID_ID" }
             val args = req.optJSONObject("args") ?: JSONObject()
             val result: Any = when (req.getString("method")) {
-                "capabilities" -> JSONObject().put("bridgeVersion", 2).put("methods", JSONArray(listOf("capabilities", "deviceInfo", "sensors", "battery", "brightness", "mediaVolume", "keepAwake", "haptics", "reload", "appVersion", "permissions", "signChallenge"))).put("wakeWord", false).put("spotify", false).put("youtube", false).put("homeAssistant", false)
+                "capabilities" -> JSONObject().put("bridgeVersion", 2).put("methods", JSONArray(listOf("capabilities", "deviceInfo", "sensors", "cameraLightSampling", "battery", "brightness", "mediaVolume", "keepAwake", "haptics", "reload", "appVersion", "permissions", "signChallenge"))).put("wakeWord", false).put("spotify", false).put("youtube", false).put("homeAssistant", false)
                 "deviceInfo" -> deviceInfo()
                 "sensors" -> sensors()
+                "cameraLightSampling" -> {
+                    val enabled = args.optBoolean("enabled", false)
+                    val intervalSeconds = args.optInt("intervalSeconds", 30).coerceIn(10, 300)
+                    cameraLightSampler.configure(enabled, intervalSeconds)
+                    if (enabled && !cameraLightSampler.hasPermission()) runOnUiThread {
+                        requestPermissions(arrayOf(Manifest.permission.CAMERA), CAMERA_LIGHT_PERMISSION_REQUEST)
+                    }
+                    JSONObject().put("requested", enabled).put("permission", cameraLightSampler.hasPermission()).put("intervalSeconds", intervalSeconds)
+                }
                 "battery" -> battery()
                 "appVersion" -> JSONObject().put("name", BuildConfig.VERSION_NAME).put("code", BuildConfig.VERSION_CODE)
                 "permissions" -> permissions()
@@ -317,9 +335,10 @@ class MainActivity : ComponentActivity() {
         }
     }
     private fun toast(text: String) = Toast.makeText(this, text, Toast.LENGTH_LONG).show()
-    override fun onDestroy() { sensorManager.unregisterListener(lightListener); unregisterReceiver(batteryReceiver); dialog?.dismiss(); web?.destroy(); web = null; reply = null; super.onDestroy() }
+    override fun onDestroy() { cameraLightSampler.destroy(); sensorManager.unregisterListener(lightListener); unregisterReceiver(batteryReceiver); dialog?.dismiss(); web?.destroy(); web = null; reply = null; super.onDestroy() }
 
     private companion object {
         const val DEBUG_PANEL_URL_EXTRA = "pl.home.wallpanel.DEBUG_PANEL_URL"
+        const val CAMERA_LIGHT_PERMISSION_REQUEST = 2
     }
 }

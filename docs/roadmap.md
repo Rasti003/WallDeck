@@ -13,6 +13,7 @@
 - [x] test na Xiaomi z Androidem 16 przez ADB Wi-Fi.
 - [x] diagnostyka urządzenia w `/admin`: bateria, ekran, uprawnienia i pełny katalog sensorów przez bridge v2;
 - [x] reguła światło → `sleep` z histerezą oraz dotknięcie `sleep` → Home Assistant;
+- [x] opcjonalny fallback jasności z przedniej kamery dla HyperOS blokującego SensorManager;
 - [x] plan architektury i technologii WallDeck Web;
 - [x] prototyp synchronizacji shared albumu Google Photos i pierwsze lokalne lustro 119 zdjęć;
 - [x] React/Vite client, Fastify server i współdzielone kontrakty Zod;

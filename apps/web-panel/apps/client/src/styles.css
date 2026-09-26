@@ -224,8 +224,11 @@ button, input, select { font: inherit; }
 }
 .assistant-admin { display: grid; gap: 20px; }
 .ambient-sleep-fields { grid-template-columns: repeat(2, minmax(0, 260px)); margin: 20px 0; }
+.camera-light-fields { grid-template-columns: repeat(3, minmax(0, 260px)); margin: 20px 0 0; }
 .ambient-sleep-fields label { grid-template-columns: 1fr auto; align-items: center; }
+.camera-light-fields label { grid-template-columns: 1fr auto; align-items: center; }
 .ambient-sleep-fields label > input { grid-column: 1 / -1; }
+.camera-light-fields label > input { grid-column: 1 / -1; }
 .ambient-sleep-note { margin: 12px 0 0; font-size: .82rem; }
 .assistant-brightness-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(235px, 1fr)); gap: 16px; }
 .assistant-brightness-card { margin: 0; padding: 22px; }
@@ -238,3 +241,4 @@ button, input, select { font: inherit; }
 .assistant-brightness-card small { color: #687268; }
 .assistant-settings-save { position: sticky; bottom: 12px; z-index: 2; display: flex; justify-content: space-between; align-items: center; gap: 16px; }
 .assistant-admin input:disabled { opacity: .35; cursor: not-allowed; }
+@media (max-width: 720px) { .ambient-sleep-fields, .camera-light-fields { grid-template-columns: 1fr; } }

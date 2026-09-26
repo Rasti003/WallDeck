@@ -5,8 +5,17 @@ type AmbientSleepSettings = WallDeckSettings["ambientSleep"];
 
 export function ambientSleepAction(lux: number, settings: AmbientSleepSettings, darkEpisodeActive: boolean): "sleep" | "reset" | null {
   if (!settings.enabled || !Number.isFinite(lux)) return null;
-  if (!darkEpisodeActive && lux <= settings.sleepBelowLux) return "sleep";
-  if (darkEpisodeActive && lux >= settings.resetAboveLux) return "reset";
+  return thresholdAction(lux, settings.sleepBelowLux, settings.resetAboveLux, darkEpisodeActive);
+}
+
+export function cameraSleepAction(brightnessPercent: number, settings: AmbientSleepSettings, darkEpisodeActive: boolean): "sleep" | "reset" | null {
+  if (!settings.enabled || !settings.cameraEnabled || !Number.isFinite(brightnessPercent)) return null;
+  return thresholdAction(brightnessPercent, settings.cameraSleepBelowPercent, settings.cameraResetAbovePercent, darkEpisodeActive);
+}
+
+function thresholdAction(value: number, sleepBelow: number, resetAbove: number, darkEpisodeActive: boolean): "sleep" | "reset" | null {
+  if (!darkEpisodeActive && value <= sleepBelow) return "sleep";
+  if (darkEpisodeActive && value >= resetAbove) return "reset";
   return null;
 }
 

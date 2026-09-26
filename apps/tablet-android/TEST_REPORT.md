@@ -84,3 +84,11 @@ Xiaomi 2603ARP14G / Android 16: przed poprawką API aktywowało `assistant-demo`
 - Xiaomi `2603ARP14G`, Android 16: przez CDP w fizycznym WebView zasymulowano 2 lx. Panel przeszedł `photos → assistant-expressive/sleep`; pojedyncze tapnięcie przeszło do `ha`; kolejny odczyt 2 lx nie przerwał HA. Poziom 20 lx ponownie uzbroił regułę. Wszystkie asercje PASS.
 - Automatyczne wywołanie z realnego światła pozostaje zależne od firmware: system mierzy lux, ale w tym teście HyperOS nadal nie przekazał wartości procesowi WallDeck.
 - Dodatkowy test z fizycznym zasłonięciem kamery/sensora: po chwilowym przywróceniu systemowej automatycznej jasności Android zmienił `mAmbientLux` z 38,25 na 0,0 lx, więc sprzęt reaguje. Wywołanie bridge `sensors` nadal zwróciło `ambientLightLux: null`, a SensorService nie utworzył połączenia dla procesu WallDeck. Potwierdza to ograniczenie HyperOS, a nie awarię czujnika.
+
+## 2026-09-26 — fallback jasności z przedniej kamery
+
+- `assembleDebug`, `testDebugUnitTest`, `lintDebug`: PASS (JDK 21); APK z uprawnieniem kamery zainstalowany przez ADB USB, `CAMERA granted=true`.
+- Xiaomi `2603ARP14G`, Android 16: rzeczywisty pomiar z przedniej kamery zwrócił kolejno 12,76%, 13,88% i 13,75% jasności obrazu. Klatki nie opuszczały natywnego samplera.
+- Fizyczny WebView/CDP: zdarzenie kamerowe 2% wywołało `photos → assistant-expressive/sleep`; tapnięcie otworzyło `ha`, a kolejny niski pomiar nie przerwał HA. Zdarzenie 20% ponownie uzbroiło regułę. PASS.
+- Test wyłączenia: przy interwale 10 s odczyt 13,75% dotarł; po zmianie `cameraEnabled=false` przez 12 s nie pojawił się żaden kolejny event. Ustawienia i widok zdjęć przywrócono. PASS.
+- Web: typecheck, build, 22 testy klienta, 4 testy serwera i 2 testy synchronizatora: PASS. Widok admina zawiera osobny przełącznik kamery, progi 5%/15% i interwał 30 s.

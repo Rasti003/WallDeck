@@ -28,7 +28,13 @@ export function AssistantAdmin({ settings, setSettings, save, status }: {
         <label>Włącz Sen poniżej<input type="number" min="0" max="10000" step="1" value={settings.ambientSleep.sleepBelowLux} onChange={e => setSettings(current => ({ ...current, ambientSleep: { ...current.ambientSleep, sleepBelowLux: Number(e.target.value) } }))} /><span>lux</span></label>
         <label>Uzbrój ponownie powyżej<input type="number" min="1" max="10000" step="1" value={settings.ambientSleep.resetAboveLux} onChange={e => setSettings(current => ({ ...current, ambientSleep: { ...current.ambientSleep, resetAboveLux: Number(e.target.value) } }))} /><span>lux</span></label>
       </div>
-      <p className="form-intro ambient-sleep-note">Na obecnym HyperOS sensor jest wykrywany, ale firmware może nie przekazać aplikacji bieżącej wartości lux. Reguła zacznie działać automatycznie, gdy odczyt będzie dostępny.</p>
+      <p className="form-intro ambient-sleep-note">Natywny sensor jest wykrywany, ale obecny HyperOS blokuje jego wartość dla aplikacji. Poniższa opcja wykonuje zamiast niego krótkie pomiary jasności przednią kamerą.</p>
+      <label className="switch-row"><input type="checkbox" checked={settings.ambientSleep.cameraEnabled} onChange={e => setSettings(current => ({ ...current, ambientSleep: { ...current.ambientSleep, cameraEnabled: e.target.checked } }))} /><span><strong>Używaj przedniej kamery jako czujnika</strong><small>Wyłączenie natychmiast zatrzymuje pomiary i zamyka kamerę.</small></span></label>
+      <div className="field-grid camera-light-fields">
+        <label>Sen poniżej<input type="number" min="0" max="100" step="1" value={settings.ambientSleep.cameraSleepBelowPercent} onChange={e => setSettings(current => ({ ...current, ambientSleep: { ...current.ambientSleep, cameraSleepBelowPercent: Number(e.target.value) } }))} /><span>% jasności obrazu</span></label>
+        <label>Uzbrój ponownie powyżej<input type="number" min="1" max="100" step="1" value={settings.ambientSleep.cameraResetAbovePercent} onChange={e => setSettings(current => ({ ...current, ambientSleep: { ...current.ambientSleep, cameraResetAbovePercent: Number(e.target.value) } }))} /><span>% jasności obrazu</span></label>
+        <label>Pomiar co<input type="number" min="10" max="300" step="5" value={settings.ambientSleep.cameraSampleSeconds} onChange={e => setSettings(current => ({ ...current, ambientSleep: { ...current.ambientSleep, cameraSampleSeconds: Number(e.target.value) } }))} /><span>sekund</span></label>
+      </div>
     </section>
     <section className="assistant-brightness-grid" aria-label="Jasność poszczególnych min">
       {assistantStates.map(state => {

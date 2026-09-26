@@ -4,7 +4,7 @@ import { defaultSettings, type AssistantState, type DeviceReport, type ViewId, t
 import { api } from "./api";
 import { connectEvents } from "./events";
 import { nativeBridge } from "./native";
-import { ambientSleepAction, inactivityTransition, viewAfterActivity, viewAfterSwipeDown, viewAfterTap } from "./view-manager";
+import { ambientSleepAction, cameraSleepAction, inactivityTransition, viewAfterActivity, viewAfterSwipeDown, viewAfterTap } from "./view-manager";
 import { viewRegistry } from "./views/registry";
 import { PanelContext } from "./panel-context";
 
@@ -80,6 +80,15 @@ export function PanelApp({ forcedView }: { forcedView?: ViewId }) {
   }, [forcedView]);
 
   useEffect(() => {
+    if (!nativeBridge.available) return;
+    nativeBridge.call("cameraLightSampling", {
+      enabled: settings.ambientSleep.enabled && settings.ambientSleep.cameraEnabled,
+      intervalSeconds: settings.ambientSleep.cameraSampleSeconds,
+    }).catch(() => undefined);
+    return () => { nativeBridge.call("cameraLightSampling", { enabled: false }).catch(() => undefined); };
+  }, [settings.ambientSleep.cameraEnabled, settings.ambientSleep.cameraSampleSeconds, settings.ambientSleep.enabled]);
+
+  useEffect(() => {
     if (!settings.ambientSleep.enabled) {
       darkEpisodeActive.current = false;
       setRequestedAssistantState(null);
@@ -99,11 +108,27 @@ export function PanelApp({ forcedView }: { forcedView?: ViewId }) {
         if (activeView === "assistant-expressive" && assistantState === "sleep") activate("photos");
       }
     };
+    const onCameraLight = (event: Event) => {
+      const brightnessPercent = Number((event as CustomEvent<{ brightnessPercent?: number }>).detail?.brightnessPercent);
+      const action = cameraSleepAction(brightnessPercent, settings.ambientSleep, darkEpisodeActive.current);
+      if (action === "sleep") {
+        darkEpisodeActive.current = true;
+        setAssistantIdleTransition(false);
+        setRequestedAssistantState("sleep");
+        activate("assistant-expressive");
+      } else if (action === "reset") {
+        darkEpisodeActive.current = false;
+        setRequestedAssistantState(null);
+        if (activeView === "assistant-expressive" && assistantState === "sleep") activate("photos");
+      }
+    };
     window.addEventListener("walldeck:ambientLight", onLight);
     window.addEventListener("wallpanel:ambientLightChanged", onLight);
+    window.addEventListener("wallpanel:cameraLightChanged", onCameraLight);
     return () => {
       window.removeEventListener("walldeck:ambientLight", onLight);
       window.removeEventListener("wallpanel:ambientLightChanged", onLight);
+      window.removeEventListener("wallpanel:cameraLightChanged", onCameraLight);
     };
   }, [activeView, activate, assistantState, settings.ambientSleep]);
 
