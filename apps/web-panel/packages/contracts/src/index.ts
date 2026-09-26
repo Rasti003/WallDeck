@@ -152,3 +152,51 @@ export interface HomeAssistantSelectedState {
   unit: string | null;
   updatedAt: string | null;
 }
+
+export const deviceSensorSchema = z.object({
+  name: z.string().max(160),
+  vendor: z.string().max(160),
+  type: z.number().int(),
+  stringType: z.string().max(200),
+  version: z.number().int(),
+  reportingMode: z.number().int(),
+  wakeUp: z.boolean(),
+  power: z.number().finite(),
+  resolution: z.number().finite(),
+  maximumRange: z.number().finite(),
+  minDelayUs: z.number().int(),
+  maxDelayUs: z.number().int(),
+  fifoMaxEventCount: z.number().int().nonnegative(),
+  fifoReservedEventCount: z.number().int().nonnegative(),
+  requiredPermission: z.string().max(200).nullable(),
+  value: z.number().finite().nullable().optional(),
+  unit: z.string().max(32).nullable().optional(),
+});
+
+export type DeviceSensor = z.infer<typeof deviceSensorSchema>;
+
+export const deviceReportSchema = z.object({
+  deviceId: z.string().min(1).max(128).regex(/^[A-Za-z0-9._-]+$/),
+  manufacturer: z.string().max(160),
+  model: z.string().max(160),
+  android: z.string().max(80),
+  sdk: z.number().int().positive(),
+  screen: z.object({
+    width: z.number().int().positive(),
+    height: z.number().int().positive(),
+    densityDpi: z.number().int().positive(),
+  }),
+  appVersion: z.object({ name: z.string().max(80), code: z.number().int().nonnegative() }),
+  battery: z.object({ percent: z.number().int().min(-1).max(100), powerConnected: z.boolean(), charging: z.boolean() }),
+  permissions: z.object({
+    overlay: z.boolean(),
+    notifications: z.boolean(),
+    microphone: z.boolean(),
+    camera: z.boolean(),
+    activityRecognition: z.boolean(),
+  }),
+  sensors: z.array(deviceSensorSchema).max(128),
+});
+
+export type DeviceReport = z.infer<typeof deviceReportSchema>;
+export type DeviceStatus = DeviceReport & { lastSeen: string; online: boolean };

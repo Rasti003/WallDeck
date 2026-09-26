@@ -28,6 +28,8 @@ Frontend ma rejestr niezależnych widoków. Serwer przechowuje identyfikator akt
 
 Konfiguracja każdego widoku zawiera docelową jasność okna. Po zmianie aktywnego widoku frontend wywołuje metodę `brightness` Android Bridge; pozwala to przyciemniać przyszłe widoki nocne bez zmiany globalnej jasności systemu.
 
+APK udostępnia przez bridge v2 metadane urządzenia, baterię, status uprawnień i katalog z `SensorManager`. Klient panelu przesyła raport po otwarciu WebSocket, po zmianie baterii i co 15 sekund. Serwer przechowuje ostatni raport wyłącznie w pamięci, uznaje urządzenie za online przez 45 sekund i rozsyła `device.updated`. `/api/devices` oraz sekcja Urządzenie w `/admin` pokazują ten sam stan. Odczyt sensora światła jest opcjonalny: niektóre firmware udostępniają wpis sensora aplikacji, ale rezerwują strumień pomiarów dla usług systemowych.
+
 WallDeck Server jest jedynym klientem Home Assistant. Konfigurację podaje się w `/admin`; token Long-Lived Access Token jest szyfrowany AES-256-GCM, a klucz znajduje się w osobnym pliku danych runtime. Publiczne API zwraca tylko stan `configured` i diagnostykę, nigdy token. Adapter pobiera początkowy snapshot encji, subskrybuje `state_changed` przez WebSocket i automatycznie ponawia połączenie. Dowolne encje można dodać do overlayu, opisać własną etykietą i rozmieścić w sześciu strefach ekranu. Widok `ha` osadza skonfigurowany dashboard. Na obecnej instancji HA osadzanie jest włączone przez `http.use_x_frame_options: false`; po zmianie konfiguracja została zweryfikowana, HA uruchomiony ponownie, a `/ha` sprawdzony z ekranem logowania dashboardu.
 
 ## Prototyp twarzy asystenta

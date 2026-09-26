@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { defaultSettings, type ViewId, type WallDeckSettings } from "@walldeck/contracts";
+import { defaultSettings, type DeviceReport, type ViewId, type WallDeckSettings } from "@walldeck/contracts";
 import { api } from "./api";
 import { connectEvents } from "./events";
 import { nativeBridge } from "./native";
@@ -24,7 +24,25 @@ export function PanelApp({ forcedView }: { forcedView?: ViewId }) {
     }
     if (!forcedView) api.views().then((views) => setViewId(views.current)).catch(() => undefined);
     api.settings().then(setSettings).catch(() => undefined);
-    const socket = connectEvents((event) => {
+    let socket: ReturnType<typeof connectEvents>;
+    const reportDevice = async () => {
+      if (!nativeBridge.available) return;
+      try {
+        const [deviceInfo, battery, appVersion, permissions, sensorData] = await Promise.all([
+          nativeBridge.call("deviceInfo"), nativeBridge.call("battery"), nativeBridge.call("appVersion"),
+          nativeBridge.call("permissions"), nativeBridge.call("sensors"),
+        ]) as Record<string, unknown>[];
+        const report: DeviceReport = {
+          ...(deviceInfo as DeviceReport),
+          appVersion: appVersion as DeviceReport["appVersion"],
+          battery: battery as DeviceReport["battery"],
+          permissions: permissions as DeviceReport["permissions"],
+          sensors: (sensorData.items ?? []) as DeviceReport["sensors"],
+        };
+        socket.send(JSON.stringify({ type: "device.report", report }));
+      } catch { /* A regular browser preview has no native device bridge. */ }
+    };
+    socket = connectEvents((event) => {
       const message = JSON.parse(event.data) as { type: string; viewId?: ViewId; settings?: WallDeckSettings };
       if (!forcedView && (message.type === "snapshot" || message.type === "view.activated") && message.viewId) {
         setViewId(message.viewId);
@@ -32,9 +50,17 @@ export function PanelApp({ forcedView }: { forcedView?: ViewId }) {
       }
       if (message.type === "panel.activity") window.dispatchEvent(new Event("walldeck:remoteActivity"));
       if (message.type === "settings.changed" && message.settings) setSettings(message.settings);
-    }, () => { api.settings().then(setSettings).catch(() => undefined); });
+    }, () => {
+      api.settings().then(setSettings).catch(() => undefined);
+      void reportDevice();
+    });
     connection.current = socket;
+    const reportTimer = setInterval(reportDevice, 15_000);
+    const batteryChanged = () => { void reportDevice(); };
+    window.addEventListener("wallpanel:batteryChanged", batteryChanged);
     return () => {
+      clearInterval(reportTimer);
+      window.removeEventListener("wallpanel:batteryChanged", batteryChanged);
       socket.close();
       if (nativeBridge.available) nativeBridge.call("keepAwake", { enabled: false }).catch(() => undefined);
     };

@@ -5,6 +5,10 @@ import android.app.AlertDialog
 import android.content.*
 import android.content.pm.PackageManager
 import android.graphics.Color
+import android.hardware.Sensor
+import android.hardware.SensorEvent
+import android.hardware.SensorEventListener
+import android.hardware.SensorManager
 import android.media.AudioManager
 import android.net.Uri
 import android.os.*
@@ -21,6 +25,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.webkit.*
 import kotlinx.coroutines.launch
 import org.json.JSONObject
+import org.json.JSONArray
 import javax.crypto.Mac
 import javax.crypto.spec.SecretKeySpec
 
@@ -38,6 +43,15 @@ class MainActivity : ComponentActivity() {
     private var swipeStartedAt = 0L
     private val store by lazy { ConfigStore(applicationContext) }
     private val audio by lazy { getSystemService(AudioManager::class.java) }
+    private val sensorManager by lazy { getSystemService(SensorManager::class.java) }
+    private val lightSensor by lazy { sensorManager.getSensorList(Sensor.TYPE_ALL).firstOrNull { it.type == Sensor.TYPE_LIGHT } }
+    @Volatile private var ambientLightLux: Float? = null
+    private val lightListener = object : SensorEventListener {
+        override fun onSensorChanged(event: SensorEvent) {
+            ambientLightLux = event.values.firstOrNull()
+        }
+        override fun onAccuracyChanged(sensor: Sensor, accuracy: Int) = Unit
+    }
     private val batteryReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) { event("batteryChanged") }
     }
@@ -116,6 +130,16 @@ class MainActivity : ComponentActivity() {
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
         if (hasFocus && dialog?.isShowing != true) enterImmersiveMode()
+    }
+    override fun onResume() {
+        super.onResume()
+        lightSensor?.let {
+            sensorManager.registerListener(lightListener, it, SensorManager.SENSOR_DELAY_NORMAL)
+        }
+    }
+    override fun onPause() {
+        sensorManager.unregisterListener(lightListener)
+        super.onPause()
     }
     private fun showConfig() {
         if (dialog?.isShowing == true) return
@@ -200,7 +224,49 @@ class MainActivity : ComponentActivity() {
     }
     private fun permissions() = JSONObject().put("overlay", Settings.canDrawOverlays(this))
         .put("notifications", getSystemService(android.app.NotificationManager::class.java).areNotificationsEnabled())
-        .put("microphone", false).put("camera", false)
+        .put("microphone", checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED)
+        .put("camera", checkSelfPermission(Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED)
+        .put("activityRecognition", if (Build.VERSION.SDK_INT >= 29) checkSelfPermission(Manifest.permission.ACTIVITY_RECOGNITION) == PackageManager.PERMISSION_GRANTED else true)
+    private fun deviceInfo() = JSONObject()
+        .put("manufacturer", Build.MANUFACTURER)
+        .put("model", Build.MODEL)
+        .put("android", Build.VERSION.RELEASE)
+        .put("sdk", Build.VERSION.SDK_INT)
+        .put("deviceId", config!!.deviceId)
+        .put("screen", JSONObject()
+            .put("width", resources.displayMetrics.widthPixels)
+            .put("height", resources.displayMetrics.heightPixels)
+            .put("densityDpi", resources.displayMetrics.densityDpi))
+    private fun sensors(): JSONObject {
+        if (ambientLightLux == null) lightSensor?.let {
+            sensorManager.registerListener(lightListener, it, SensorManager.SENSOR_DELAY_NORMAL)
+        }
+        val items = JSONArray()
+        sensorManager.getSensorList(Sensor.TYPE_ALL).forEach { sensor ->
+            val requiredPermission = if (sensor.type == Sensor.TYPE_STEP_COUNTER || sensor.type == Sensor.TYPE_STEP_DETECTOR) Manifest.permission.ACTIVITY_RECOGNITION else null
+            val item = JSONObject()
+                .put("name", sensor.name)
+                .put("vendor", sensor.vendor)
+                .put("type", sensor.type)
+                .put("stringType", sensor.stringType)
+                .put("version", sensor.version)
+                .put("reportingMode", sensor.reportingMode)
+                .put("wakeUp", sensor.isWakeUpSensor)
+                .put("power", sensor.power.toDouble())
+                .put("resolution", sensor.resolution.toDouble())
+                .put("maximumRange", sensor.maximumRange.toDouble())
+                .put("minDelayUs", sensor.minDelay)
+                .put("maxDelayUs", sensor.maxDelay)
+                .put("fifoMaxEventCount", sensor.fifoMaxEventCount)
+                .put("fifoReservedEventCount", sensor.fifoReservedEventCount)
+                .put("requiredPermission", requiredPermission ?: JSONObject.NULL)
+            if (sensor.type == Sensor.TYPE_LIGHT) {
+                item.put("value", ambientLightLux?.toDouble() ?: JSONObject.NULL).put("unit", "lx")
+            }
+            items.put(item)
+        }
+        return JSONObject().put("items", items).put("ambientLightLux", ambientLightLux?.toDouble() ?: JSONObject.NULL)
+    }
     private fun handle(raw: String, proxy: JavaScriptReplyProxy) {
         var id: Any = JSONObject.NULL
         try {
@@ -209,8 +275,9 @@ class MainActivity : ComponentActivity() {
             require(id is String && (id as String).length <= 128) { "INVALID_ID" }
             val args = req.optJSONObject("args") ?: JSONObject()
             val result: Any = when (req.getString("method")) {
-                "capabilities" -> JSONObject().put("bridgeVersion", 1).put("methods", org.json.JSONArray(listOf("capabilities", "deviceInfo", "battery", "brightness", "mediaVolume", "keepAwake", "haptics", "reload", "appVersion", "permissions", "signChallenge"))).put("wakeWord", false).put("spotify", false).put("youtube", false).put("homeAssistant", false)
-                "deviceInfo" -> JSONObject().put("manufacturer", Build.MANUFACTURER).put("model", Build.MODEL).put("android", Build.VERSION.RELEASE).put("sdk", Build.VERSION.SDK_INT).put("deviceId", config!!.deviceId)
+                "capabilities" -> JSONObject().put("bridgeVersion", 2).put("methods", JSONArray(listOf("capabilities", "deviceInfo", "sensors", "battery", "brightness", "mediaVolume", "keepAwake", "haptics", "reload", "appVersion", "permissions", "signChallenge"))).put("wakeWord", false).put("spotify", false).put("youtube", false).put("homeAssistant", false)
+                "deviceInfo" -> deviceInfo()
+                "sensors" -> sensors()
                 "battery" -> battery()
                 "appVersion" -> JSONObject().put("name", BuildConfig.VERSION_NAME).put("code", BuildConfig.VERSION_CODE)
                 "permissions" -> permissions()
@@ -249,7 +316,7 @@ class MainActivity : ComponentActivity() {
         }
     }
     private fun toast(text: String) = Toast.makeText(this, text, Toast.LENGTH_LONG).show()
-    override fun onDestroy() { unregisterReceiver(batteryReceiver); dialog?.dismiss(); web?.destroy(); web = null; reply = null; super.onDestroy() }
+    override fun onDestroy() { sensorManager.unregisterListener(lightListener); unregisterReceiver(batteryReceiver); dialog?.dismiss(); web?.destroy(); web = null; reply = null; super.onDestroy() }
 
     private companion object {
         const val DEBUG_PANEL_URL_EXTRA = "pl.home.wallpanel.DEBUG_PANEL_URL"

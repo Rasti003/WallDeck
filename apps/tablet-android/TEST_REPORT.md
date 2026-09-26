@@ -69,3 +69,10 @@ Xiaomi 2603ARP14G / Android 16: przed poprawką API aktywowało `assistant-demo`
 - Widok przejściowy na `/panel` pokazuje samą twarz `idle`, bez kontrolek studia developerskiego.
 - Jasność okna w pełnej sekwencji: HA `0.85` → assistant idle `0.65` → photos `0.22` — PASS.
 - Typecheck, build, synchronizator oraz 21 testów klienta i 4 testy serwera: PASS.
+
+## 2026-09-26 — diagnostyka urządzenia i sensorów
+
+- `assembleDebug`, `testDebugUnitTest`, `lintDebug`: PASS (JDK 21); aktualizacja APK przez ADB USB: PASS.
+- Xiaomi `2603ARP14G`, Android 16 / API 36: raport WebSocket dotarł do `/api/devices`, tablet online, ekran 1280 × 2048 przy 280 dpi, bateria 26%, ładowanie: PASS.
+- `SensorManager` zwrócił 22 pozycje: akcelerometr, significant motion, kroki, tilt, orientacja, stationary/motion detect, SAR, pickup, OEM AMD i `camera_light_Sensor`. Zakładkę `/admin` → Urządzenie sprawdzono w przeglądarce: podsumowanie, uprawnienia i wszystkie 22 karty są widoczne.
+- Sensor światła istnieje i usługa systemowa raportowała przez ADB około 38,2 lx. Firmware nie utworzył połączenia sensora dla procesu WallDeck, dlatego publiczny Android `SensorManager` zwrócił metadane, ale nie przekazał wartości do APK; admin poprawnie pokazuje „wykryty” bez zmyślonego pomiaru.

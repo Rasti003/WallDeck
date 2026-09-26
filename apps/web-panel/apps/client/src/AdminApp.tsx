@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import {
   defaultSettings,
+  type DeviceStatus,
   type HomeAssistantEntity,
   type HomeAssistantOverlayItem,
   type HomeAssistantSelectedState,
@@ -19,6 +20,12 @@ const positions: { value: WallDeckSettings["overlay"]["position"]; label: string
   { value: "bottom-center", label: "Dół — środek" }, { value: "bottom-right", label: "Dół — prawo" },
 ];
 
+const reportingModes: Record<number, string> = { 0: "ciągły", 1: "przy zmianie", 2: "jednorazowy", 3: "specjalny" };
+const permissionLabels: Record<keyof DeviceStatus["permissions"], string> = {
+  overlay: "Wyświetlanie nad aplikacjami", notifications: "Powiadomienia", microphone: "Mikrofon",
+  camera: "Kamera", activityRecognition: "Rozpoznawanie aktywności",
+};
+
 export function AdminApp() {
   const [settings, setSettings] = useState<WallDeckSettings>(defaultSettings);
   const [views, setViews] = useState<{ current: ViewId; available: { id: ViewId; name: string }[] }>({ current: "photos", available: [] });
@@ -31,11 +38,13 @@ export function AdminApp() {
   const [haSearch, setHaSearch] = useState("");
   const [entityDraft, setEntityDraft] = useState<{ entityId: string; label: string; position: WallDeckSettings["overlay"]["position"] }>({ entityId: "", label: "", position: "bottom-right" });
   const [haMessage, setHaMessage] = useState("Nie skonfigurowano");
-  const [section, setSection] = useState<"overview" | "views" | "photos" | "ha" | "assistant">("overview");
+  const [devices, setDevices] = useState<DeviceStatus[]>([]);
+  const [section, setSection] = useState<"overview" | "views" | "photos" | "ha" | "assistant" | "device">("overview");
 
   useEffect(() => {
-    Promise.all([api.settings(), api.views(), api.photos(), api.homeAssistant.config()]).then(([nextSettings, nextViews, photos, homeAssistant]) => {
+    Promise.all([api.settings(), api.views(), api.photos(), api.homeAssistant.config(), api.devices()]).then(([nextSettings, nextViews, photos, homeAssistant, nextDevices]) => {
       setSettings(nextSettings); setViews(nextViews); setPhotoCount(photos.length); setStatus("Gotowe");
+      setDevices(nextDevices);
       setHaStatus(homeAssistant);
       setHaForm({ baseUrl: homeAssistant.baseUrl, token: "", dashboardUrl: homeAssistant.dashboardUrl, overlayEntities: homeAssistant.overlayEntities });
       setHaMessage(homeAssistant.configured ? (homeAssistant.connected ? "Połączono" : homeAssistant.lastError ?? "Łączenie…") : "Nie skonfigurowano");
@@ -54,8 +63,13 @@ export function AdminApp() {
   useEffect(() => { if (haStatus?.configured) api.homeAssistant.overlay().then(setHaLiveStates).catch(() => undefined); }, [haStatus?.configured]);
 
   useEffect(() => {
+    const timer = setInterval(() => api.devices().then(setDevices).catch(() => undefined), 15_000);
+    return () => clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
     const socket = connectEvents((event) => {
-      const message = JSON.parse(event.data) as { type: string; viewId?: ViewId; status?: HomeAssistantStatus; homeAssistant?: HomeAssistantStatus; entities?: HomeAssistantSelectedState[]; homeAssistantStates?: HomeAssistantSelectedState[] };
+      const message = JSON.parse(event.data) as { type: string; viewId?: ViewId; status?: HomeAssistantStatus; homeAssistant?: HomeAssistantStatus; entities?: HomeAssistantSelectedState[]; homeAssistantStates?: HomeAssistantSelectedState[]; devices?: DeviceStatus[]; device?: DeviceStatus };
       if ((message.type === "snapshot" || message.type === "view.activated") && message.viewId) setViews(current => ({ ...current, current: message.viewId! }));
       const next = message.type === "snapshot" ? message.homeAssistant : message.status;
       if (next) {
@@ -64,6 +78,8 @@ export function AdminApp() {
       }
       if (message.type === "snapshot" && message.homeAssistantStates) setHaLiveStates(message.homeAssistantStates);
       if (message.type === "ha.stateChanged" && message.entities) setHaLiveStates(message.entities);
+      if (message.type === "snapshot" && message.devices) setDevices(message.devices);
+      if (message.type === "device.updated" && message.device) setDevices((current) => [...current.filter((device) => device.deviceId !== message.device!.deviceId), message.device!]);
     });
     return () => socket.close();
   }, []);
@@ -131,6 +147,9 @@ export function AdminApp() {
     setHaForm((current) => ({ ...current, overlayEntities: current.overlayEntities.map((item) => item.id === id ? { ...item, ...patch } : item) }));
   }
 
+  const device = devices.find((candidate) => candidate.online) ?? devices[0];
+  const lightSensor = device?.sensors.find((sensor) => sensor.type === 5);
+
   return (
     <main className="admin-shell">
       <aside className="admin-sidebar">
@@ -142,6 +161,7 @@ export function AdminApp() {
             ["photos", "▧", "Album zdjęć"],
             ["ha", "◉", "Home Assistant"],
             ["assistant", "◌", "Asystent"],
+            ["device", "▣", "Urządzenie"],
           ] as const).map(([id, icon, label]) => (
             <button className={section === id ? "is-active" : ""} key={id} onClick={() => setSection(id)}><span>{icon}</span>{label}</button>
           ))}
@@ -151,7 +171,7 @@ export function AdminApp() {
 
       <div className="admin-workspace">
         <header className="admin-topbar">
-          <div><span className="admin-eyebrow">WALLDECK / ADMIN</span><h1>{section === "overview" ? "Pulpit" : section === "views" ? "Widoki i reguły" : section === "photos" ? "Album zdjęć" : section === "assistant" ? "Asystent" : "Home Assistant"}</h1></div>
+          <div><span className="admin-eyebrow">WALLDECK / ADMIN</span><h1>{section === "overview" ? "Pulpit" : section === "views" ? "Widoki i reguły" : section === "photos" ? "Album zdjęć" : section === "assistant" ? "Asystent" : section === "device" ? "Urządzenie" : "Home Assistant"}</h1></div>
           <span className="admin-save-state">{status}</span>
         </header>
 
@@ -160,6 +180,7 @@ export function AdminApp() {
             <button onClick={() => setSection("views")}><small>Aktywny ekran</small><strong>{views.available.find((view) => view.id === views.current)?.name ?? views.current}</strong><span>Zmień lub ustaw reguły →</span></button>
             <button onClick={() => setSection("photos")}><small>Biblioteka</small><strong>{photoCount} zdjęć</strong><span>Ustaw wygląd albumu →</span></button>
             <button onClick={() => setSection("ha")}><small>Home Assistant</small><strong>{haStatus?.connected ? "Połączono" : "Rozłączono"}</strong><span>{haStatus?.entityCount ?? 0} dostępnych encji →</span></button>
+            <button onClick={() => setSection("device")}><small>Tablet</small><strong>{devices[0]?.online ? "Online" : "Brak danych"}</strong><span>{devices[0]?.sensors.length ?? 0} sensorów →</span></button>
           </div>
           <article className="admin-card activity-card">
             <div><span className="admin-kicker">Szybki podgląd</span><h2>Przepływ panelu</h2></div>
@@ -168,6 +189,59 @@ export function AdminApp() {
         </section>}
 
         {section === "assistant" && <AssistantAdmin settings={settings} setSettings={setSettings} save={save} status={status} />}
+
+        {section === "device" && <section className="device-admin">
+          {!device && <article className="admin-card device-empty">
+            <span className="admin-kicker">Diagnostyka</span><h2>Oczekiwanie na tablet</h2>
+            <p>Otwórz WallDeck na tablecie. Dane urządzenia pojawią się tutaj automatycznie po połączeniu aplikacji z panelem.</p>
+          </article>}
+          {device && <>
+            <article className="admin-card device-overview">
+              <div className="device-heading">
+                <div><span className="admin-kicker">{device.deviceId}</span><h2>{device.manufacturer} {device.model}</h2></div>
+                <span className={`connection-badge ${device.online ? "is-connected" : ""}`}><i />{device.online ? "Online" : "Offline"}</span>
+              </div>
+              <div className="device-metrics">
+                <span><small>Android</small><strong>{device.android}</strong><em>API {device.sdk}</em></span>
+                <span><small>Ekran aplikacji</small><strong>{device.screen.width} × {device.screen.height}</strong><em>{device.screen.densityDpi} dpi</em></span>
+                <span><small>Bateria</small><strong>{device.battery.percent >= 0 ? `${device.battery.percent}%` : "—"}</strong><em>{device.battery.powerConnected ? (device.battery.charging ? "ładowanie" : "zasilanie podłączone") : "zasilanie odłączone"}</em></span>
+                <span><small>WallDeck</small><strong>{device.appVersion.name}</strong><em>build {device.appVersion.code}</em></span>
+                <span className="light-reading"><small>Sensor światła</small><strong>{lightSensor?.value == null ? "wykryty" : `${Math.round(lightSensor.value)} lx`}</strong><em>{lightSensor ? "camera_light_Sensor" : "brak"}</em></span>
+                <span><small>Ostatni raport</small><strong>{new Date(device.lastSeen).toLocaleTimeString("pl-PL")}</strong><em>{new Date(device.lastSeen).toLocaleDateString("pl-PL")}</em></span>
+              </div>
+            </article>
+
+            <article className="admin-card">
+              <div><span className="admin-kicker">Uprawnienia aplikacji</span><h2>Status dostępu</h2></div>
+              <div className="permission-grid">
+                {(Object.entries(device.permissions) as [keyof DeviceStatus["permissions"], boolean][]).map(([key, granted]) =>
+                  <span className={granted ? "is-granted" : ""} key={key}><i /> <strong>{permissionLabels[key]}</strong><small>{granted ? "przyznane" : "nieprzyznane"}</small></span>
+                )}
+              </div>
+            </article>
+
+            <article className="admin-card sensor-catalog">
+              <div className="sensor-catalog__heading"><div><span className="admin-kicker">Sprzęt Android</span><h2>Dostępne sensory</h2></div><strong>{device.sensors.length}</strong></div>
+              <p className="form-intro">Lista pochodzi bezpośrednio z Android SensorManager. Warianty wake-up są pokazane osobno, ponieważ system udostępnia je jako osobne sensory.</p>
+              <div className="sensor-grid">
+                {device.sensors.map((sensor, index) => <article key={`${sensor.type}-${sensor.name}-${sensor.wakeUp}-${index}`}>
+                  <header><span>{sensor.type === 5 ? "Światło" : `Typ ${sensor.type}`}</span>{sensor.wakeUp && <b>wake-up</b>}</header>
+                  <h3>{sensor.name}</h3>
+                  <code>{sensor.stringType}</code>
+                  <dl>
+                    <div><dt>Producent</dt><dd>{sensor.vendor}</dd></div>
+                    <div><dt>Tryb</dt><dd>{reportingModes[sensor.reportingMode] ?? `kod ${sensor.reportingMode}`}</dd></div>
+                    <div><dt>Pobór</dt><dd>{sensor.power.toFixed(3)} mA</dd></div>
+                    <div><dt>Zakres</dt><dd>{sensor.maximumRange}</dd></div>
+                    <div><dt>Rozdzielczość</dt><dd>{sensor.resolution}</dd></div>
+                    {sensor.value != null && <div><dt>Odczyt</dt><dd>{sensor.value.toFixed(1)} {sensor.unit ?? ""}</dd></div>}
+                  </dl>
+                  {sensor.requiredPermission && <small>Wymaga: {sensor.requiredPermission}</small>}
+                </article>)}
+              </div>
+            </article>
+          </>}
+        </section>}
 
         {section === "views" && <>
       <section className="admin-card">

@@ -7,6 +7,7 @@ import { registerClient } from "./client.js";
 import websocket from "@fastify/websocket";
 import {
   defaultSettings,
+  deviceReportSchema,
   homeAssistantConfigInputSchema,
   settingsSchema,
   viewIdSchema,
@@ -14,6 +15,8 @@ import {
   type ViewId,
   type WallDeckSettings,
   type WeatherNow,
+  type DeviceReport,
+  type DeviceStatus,
 } from "@walldeck/contracts";
 import { HomeAssistantClient, HomeAssistantConfigStore } from "./home-assistant.js";
 
@@ -63,7 +66,15 @@ function orientationOf(width: number, height: number): PhotoItem["orientation"] 
 
 let currentView: ViewId = "photos";
 const sockets = new Set<{ send(data: string): void; readyState: number }>();
+const devices = new Map<string, DeviceReport & { lastSeen: string }>();
 let weatherCache: { key: string; expiresAt: number; value: WeatherNow } | null = null;
+
+function deviceStatuses(): DeviceStatus[] {
+  const onlineAfter = Date.now() - 45_000;
+  return [...devices.values()]
+    .map((device) => ({ ...device, online: Date.parse(device.lastSeen) >= onlineAfter }))
+    .sort((a, b) => a.deviceId.localeCompare(b.deviceId));
+}
 
 function broadcast(message: unknown) {
   const data = JSON.stringify(message);
@@ -83,6 +94,7 @@ const app = Fastify({ logger: true });
 await app.register(websocket);
 
 app.get("/api/health", async () => ({ status: "ok", view: currentView }));
+app.get("/api/devices", async () => deviceStatuses());
 
 app.get("/api/settings", async () => readSettings());
 app.put("/api/settings", async (request, reply) => {
@@ -197,14 +209,22 @@ app.get("/api/events", { websocket: true }, (socket) => {
     viewId: currentView,
     homeAssistant: homeAssistant.status(),
     homeAssistantStates: homeAssistant.selectedStates(),
+    devices: deviceStatuses(),
   }));
   let lastActivity = 0;
   socket.on("message", (raw: Buffer) => {
-    if (raw.toString().length > 256) return;
+    if (raw.toString().length > 65_536) return;
     try {
-      if (JSON.parse(raw.toString()).type === "panel.activity" && Date.now() - lastActivity > 400) {
+      const message = JSON.parse(raw.toString()) as { type?: unknown; report?: unknown };
+      if (message.type === "panel.activity" && Date.now() - lastActivity > 400) {
         lastActivity = Date.now();
         broadcast({ type: "panel.activity" });
+      } else if (message.type === "device.report") {
+        const parsed = deviceReportSchema.safeParse(message.report);
+        if (!parsed.success) return;
+        const device = { ...parsed.data, lastSeen: new Date().toISOString() };
+        devices.set(device.deviceId, device);
+        broadcast({ type: "device.updated", device: { ...device, online: true } satisfies DeviceStatus });
       }
     } catch { /* Ignore malformed activity messages. */ }
   });

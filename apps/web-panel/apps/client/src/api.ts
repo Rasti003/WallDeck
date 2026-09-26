@@ -1,4 +1,5 @@
 import type {
+  DeviceStatus,
   HomeAssistantConfigInput,
   HomeAssistantEntity,
   HomeAssistantSelectedState,
@@ -19,6 +20,7 @@ async function json<T>(url: string, init?: RequestInit): Promise<T> {
 }
 
 export const api = {
+  devices: () => json<DeviceStatus[]>("/api/devices"),
   photos: () => json<PhotoItem[]>("/api/photos"),
   settings: () => json<WallDeckSettings>("/api/settings"),
   saveSettings: (settings: WallDeckSettings) => json<WallDeckSettings>("/api/settings", {

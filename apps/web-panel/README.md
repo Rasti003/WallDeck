@@ -9,7 +9,7 @@ Aplikacja WWW panelu ściennego. Pierwszy widok prezentuje lokalną kopię album
 
 Na ekranie poziomym aplikacja losowo pokazuje jedno zdjęcie poziome albo parę zdjęć pionowych. Na ekranie pionowym reguła działa odwrotnie. Następny zestaw jest ładowany z wyprzedzeniem, a ostatnio pokazane zdjęcia są pomijane, gdy istnieją inne pasujące fotografie.
 
-Panel administratora ma stałą nawigację z osobnymi sekcjami: pulpit, widoki i reguły, album zdjęć oraz Home Assistant. Pozwala ustawić czas zmiany i przejścia, położenie overlayu, zegar, datę i pogodę. Sekcja Home Assistant udostępnia wyszukiwarkę wszystkich encji oraz edytor elementów overlayu: własna etykieta i jedna z sześciu stref ekranu. Ustawienia i stany są wysyłane do działającego panelu przez WebSocket bez przeładowania strony.
+Panel administratora ma stałą nawigację z osobnymi sekcjami: pulpit, widoki i reguły, album zdjęć, Home Assistant, Asystent i Urządzenie. Pozwala ustawić czas zmiany i przejścia, położenie overlayu, zegar, datę i pogodę. Sekcja Home Assistant udostępnia wyszukiwarkę wszystkich encji oraz edytor elementów overlayu: własna etykieta i jedna z sześciu stref ekranu. Sekcja Urządzenie pokazuje model, wersję Androida i aplikacji, ekran, baterię, zasilanie, uprawnienia oraz pełny katalog sensorów zgłoszony przez tablet. Ustawienia, stany i raport urządzenia są wysyłane do działającego panelu przez WebSocket bez przeładowania strony.
 
 Każdy widok ma własne ustawienie jasności. Po aktywacji widoku klient wysyła jego poziom do Android Bridge, więc przyszłe ekrany nocne mogą automatycznie przyciemniać tablet, a dzienne przywracać wyższą jasność.
 

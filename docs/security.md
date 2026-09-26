@@ -30,4 +30,6 @@ Wszystkie skrypty uruchamiane przez zaufany origin mają dostęp do bridge. Back
 
 Zgodne wstecz rozszerzenia bridge v1 przekazują do zaufanej głównej ramki jedynie rodzaj interakcji: `userInteraction` wysyła `{kind: "touch"}`, a `swipeDown` wysyła `{kind: "swipeDown"}`. Nie przekazują współrzędnych ani treści z HA i nie udostępniają bridge osadzonemu dashboardowi. Komunikat `panel.activity` nie przenosi sekretów; obecne API prototypu pozostaje dostępne w LAN, a sesje urządzeń wymagają osobnego wdrożenia.
 
+Raport diagnostyczny urządzenia zawiera identyfikator panelu, model, wersje, stan baterii, status uprawnień i publiczne metadane sensorów. Nie zawiera Device Key, tokenów, danych konta ani treści z Home Assistant. Raport jest walidowany wspólnym schematem, ma limit 64 KiB i pozostaje tylko w pamięci procesu serwera. Dostęp do `/api/devices` podlega tym samym ograniczeniom sieciowym co obecny prototyp panelu admina.
+
 Immersive fullscreen ogranicza przypadkowe wejście do interfejsu systemowego, ale nie stanowi zabezpieczenia kiosku. Android może przejściowo odsłonić paski gestem z krawędzi. Pełna blokada panelu powiadomień wymaga kontrolowanego wdrożenia Device Owner i lock task.
