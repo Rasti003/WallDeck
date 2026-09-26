@@ -133,3 +133,5 @@ Menu footer now contains a discreet 17px tablet icon (40px touch area) for exitT
 Music includes a glass volume popover: live slider, ±5%, mute/restore, displayed native volume and auto-dismiss after 6 seconds without interaction. Controls tablet media audio, not remote Spotify Connect devices. Accessible without an active Spotify connection when native bridge exists.
 
 Music volume opens from an icon-only button at the right end of playback controls. Shuffle and repeat are grouped as secondary controls on the left.
+
+Shuffle, repeat and volume use borderless icon controls matching track navigation.
