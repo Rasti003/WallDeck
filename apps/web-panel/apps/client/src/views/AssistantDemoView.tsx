@@ -26,10 +26,11 @@ export function AssistantDemoView() {
   const [accent, setAccent] = useState("#37f3f3");
   useEffect(() => {
     const delay = transientDelay[state];
+    if (state === "dancing" && requestedAssistantState === "dancing") return;
     if (!delay) return;
     const timer = setTimeout(() => dispatch({ type: "timeout" }), delay);
     return () => clearTimeout(timer);
-  }, [state]);
+  }, [state, requestedAssistantState]);
   useEffect(() => {
     window.dispatchEvent(new CustomEvent("walldeck:assistantStateChanged", { detail: { state } }));
   }, [state]);

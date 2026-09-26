@@ -7,12 +7,19 @@ import { nativeBridge } from "./native";
 import { ambientSleepAction, cameraSleepAction, homeAssistantSleepAction, inactivityTransition, viewAfterActivity, viewAfterSwipeDown, viewAfterTap } from "./view-manager";
 import { viewRegistry } from "./views/registry";
 import { PanelContext } from "./panel-context";
+import { musicController } from "./music/controller";
+import type { MusicState } from "@walldeck/contracts";
 
 export function PanelApp({ forcedView }: { forcedView?: ViewId }) {
   const reducedMotion = useReducedMotion();
   const [viewId, setViewId] = useState<ViewId>("photos");
   const [settings, setSettings] = useState<WallDeckSettings>(defaultSettings);
   const [assistantIdleTransition, setAssistantIdleTransition] = useState(false);
+  const [danceTransition, setDanceTransition] = useState(false);
+  const [instantTransition, setInstantTransition] = useState(false);
+  const musicPlaying = useRef(false);
+  const cameFromMusic = useRef(false);
+  const previousView = useRef<ViewId>(forcedView ?? "photos");
   const [assistantState, setAssistantState] = useState<AssistantState>("idle");
   const [requestedAssistantState, setRequestedAssistantState] = useState<AssistantState | null>(null);
   const connection = useRef<ReturnType<typeof connectEvents> | null>(null);
@@ -73,8 +80,29 @@ export function PanelApp({ forcedView }: { forcedView?: ViewId }) {
 
   const activeView = forcedView ?? viewId;
 
-  const activate = useCallback((nextView: ViewId) => {
+  useEffect(() => {
+    if (previousView.current !== activeView) {
+      if (activeView === "ha") cameFromMusic.current = previousView.current === "music";
+      if (activeView !== "ha" && activeView !== "assistant-expressive") cameFromMusic.current = false;
+      previousView.current = activeView;
+    }
+    if (activeView !== "assistant-expressive") setDanceTransition(false);
+  }, [activeView]);
+
+  useEffect(() => {
+    if (!nativeBridge.available) return;
+    let disposed = false;
+    const update = (state: MusicState) => { if (!disposed) musicPlaying.current = state.connection === "connected" && !state.paused && Boolean(state.track); };
+    const unsubscribe = musicController.subscribePlaybackState(update);
+    const refresh = () => musicController.getPlaybackState().then(update).catch(() => { if (!disposed) musicPlaying.current = false; });
+    void refresh();
+    const timer = setInterval(refresh, 5000);
+    return () => { disposed = true; clearInterval(timer); unsubscribe(); };
+  }, []);
+
+  const activate = useCallback((nextView: ViewId, instant = false) => {
     if (forcedView) return;
+    setInstantTransition(instant);
     setViewId(nextView);
     api.activateView(nextView).catch(() => undefined);
   }, [forcedView]);
@@ -91,7 +119,7 @@ export function PanelApp({ forcedView }: { forcedView?: ViewId }) {
   useEffect(() => {
     if (!settings.ambientSleep.enabled) {
       darkEpisodeActive.current = false;
-      setRequestedAssistantState(null);
+      setRequestedAssistantState(current => current === 'sleep' ? null : current);
       return;
     }
     const onLight = (event: Event) => {
@@ -160,30 +188,49 @@ export function PanelApp({ forcedView }: { forcedView?: ViewId }) {
 
   const resetInactivity = useCallback(() => {
     if (idleTimer.current) clearTimeout(idleTimer.current);
-    const transition = inactivityTransition(activeView, settings.viewRouter, assistantIdleTransition);
+    const transition = danceTransition && activeView === "assistant-expressive"
+      ? { target: "music" as const, seconds: settings.viewRouter.inactivityAction.assistantIdleSeconds, startsAssistantIdle: false, completesAssistantIdle: true }
+      : inactivityTransition(activeView, settings.viewRouter, assistantIdleTransition);
     if (forcedView || !transition) return;
     idleTimer.current = setTimeout(() => {
+      if (activeView === "ha" && cameFromMusic.current && musicPlaying.current) {
+        interruptionPending.current = false;
+        setAssistantIdleTransition(false);
+        setDanceTransition(true);
+        setRequestedAssistantState("dancing");
+        activate("assistant-expressive");
+        return;
+      }
+      if (danceTransition) {
+        setDanceTransition(false);
+        setRequestedAssistantState(null);
+        activate(musicPlaying.current ? "music" : settings.viewRouter.inactivityAction.targetView);
+        return;
+      }
       if (transition.startsAssistantIdle) {
         interruptionPending.current = false;
+        setRequestedAssistantState("idle");
         setAssistantIdleTransition(true);
       }
       if (transition.completesAssistantIdle) setAssistantIdleTransition(false);
       activate(transition.target);
     }, transition.seconds * 1_000);
-  }, [activeView, activate, assistantIdleTransition, forcedView, settings.viewRouter]);
+  }, [activeView, activate, assistantIdleTransition, danceTransition, forcedView, settings.viewRouter]);
 
   const registerActivity = useCallback(() => {
-    const target = viewAfterActivity(activeView, settings.viewRouter, assistantIdleTransition);
+    const target = danceTransition && activeView === "assistant-expressive" ? "music" : viewAfterActivity(activeView, settings.viewRouter, assistantIdleTransition);
     if (target) {
       if (interruptionPending.current) return;
       interruptionPending.current = true;
       if (idleTimer.current) clearTimeout(idleTimer.current);
       setAssistantIdleTransition(false);
-      activate(target);
+      setDanceTransition(false);
+      setRequestedAssistantState(null);
+      activate(target, danceTransition);
       return;
     }
     resetInactivity();
-  }, [activeView, activate, assistantIdleTransition, resetInactivity, settings.viewRouter]);
+  }, [activeView, activate, assistantIdleTransition, danceTransition, resetInactivity, settings.viewRouter]);
 
   useEffect(() => {
     resetInactivity();
@@ -216,13 +263,17 @@ export function PanelApp({ forcedView }: { forcedView?: ViewId }) {
     const assistantStateChanged = (event: Event) => {
       const state = (event as CustomEvent<{ state?: string }>).detail?.state;
       if (state) setAssistantState(state as AssistantState);
+      if (danceTransition && state && state !== "dancing") {
+        if (idleTimer.current) clearTimeout(idleTimer.current);
+        setDanceTransition(false);
+      }
       if (!assistantIdleTransition || state === "idle") return;
       if (idleTimer.current) clearTimeout(idleTimer.current);
       setAssistantIdleTransition(false);
     };
     window.addEventListener("walldeck:assistantStateChanged", assistantStateChanged);
     return () => window.removeEventListener("walldeck:assistantStateChanged", assistantStateChanged);
-  }, [assistantIdleTransition]);
+  }, [assistantIdleTransition, danceTransition]);
 
   useEffect(() => {
     if (nativeBridge.available && activeView !== "assistant-expressive") {
@@ -266,14 +317,15 @@ export function PanelApp({ forcedView }: { forcedView?: ViewId }) {
       }}
     >
       <PanelContext.Provider value={{ settings, activeView, requestedAssistantState }}>
-      <AnimatePresence mode="wait">
+      <AnimatePresence mode="wait" custom={instantTransition}>
         <motion.div
           key={activeView}
           className="panel-view-transition"
           data-rendered-view={activeView}
           initial={{ opacity: 0 }}
-          animate={{ opacity: 1, transition: { duration: reducedMotion ? 0 : .25 } }}
-          exit={{ opacity: 0, transition: { duration: reducedMotion ? 0 : activeView === "assistant-expressive" ? .65 : .2, delay: reducedMotion ? 0 : activeView === "assistant-expressive" ? .2 : 0 } }}
+          animate={{ opacity: 1, transition: { duration: reducedMotion || instantTransition ? 0 : .25 } }}
+          variants={{ exit: (instant: boolean) => ({ opacity: 0, transition: { duration: reducedMotion || instant ? 0 : activeView === "assistant-expressive" ? .65 : .2, delay: reducedMotion || instant ? 0 : activeView === "assistant-expressive" ? .2 : 0 } }) }}
+          exit="exit"
         >
           <View />
         </motion.div>

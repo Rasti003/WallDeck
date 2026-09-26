@@ -132,3 +132,11 @@ Xiaomi 2603ARP14G / Android 16: przed poprawką API aktywowało `assistant-demo`
 - Próba instalacji poprawionego APK została odrzucona przez tablet: INSTALL_FAILED_USER_RESTRICTED / Install canceled by user. Nie potwierdzono jeszcze działania poprawki na urządzeniu; wymagane ponowienie instalacji po potwierdzeniu użytkownika i test ekranu zgody.
 - Po zgodzie użytkownika ponowiono instalację: Success. Próba authorize=true otworzyła rzeczywistą com.spotify.appauthorization.sso.AuthorizationActivity na pierwszym planie tabletu; stan WallDeck: connecting, error=null. Potwierdzono usunięcie blokady wyświetlenia okna. Oczekiwanie na zatwierdzenie zgody przez użytkownika.
 - Po zatwierdzeniu zgody: rzeczywisty stan Spotify connected, error=null. Powtórzony music-smoke PASS ze stanem connected; Home/HA i ponowne wejście Music nie zerwały połączenia. Nie uruchamiano odtwarzania w tym teście.
+
+### 2026-09-26 — powrót do Music przez taniec
+
+- Fizyczny Xiaomi 2603ARP14G / Android 16, aktualny APK bez zmian; nowy frontend.
+- Rzeczywiste Spotify podczas testu było paused=true: HA wróciło do zdjęć.
+- `scripts/music-return-smoke.mjs --simulate-playing` na fizycznym WebView wstrzyknął testowe zdarzenia playbacku, bez uruchamiania dźwięku. PASS: Music → HA (5 s) → dancing (3 s) → Music; dotyk podczas tańca → Music w 37 ms; pauza w trakcie tańca → photos; HA otwarte z photos przy playbacku nadal wraca przez idle do photos.
+- Przywrócono oryginalne ustawienia nocy, timeoutów i aktywny widok; usunięto timer testowych zdarzeń. Taniec przy rzeczywistym odtwarzaniu audio nie był w tej próbie testowany.
+- Web typecheck/build PASS; istniejące 27 testów klienta, 4 serwera i 2 synchronizatora PASS.

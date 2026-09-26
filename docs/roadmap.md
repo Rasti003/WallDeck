@@ -71,3 +71,5 @@
 - [x] poprawka blokady okna zgody Spotify na Androidzie 14+ (BIND_ALLOW_ACTIVITY_STARTS dla jawnej autoryzacji).
 
 - [x] Dancing expression with hands, idle return and per-expression brightness.
+
+- [x] Music → HA → bezczynność → taniec → Music podczas playbacku; natychmiastowy powrót dotykiem podczas tańca; fallback po pauzie.

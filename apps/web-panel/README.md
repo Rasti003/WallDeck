@@ -112,3 +112,7 @@ Wyniki pierwszej synchronizacji znajdują się w [raporcie testu](PHOTO_SYNC_TES
 Music rozróżnia błędy autoryzacji, logowania, offline i timeout według bezpiecznej kategorii przekazanej przez bridge. Nie wyświetla surowych odpowiedzi Spotify.
 
 Dance (dancing): an eight-second smile, head sway and alternating raised hands, then idle. Available in the studio and per-expression brightness settings. Reduced motion disables rhythmic movement. No audio playback.
+
+### Powrót z HA podczas muzyki
+
+Po wejściu Music → HA manager sprawdza playback również poza ekranem Music (eventy bridge i odczyt co 5 s). Gdy przy końcu bezczynności Spotify jest connected, ma utwór i paused=false, następuje HA → dancing → Music. Czas tańca korzysta z assistantIdleSeconds, opisanego w adminie jako czas idle/tańca. Dotyk/aktywność podczas tańca pomija animację wyjścia i wejścia, otwierając Music natychmiast. Pauza/utrata połączenia podczas tańca przywraca docelowy widok zwykłej reguły po końcu przejścia. Wejście do HA z galerii zachowuje zwykły powrót. Historia wejścia jest lokalna dla bieżącej sesji panelu; reload w HA ją zeruje. Reguła nocy może przerwać taniec. Animacja nie analizuje ani nie synchronizuje się z dźwiękiem Spotify.

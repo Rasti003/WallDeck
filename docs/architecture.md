@@ -95,3 +95,5 @@ Android Activity działa w immersive fullscreen i ukrywa paski systemowe. Androi
 Diagnostyka Spotify: pole error w istniejącym kontrakcie stanu przechowuje kategorię wyjątku SDK, nie jego wiadomość. Music tłumaczy kategorię na instrukcję naprawy konfiguracji.
 
 SpotifyBindingContext dopasowuje bindService SDK 0.8.0 do Androida 14+: przekazuje BIND_ALLOW_ACTIVITY_STARTS jedynie podczas jawnie żądanej autoryzacji i wyłącznie do znanej usługi Spotify. Wrapper applicationContext jest używany także przy unbind, bez utrzymywania referencji do Activity. Kontrakt web/bridge v3 nie zmienia się.
+
+Manager widoków utrzymuje obserwację MusicState niezależnie od montowania MusicView. Na końcu timera HA rozstrzyga docelowy przepływ na podstawie pochodzenia Music i aktualnego playbacku. Przejście dancing jest zarządzane przez manager, nie przez 8-sekundowy timer demo twarzy. Dotyk usuwa timer i używa natychmiastowego przejścia Motion. Nie zmieniono kontraktu bridge ani APK. Źródłem stanu pozostaje lokalne Spotify; podgląd w zwykłej przeglądarce nie zakłada odtwarzania.
