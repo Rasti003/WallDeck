@@ -10,6 +10,7 @@ Thumbs.db
 **/build/
 **/local.properties
 *.jks
+photo-sync.config.json
 *.keystore
 
 # JavaScript

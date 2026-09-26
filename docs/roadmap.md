@@ -12,14 +12,15 @@
 - [x] strona diagnostyczna bridge;
 - [x] test na Xiaomi z Androidem 16 przez ADB Wi-Fi.
 - [x] plan architektury i technologii WallDeck Web;
+- [x] prototyp synchronizacji shared albumu Google Photos i pierwsze lokalne lustro 119 zdjęć;
 
 ## Najbliższy etap
 
 - [x] wybrać stack właściwego panelu WWW;
 - [ ] utworzyć React/Vite client, Fastify server i wspólne kontrakty Zod;
 - [ ] przygotować maszynę trybów UI w XState;
-- [ ] zgłosić WallDeck do Google Photos Partner Program dla Ambient API — warunek wydania ramki zdjęć;
-- [ ] przygotować dobową synchronizację wskazanego albumu Google Photos, ręczne odświeżenie i lokalne lustro/cache na NAS;
+- [ ] włączyć dobowy harmonogram i „Synchronizuj teraz” dla shared albumu Google Photos;
+- [ ] włączyć lokalny katalog zdjęć do API WallDeck Server i slideshow;
 - [ ] przygotować HTTPS i DNS w homelabie;
 - [ ] zaimplementować backend rejestracji urządzeń i sesji;
 - [ ] zaprojektować główny interfejs panelu;

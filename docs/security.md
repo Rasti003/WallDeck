@@ -16,7 +16,9 @@ Konfiguracja jest szyfrowana AES-256-GCM. Klucz szyfrujący jest generowany w An
 - może być użyty przez bridge tylko do podpisania prawidłowego wyzwania;
 - wymaga HTTPS albo tunelu ADB do localhost podczas developmentu.
 
-Repozytorium nie może zawierać rzeczywistych Device Key, kluczy podpisujących APK, cookies, haseł ani prywatnych plików `.env`.
+Repozytorium nie może zawierać rzeczywistych Device Key, kluczy podpisujących APK, cookies, haseł, linków dających dostęp do prywatnych albumów ani prywatnych plików `.env`/`photo-sync.config.json`.
+
+Udostępniony link Google Photos traktujemy jak sekret o ograniczonym zakresie. Jest przechowywany tylko w konfiguracji serwera, nie trafia do klienta WebView ani logów. Album powinien służyć wyłącznie WallDeckowi; unieważnienie linku w Google Photos odcina synchronizator.
 
 ## Odpowiedzialność panelu WWW
 

@@ -21,7 +21,7 @@ Plan rozwija założenia zapisane w [Home Assistant Wall Panel — Redmi Pad 2](
 | Backend | Node.js LTS + TypeScript + Fastify | jeden język dla całego systemu, niewielki narzut i proste API/WebSocket/OAuth |
 | Kontrakty | Zod + współdzielone typy TypeScript | walidacja każdej wiadomości na granicy procesu i zgodność klient–serwer |
 | Baza | SQLite + Drizzle ORM | wystarczające dla jednego homelabu, prosty backup i migracje bez osobnej usługi |
-| Obrazy | Sharp + lokalny magazyn plików | generowanie rozmiarów pod tablet, korekta orientacji i szybkie lokalne odtwarzanie |
+| Obrazy | lokalny magazyn / NAS | oryginały zdjęć lokalnie; optymalizację dodamy tylko wtedy, gdy testy wykażą potrzebę |
 | Testy | Vitest + Testing Library + Playwright | logika jednostkowa, komponenty oraz pełne scenariusze trybów i WebView |
 | Uruchomienie | Docker Compose + Caddy | powtarzalny deployment i HTTPS za reverse proxy |
 
@@ -52,9 +52,9 @@ flowchart LR
   Tablet["Tablet / WallDeck APK"] -->|"HTTPS + WSS"| Server["WallDeck Server"]
   Browser["Telefon lub komputer / Admin"] -->|"HTTPS"| Server
   Server -->|"WebSocket + REST"| HA["Home Assistant"]
-  Server -->|"OAuth 2.0 + Ambient API"| Photos["Google Photos"]
+  Server -->|"Shared album sync"| Photos["Google Photos shared album"]
   Server --> DB["SQLite"]
-  Server --> Media["Lokalny magazyn zdjęć i miniaturek"]
+  Server --> Media["NAS / lokalne oryginały zdjęć"]
   Tablet <-->|"WallPanelNative"| Android["Android Bridge"]
 ```
 
@@ -72,8 +72,8 @@ Frontend nie łączy się bezpośrednio z Home Assistant ani Google. Wszystkie t
 - uwierzytelnienie urządzenia przez Device ID + podpis challenge;
 - sesję panelu w Secure/HttpOnly cookie;
 - adapter Home Assistant;
-- adaptery Google Photos Ambient, Picker i Google Drive;
-- katalog zdjęć i generowanie wariantów;
+- adapter `GooglePhotosSharedAlbumSource` za interfejsem `PhotoSource`;
+- lokalny katalog oryginałów zdjęć i manifest synchronizacji;
 - konfigurację trybów, ekranów i urządzeń;
 - wersjonowany WebSocket;
 - healthcheck, logi i migracje bazy.
@@ -111,7 +111,7 @@ Animacje są elementem produktu, ale muszą utrzymywać 60 fps na docelowym tabl
 
 - animujemy głównie `transform` i `opacity`;
 - unikamy ciągłych animacji dużych blurów, cieni i filtrów;
-- zdjęcia są dekodowane i skalowane na serwerze do rozdzielczości tabletu;
+- w MVP zdjęcia są serwowane z NAS w oryginalnej rozdzielczości, a WebView dopasowuje je do ekranu;
 - każda zmiana trybu ma jedną koordynowaną sekwencję, sterowaną stanem;
 - przerywane przejścia zaczynają się od aktualnej pozycji, bez skoków;
 - po dłuższej bezczynności zmniejszamy częstotliwość animacji i liczbę warstw;
@@ -127,38 +127,36 @@ Animacje są elementem produktu, ale muszą utrzymywać 60 fps na docelowym tabl
 
 Pierwszy budżet wydajnościowy: brak długich zadań powyżej 50 ms podczas normalnego działania, stabilne 60 fps w przejściach, ograniczony preloading do bieżącego i następnego zdjęcia oraz brak nieograniczonego wzrostu pamięci po 24 godzinach.
 
-## 7. Google Photos
+## 7. Google Photos — decyzja implementacyjna
 
-### Docelowo: Google Photos Ambient API
+**Wymaganie:** użytkownik dodaje zdjęcie wyłącznie do dedykowanego albumu Google Photos. WallDeck sam wykrywa nowy element i zaczyna go wyświetlać bez ręcznego importu.
 
-Google udostępnia Ambient API przeznaczone dokładnie dla inteligentnych ekranów i ramek. Użytkownik łączy WallDeck ze swoim kontem, wskazuje w aplikacji Google Photos źródło, na przykład istniejący album, a backend okresowo pobiera aktualną listę elementów dla urządzenia. Dodanie zdjęcia do wybranego albumu nie wymaga ponownego wybierania go w WallDeck.
+### Shared album jako źródło MVP
 
-**Synchronizacja istniejącego albumu Google Photos jest wymaganiem obowiązkowym i warunkiem wydania ramki zdjęć.** Źródła zastępcze nie spełniają tego wymagania produkcyjnego.
+1. Dedykowany album Google Photos ma włączone udostępnianie przez link.
+2. Link jest zapisany wyłącznie w konfiguracji WallDeck Server.
+3. Synchronizator raz dziennie oraz po użyciu „Synchronizuj teraz” odczytuje stronę albumu.
+4. Nowe zdjęcia pobiera w oryginalnej rozdzielczości do lokalnego magazynu / NAS.
+5. Manifest przechowuje identyfikator, wymiary, nazwę pliku, czas synchronizacji i stan aktywności.
+6. WallDeck Web korzysta wyłącznie z lokalnej kopii po LAN-ie.
 
-Przepływ docelowy:
+Pierwszy test na rzeczywistym albumie odnalazł i pobrał 119 z 119 elementów bez błędów. Powtórne uruchomienie nie pobrało duplikatów.
 
-1. WallDeck tworzy urządzenie Ambient i pokazuje kod lub QR do autoryzacji.
-2. Użytkownik wskazuje albumy albo inne źródła w Google Photos.
-3. Backend zapisuje identyfikator urządzenia i bezpiecznie przechowuje token odświeżania.
-4. Raz dziennie oraz po ręcznym użyciu „Synchronizuj teraz” backend pobiera listę dla wybranego `mediaSourceId`.
-5. Nowe identyfikatory zdjęć trafiają do katalogu WallDeck, a usunięte przestają być prezentowane.
-6. Serwer pobiera z `baseUrl` wariant dopasowany do ekranu i przekazuje go tabletowi.
+### Ograniczenie techniczne
 
-Limit wynosi 240 wywołań listy na urządzenie na dobę. Synchronizacja dobowa pozostawia duży zapas na stronicowanie albumu, ponowienia po błędach i ręczne odświeżenie. API potrafi listować konkretne źródło i stronicować wyniki.
+Odczyt shared albumu po linku nie jest oficjalnym, stabilnym API Google Photos. Parser zależy od danych osadzonych w stronie i może wymagać poprawki po zmianie formatu Google. Cała zależność pozostaje w adapterze `GooglePhotosSharedAlbumSource`, aby nie wpływała na katalog, API ani slideshow.
 
-Istotne ograniczenie: dostęp do Ambient API wymaga przyjęcia projektu do Google Photos Partner Program oraz późniejszej weryfikacji OAuth i integracji. Uzyskanie dostępu jest zależnością zewnętrzną i warunkiem wydania tej funkcji. Integrację projektujemy od razu, ale nie deklarujemy jej jako gotowej przed potwierdzeniem dostępu przez Google.
+Link udostępnionego albumu jest traktowany jak sekret o ograniczonym zakresie: nie trafia do repozytorium, logów ani klienta WebView. Wyłączenie udostępniania w Google Photos unieważnia dostęp.
 
-### Picker tylko do developmentu
+### Synchronizacja i lokalna kopia
 
-Picker API daje dostęp tylko do materiałów wybranych w konkretnej sesji. Może zasilić testowy katalog podczas developmentu, ale nie stanowi zamiennika integracji albumu i nie będzie przedstawiany jako finalne rozwiązanie.
+- nowe zdjęcie → pobierz i oznacz jako aktywne;
+- zdjęcie nadal obecne → pomiń pobieranie i odśwież `lastSeenAt`;
+- brak zdjęcia w albumie → oznacz jako nieaktywne;
+- brak lokalnego pliku mimo wpisu w manifeście → pobierz ponownie;
+- fizyczne kasowanie nieaktywnych plików nastąpi dopiero po ustalonym okresie ochronnym.
 
-### Lokalne przechowywanie
-
-Serwer może pobierać bajty zdjęć potrzebne do wyświetlenia. Synchronizator stronicuje konkretne `mediaSourceId`, deduplikuje trwałe identyfikatory i buduje na NAS lokalne lustro wszystkich elementów albumu udostępnionych przez Ambient API. Kolejne przebiegi dopisują nowe elementy i usuwają z aktywnego katalogu te, których API już nie zwraca.
-
-Ambient API stosuje filtrowanie treści przeznaczonej dla wspólnego ekranu, więc „cały album” oznacza wszystkie pozycje udostępnione WallDeckowi przez API, a nie gwarantowany archiwalny eksport każdego pliku z Google Photos. Przed włączeniem trwałego lustra potwierdzamy z Google dozwolony czas retencji. Jeśli partner review dopuści tylko cache, NAS przechowuje rotacyjny cache, a identyfikatory i metadane pozostają indeksem synchronizacji.
-
-Adapter zdjęć ma interfejs `PhotoSource`, ale produkcyjnym źródłem tej funkcji jest `GooglePhotosAmbientSource`. `GooglePhotosPickerSource` służy wyłącznie do developmentu przed uzyskaniem dostępu.
+W MVP zapisujemy oryginały. WebPanel używa `fit`/`cover` i preloaduje bieżące oraz następne zdjęcie. Warianty zoptymalizowane dodamy tylko wtedy, gdy testy na tablecie wykażą problemy z RAM-em, dekodowaniem lub płynnością.
 
 ## 8. Home Assistant
 
@@ -222,7 +220,7 @@ Po ponownym połączeniu klient wysyła ostatni numer rewizji. Serwer zwraca bra
 - testy maszyny stanów dla wszystkich przejść i przerwań animacji;
 - testy kontraktów Zod oraz zgodności wersji bridge;
 - testy adaptera HA na nagranych, zanonimizowanych komunikatach;
-- testy OAuth/Picker na stubie bez prawdziwych tokenów;
+- testy parsera shared albumu na syntetycznych fixture'ach bez prywatnych danych;
 - Playwright dla `/panel` i `/admin` w rozdzielczości 1280 × 2048 oraz w orientacji poziomej;
 - wizualne snapshoty kluczowych ekranów;
 - test 24-godzinny pod kątem pamięci, reconnectów i rotacji zdjęć.
@@ -262,11 +260,11 @@ Po ponownym połączeniu klient wysyła ostatni numer rewizji. Serwer zwraca bra
 
 ### Etap 4 — ramka zdjęć
 
-- [ ] interfejs `PhotoSource` i lokalny katalog;
-- [ ] wniosek do Google Photos Partner Program i integracja Ambient API;
-- [ ] `/admin` z konfiguracją źródła Google Photos;
-- [ ] testowy import Picker używany tylko przed uzyskaniem Ambient API;
-- [ ] cache, generowanie wariantów, kolejka i usuwanie;
+- [x] prototyp `GooglePhotosSharedAlbumSource` i manifest lokalnego katalogu;
+- [x] pierwsza synchronizacja rzeczywistego albumu do tymczasowego storage;
+- [ ] integracja adaptera z WallDeck Server;
+- [ ] `/admin` z konfiguracją linku i przyciskiem „Synchronizuj teraz”;
+- [ ] dobowy harmonogram oraz bezpieczne usuwanie po okresie ochronnym;
 - [ ] animowane przejścia zdjęć i harmonogram dzień/noc;
 - [ ] polityka prywatności i ekran zarządzania danymi.
 
@@ -288,7 +286,7 @@ Po ponownym połączeniu klient wysyła ostatni numer rewizji. Serwer zwraca bra
 
 1. Jaka domena HTTPS i mechanizm certyfikatu będą używane w LAN?
 2. Czy panel administracyjny będzie dostępny tylko w LAN, czy także przez VPN?
-3. Czy Google zatwierdzi trwałe lustro albumu na NAS, czy wyłącznie rotacyjny cache?
+3. Jak długo zachowywać lokalny plik po usunięciu zdjęcia z albumu?
 4. Czy ramka ma obsługiwać wideo i Motion Photos w pierwszej wersji?
 5. Które encje HA tworzą pierwszy ekran i szybkie akcje?
 6. Czy obecność będzie od początku pochodzić z mmWave przez HA, czy pierwsza wersja użyje czasu bezczynności i dotyku?
