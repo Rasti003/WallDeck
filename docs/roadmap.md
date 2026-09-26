@@ -76,3 +76,5 @@
 
 - [x] Automatically show dance -> Music on an observed Spotify playback start, without repeating on track updates.
 - [ ] Verify App Remote reports playback started on other devices; otherwise add account-wide Spotify Web API observation.
+
+- [x] Restore an authorized Spotify App Remote session after panel startup without opening consent UI.

@@ -100,3 +100,5 @@ Manager widoków utrzymuje obserwację MusicState niezależnie od montowania Mus
 
 ### Playback-triggered Music view
 The global App Remote observer detects the transition to connected + track + !paused independently of the current view, then invokes dance -> Music. Music and forced previews are not interrupted. Disconnects retain the last known edge state; stale polls cannot overwrite newer player events. This does not start or transfer playback. Observation is limited to local App Remote telemetry.
+
+The global player observer reconnects disconnected, installed Spotify with configured Client ID and authorize=false. Retry spacing is 60 seconds; connection errors do not prompt automatically.

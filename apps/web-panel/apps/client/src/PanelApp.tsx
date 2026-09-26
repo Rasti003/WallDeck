@@ -104,6 +104,7 @@ export function PanelApp({ forcedView }: { forcedView?: ViewId }) {
     let disposed = false;
     let eventRevision = 0;
     let refreshing = false;
+    let nextConnectAt = 0;
     const started = createPlaybackStartDetector();
     const update = (state: MusicState) => {
       if (disposed) return;
@@ -125,13 +126,19 @@ export function PanelApp({ forcedView }: { forcedView?: ViewId }) {
         const state = await musicController.getPlaybackState();
         // A delayed poll must not overwrite a more recent player event.
         if (revision === eventRevision) update(state);
+        if (!disposed && settings.music.clientId && state.installed && state.connection === "disconnected" && Date.now() >= nextConnectAt) {
+          nextConnectAt = Date.now() + 60_000;
+          // Reuse prior consent; authorization errors still require the explicit Music button.
+          const connected = await musicController.connect(settings.music.clientId, false);
+          if (revision === eventRevision) update(connected);
+        }
       } catch { /* Missing telemetry does not establish a playback transition. */ }
       finally { refreshing = false; }
     };
     void refresh();
     const timer = setInterval(refresh, 5000);
     return () => { disposed = true; clearInterval(timer); unsubscribe(); };
-  }, [activate, forcedView]);
+  }, [activate, forcedView, settings.music.clientId]);
 
   useEffect(() => {
     if (!nativeBridge.available) return;
