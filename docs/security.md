@@ -53,3 +53,5 @@ Autoryzacja Spotify na API 34+ używa BIND_ALLOW_ACTIVITY_STARTS wyłącznie prz
 WallDeckAdminReceiver is exported only behind android.permission.BIND_DEVICE_ADMIN; its policy list is empty. Device Owner is a broad management role and requires deliberate provisioning. The attempted registration was refused by Android due to existing accounts; no owner or active admin remained. Do not remove accounts or reset the device as an automatic workaround.
 
 Provisioning update: user removed remaining accounts; a subsequent authorized ADB registration succeeded. WallDeck now holds Device Owner on the physical test tablet. No kiosk policies have been applied. Earlier failed-attempt reports above describe the previous state.
+
+Managed kiosk allowlists WallDeck and Spotify only and sets LOCK_TASK_FEATURE_NONE. Device Owner persists after exiting kiosk. Native tablet-mode exit and Volume Down hold intentionally permit local escape: this is a household panel, not tamper-proof public signage. No keyguard disable or account restrictions are applied. Kiosk waits until keyguard is unlocked.

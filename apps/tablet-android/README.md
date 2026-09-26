@@ -70,3 +70,7 @@ App Remote 0.8.0 wiąże usługę Spotify przez applicationContext bez BIND_ALLO
 Device Owner preparation: WallDeckAdminReceiver and res/xml/device_admin.xml provide a provisioning entry point only, without automatic policies or kiosk activation. On the current tablet, ADB provisioning was rejected because existing accounts are present. No accounts were removed. Full kiosk and safe exit controls remain pending.
 
 Provisioning update: after the user removed all accounts, Device Owner registration succeeded without a factory reset. WallDeck is now the device owner on the test tablet. Kiosk remains inactive pending implementation of entry and safe exits.
+
+Managed dock kiosk: when Device Owner, dock monitoring is enabled and power is connected, WallDeck uses LOCKED mode with system features disabled. Native bottom-right Tryb tabletu exits; manual relaunch or a new power connection re-enters. Unplug stops kiosk before finishing. Emergency: hold Volume Down for 2 seconds; also seven taps upper-left opens native configuration with exit button. No automatic kiosk on battery. Spotify is allowlisted for authorization screens.
+
+Deployment note: final Volume Down emergency-exit correction awaits accepted APK installation and physical verification. Installed initial kiosk build has working tablet-mode and unplug exits; do not rely on its Volume Down escape yet.

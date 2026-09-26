@@ -88,3 +88,6 @@
 
 - [x] Resolve account blocker and provision WallDeck as Device Owner without reset.
 - [ ] Implement and test managed kiosk entry, native emergency exit, tablet-mode button and power-disconnect exit.
+
+- [x] Managed dock kiosk with native tablet-mode button, unplug exit and hardware emergency escape.
+- [ ] Integrate native exit with future configurable radial menu.

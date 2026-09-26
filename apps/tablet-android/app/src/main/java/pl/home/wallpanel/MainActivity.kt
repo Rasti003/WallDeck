@@ -31,6 +31,10 @@ import javax.crypto.spec.SecretKeySpec
 
 class MainActivity : ComponentActivity() {
     private lateinit var root: FrameLayout
+    private var tabletButton: Button? = null
+    private var leavingKiosk = false
+    private val emergencyHandler = Handler(Looper.getMainLooper())
+    private val emergencyExit = Runnable { exitToTablet() }
     private var web: WebView? = null
     private var config: PanelConfig? = null
     private var dialog: AlertDialog? = null
@@ -59,7 +63,10 @@ class MainActivity : ComponentActivity() {
         override fun onAccuracyChanged(sensor: Sensor, accuracy: Int) = Unit
     }
     private val batteryReceiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context, intent: Intent) { event("batteryChanged") }
+        override fun onReceive(context: Context, intent: Intent) {
+            event("batteryChanged")
+            if (config?.dock == true && !battery().optBoolean("powerConnected") && kioskActive()) exitToTablet()
+        }
     }
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -74,7 +81,7 @@ class MainActivity : ComponentActivity() {
                 event(it)
                 if (it == "powerDisconnected" && config?.dock == true) {
                     // Finishes this task only: Android reveals the previously foreground task.
-                    finishAndRemoveTask()
+                    exitToTablet()
                 }
             }
         }
@@ -139,12 +146,14 @@ class MainActivity : ComponentActivity() {
     }
     override fun onResume() {
         super.onResume()
+        updateKiosk()
         cameraLightSampler.onResume()
         lightSensor?.let {
             sensorManager.registerListener(lightListener, it, SensorManager.SENSOR_DELAY_NORMAL)
         }
     }
     override fun onPause() {
+        emergencyHandler.removeCallbacks(emergencyExit)
         cameraLightSampler.onPause()
         sensorManager.unregisterListener(lightListener)
         super.onPause()
@@ -170,6 +179,7 @@ class MainActivity : ComponentActivity() {
         layout.addView(TextView(this).apply { text = "Konfigurator: 7 szybkich dotknięć lewego górnego rogu. HTTP tylko do testów bez sekretu; klucz wymaga HTTPS lub tunelu localhost. Powrót z tła zależy od uprawnień Androida." })
         layout.addView(Button(this).apply { text = "Zezwól na powrót panelu z tła"; setOnClickListener { startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName"))) } })
         layout.addView(Button(this).apply { text = "Powiadomienia monitora"; setOnClickListener { if (Build.VERSION.SDK_INT >= 33) requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 1) } })
+        layout.addView(Button(this).apply { text = "Tryb tabletu"; setOnClickListener { exitToTablet() } })
         val scroll = ScrollView(this).apply { addView(layout) }
         dialog = AlertDialog.Builder(this).setTitle("WallDeck • konfiguracja").setView(scroll).setNegativeButton("Anuluj", null).setPositiveButton("Zapisz", null).create()
         dialog!!.setOnShowListener {
@@ -225,7 +235,63 @@ class MainActivity : ComponentActivity() {
         }
         if (cfg.dock) startForegroundService(Intent(this, PowerService::class.java)) else stopService(Intent(this, PowerService::class.java))
         view.loadUrl(cfg.url)
+        tabletButton?.let { root.removeView(it) }
+        tabletButton = Button(this).apply {
+            text = "Tryb tabletu"
+            contentDescription = "Wyłącz kiosk i wróć do tabletu"
+            alpha = 0.65f
+            setOnClickListener { exitToTablet() }
+        }
+        root.addView(tabletButton, FrameLayout.LayoutParams(FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.END or Gravity.BOTTOM))
+        updateKiosk()
     }
+    private fun kioskActive() = getSystemService(android.app.ActivityManager::class.java).lockTaskModeState != android.app.ActivityManager.LOCK_TASK_MODE_NONE
+
+    private fun updateKiosk() {
+        if (leavingKiosk || config == null) return
+        val policy = getSystemService(android.app.admin.DevicePolicyManager::class.java)
+        if (!policy.isDeviceOwnerApp(packageName)) return
+        val admin = ComponentName(this, WallDeckAdminReceiver::class.java)
+        if (config?.dock == true && battery().optBoolean("powerConnected")) {
+            if (getSystemService(android.app.KeyguardManager::class.java).isKeyguardLocked) return
+            runCatching {
+                policy.setLockTaskPackages(admin, arrayOf(packageName, "com.spotify.music"))
+                policy.setLockTaskFeatures(admin, android.app.admin.DevicePolicyManager.LOCK_TASK_FEATURE_NONE)
+                if (!kioskActive()) startLockTask()
+            }.onFailure { toast("Nie udało się włączyć kiosku") }
+        } else if (kioskActive()) runCatching { stopLockTask() }
+    }
+
+    private fun exitToTablet() {
+        leavingKiosk = true
+        runCatching { if (kioskActive()) stopLockTask() }.onFailure {
+            leavingKiosk = false
+            toast("Nie udało się wyłączyć kiosku. Użyj konfiguratora lub ADB.")
+            return
+        }
+        dialog?.dismiss()
+        finishAndRemoveTask()
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        leavingKiosk = false
+        updateKiosk()
+    }
+
+    // Hardware emergency exit works even when the web page is unavailable.
+    override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean {
+        if (keyCode == KeyEvent.KEYCODE_VOLUME_DOWN && event.repeatCount == 0) {
+            emergencyHandler.removeCallbacks(emergencyExit)
+            emergencyHandler.postDelayed(emergencyExit, 2000)
+        }
+        return super.onKeyDown(keyCode, event)
+    }
+    override fun onKeyUp(keyCode: Int, event: KeyEvent): Boolean {
+        if (keyCode == KeyEvent.KEYCODE_VOLUME_DOWN) emergencyHandler.removeCallbacks(emergencyExit)
+        return super.onKeyUp(keyCode, event)
+    }
+
     private fun battery(): JSONObject {
         val b = registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
         val level = b?.getIntExtra(BatteryManager.EXTRA_LEVEL, -1) ?: -1

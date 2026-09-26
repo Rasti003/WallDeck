@@ -152,3 +152,6 @@ Xiaomi 2603ARP14G, Android 16, Wi-Fi ADB. assembleDebug/testDebugUnitTest/lintDe
 
 ## 2026-09-26: Device Owner retry succeeded
 Physical Xiaomi 2603ARP14G, Android 16 over Wi-Fi. After the user removed remaining accounts, account count was 0. dpm set-device-owner succeeded for pl.home.wallpanel/.WallDeckAdminReceiver. dpm list-owners confirms DeviceOwner on user 0. Lock task remains NONE. No factory reset performed; full kiosk activation and exit lifecycle are not implemented yet.
+
+## 2026-09-26: Managed kiosk lifecycle
+Xiaomi 2603ARP14G / Android 16 via Wi-Fi. First build installed successfully. On AC power, lockTaskModeState LOCKED confirmed. Simulated battery unplug returned launcher and NONE; battery reset restored actual AC readings and automatically reopened WallDeck LOCKED. Native bottom-right tablet-mode button returned launcher/NONE. Battery simulation reset verified. Initial Volume Down test failed; replaced repeat-event detection with a 2-second timer canceled on release/pause. Final assembleDebug/testDebugUnitTest/lintDebug PASS. Updated APK installation rejected twice with INSTALL_FAILED_USER_RESTRICTED; final hardware escape fix is built but not installed/tested yet. Tablet left out of kiosk using native exit.

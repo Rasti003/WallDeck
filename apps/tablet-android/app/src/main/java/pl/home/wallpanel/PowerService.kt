@@ -17,7 +17,7 @@ class PowerService : Service() {
             }
             PowerEvents.events.tryEmit(event)
             if (event == "powerConnected") {
-                if (Settings.canDrawOverlays(this@PowerService)) {
+                if (Settings.canDrawOverlays(this@PowerService) || getSystemService(android.app.admin.DevicePolicyManager::class.java).isDeviceOwnerApp(packageName)) {
                     runCatching { startActivity(panelIntent()) }
                 }
                 getSystemService(NotificationManager::class.java).notify(1, notification("Podłączono zasilanie — dotknij, aby otworzyć panel"))

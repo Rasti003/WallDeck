@@ -108,3 +108,5 @@ Music inactivity uses a 30-second rule independent of the HA inactivity source. 
 Admin StateMachinesAdmin presents the current transition catalogue with settings-derived timers and thresholds. Assistant states, delays and timeout destinations are read from the existing reducer. The catalogue is read-only and does not change runtime routing.
 
 Device Owner provisioning entry point added to the native app. It does not automatically start lock task or apply policies. Existing dock behavior remains active. Full kiosk lifecycle is pending successful provisioning and native exit controls.
+
+Native MainActivity controls managed kiosk lifecycle from dock configuration and physical power. No bridge/API changes. Native exit control is independent of WebView and HA. PowerService may launch through Device Owner privileges or overlay permission. Stopping the Activity leaves power monitoring active; it relaunches on a new power-connected event, not battery level updates.
