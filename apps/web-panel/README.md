@@ -15,6 +15,8 @@ Każdy widok ma własne ustawienie jasności. Po aktywacji widoku klient wysyła
 
 ## Uruchomienie
 
+Serwer rozpoznaje pliki frontendu przy każdym żądaniu, dzięki czemu nowe nazwy assetów po buildzie nie wymagają restartu backendu. HTML wymaga rewalidacji cache. Brakujący plik JS/CSS zwraca 404, a fallback SPA dotyczy wyłącznie tras ekranów. Test `apps/server/test/client.test.mjs` odtwarza publikację assetu po uruchomieniu serwera.
+
 Wymagane są Node.js 22+ i pnpm 11.
 
 ```powershell

@@ -3,7 +3,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import Fastify from "fastify";
-import fastifyStatic from "@fastify/static";
+import { registerClient } from "./client.js";
 import websocket from "@fastify/websocket";
 import {
   defaultSettings,
@@ -214,8 +214,7 @@ app.get("/api/events", { websocket: true }, (socket) => {
 app.addHook("onClose", async () => homeAssistant.stop());
 
 try {
-  await app.register(fastifyStatic, { root: webRoot, wildcard: false });
-  app.get("/*", async (_request, reply) => reply.sendFile("index.html"));
+  await registerClient(app, webRoot);
 } catch {
   app.log.warn("Client build not found; API-only mode enabled");
 }
