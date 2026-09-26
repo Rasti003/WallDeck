@@ -155,3 +155,6 @@ Physical Xiaomi 2603ARP14G, Android 16 over Wi-Fi. After the user removed remain
 
 ## 2026-09-26: Managed kiosk lifecycle
 Xiaomi 2603ARP14G / Android 16 via Wi-Fi. First build installed successfully. On AC power, lockTaskModeState LOCKED confirmed. Simulated battery unplug returned launcher and NONE; battery reset restored actual AC readings and automatically reopened WallDeck LOCKED. Native bottom-right tablet-mode button returned launcher/NONE. Battery simulation reset verified. Initial Volume Down test failed; replaced repeat-event detection with a 2-second timer canceled on release/pause. Final assembleDebug/testDebugUnitTest/lintDebug PASS. Updated APK installation rejected twice with INSTALL_FAILED_USER_RESTRICTED; final hardware escape fix is built but not installed/tested yet. Tablet left out of kiosk using native exit.
+
+### Final emergency-exit retry
+Installation retried with kiosk NONE and launcher foreground: Success, no confirmation dialog required. Launched WallDeck and confirmed LOCKED. Injected KEYCODE_VOLUME_DOWN with duration 2500 ms: launcher foreground and lockTaskModeState NONE, PASS. Then relaunched WallDeck for normal dock use.
