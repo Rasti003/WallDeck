@@ -64,6 +64,9 @@ class MainActivity : ComponentActivity() {
         }
     }
     override fun dispatchTouchEvent(ev: MotionEvent): Boolean {
+        if (ev.actionMasked == MotionEvent.ACTION_DOWN) {
+            event("userInteraction", JSONObject().put("kind", "touch"))
+        }
         if (ev.actionMasked == MotionEvent.ACTION_UP && ev.x < 72 * resources.displayMetrics.density && ev.y < 120 * resources.displayMetrics.density) {
             val now = SystemClock.elapsedRealtime()
             cornerTaps = if (now - lastTap < 650) cornerTaps + 1 else 1
@@ -198,9 +201,9 @@ class MainActivity : ComponentActivity() {
             proxy.postMessage(JSONObject().put("id", id).put("result", result).toString())
         } catch (_: Exception) { proxy.postMessage(JSONObject().put("id", id).put("error", "INVALID_OR_UNAVAILABLE_REQUEST").toString()) }
     }
-    private fun event(name: String) {
+    private fun event(name: String, data: JSONObject = battery()) {
         if (web?.url?.let { PanelPolicy.sameOrigin(it, trusted) } == true) runCatching {
-            reply?.postMessage(JSONObject().put("event", name).put("data", battery()).toString())
+            reply?.postMessage(JSONObject().put("event", name).put("data", data).toString())
         }
     }
     private fun toast(text: String) = Toast.makeText(this, text, Toast.LENGTH_LONG).show()

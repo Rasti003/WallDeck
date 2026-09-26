@@ -23,3 +23,5 @@ Udostępniony link Google Photos traktujemy jak sekret o ograniczonym zakresie. 
 ## Odpowiedzialność panelu WWW
 
 Wszystkie skrypty uruchamiane przez zaufany origin mają dostęp do bridge. Backend i frontend muszą więc zapobiegać XSS, stosować restrykcyjny CSP, aktualizować zależności oraz wydawać krótkie sesje. Weryfikacja HMAC powinna być stałoczasowa, a każde wyzwanie jednorazowe i szybko wygasające.
+
+Zgodne wstecz rozszerzenie bridge v1: `userInteraction` przekazuje wyłącznie `{kind: "touch"}` do zaufanej głównej ramki, bez współrzędnych i treści z HA. Nie udostępnia bridge osadzonemu dashboardowi. Komunikat `panel.activity` nie przenosi sekretów; obecne API prototypu pozostaje dostępne w LAN, a sesje urządzeń wymagają osobnego wdrożenia.

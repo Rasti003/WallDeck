@@ -24,7 +24,7 @@ Odpowiada za cały interfejs użytkownika, sceny domu, prezentację danych, komu
 
 Ramka zdjęć korzysta z lokalnego magazynu serwera. Adapter `GooglePhotosSharedAlbumSource` okresowo odczytuje album Google Photos udostępniony przez link, zapisuje nowe oryginały na dysku/NAS i utrzymuje manifest aktywnych elementów. Tablet pobiera zdjęcia wyłącznie z WallDeck Server po LAN-ie. Format strony albumu nie jest oficjalnym API, dlatego zależność pozostaje zamknięta za interfejsem `PhotoSource`.
 
-Frontend ma rejestr niezależnych widoków. Serwer przechowuje identyfikator aktywnego widoku, udostępnia `POST /api/views/activate` i rozsyła zmianę do paneli przez WebSocket. Pierwszy widok `photos` wybiera układ na podstawie orientacji ekranu: poziomy ekran pokazuje jedno zdjęcie poziome albo dwa pionowe, a pionowy ekran stosuje regułę odwrotną. `/admin` konfiguruje slideshow i overlay bez umieszczania odnośnika na ekranie tabletu.
+Frontend ma rejestr niezależnych widoków. Serwer przechowuje identyfikator aktywnego widoku, udostępnia `POST /api/views/activate` i rozsyła zmianę do paneli przez WebSocket. Manager widoków mapuje zdarzenia na akcje i przechowuje reguły w ustawieniach. Pierwsza konfiguracja obsługuje `tap photos → ha` oraz `30 s bezczynności → photos`. Aktywność zwykłej strony jest wykrywana przez zdarzenia przeglądarki; dotyk wewnątrz cross-origin iframe HA przekazuje APK jako `wallpanel:userInteraction`. Pierwszy widok `photos` wybiera układ na podstawie orientacji ekranu: poziomy ekran pokazuje jedno zdjęcie poziome albo dwa pionowe, a pionowy ekran stosuje regułę odwrotną. `/admin` ma nawigację sekcyjną i konfiguruje widoki bez umieszczania odnośnika na ekranie tabletu.
 
 Konfiguracja każdego widoku zawiera docelową jasność okna. Po zmianie aktywnego widoku frontend wywołuje metodę `brightness` Android Bridge; pozwala to przyciemniać przyszłe widoki nocne bez zmiany globalnej jasności systemu.
 
@@ -49,3 +49,7 @@ Android może ograniczyć start Activity z tła. Xiaomi/HyperOS może dodatkowo 
 ## Przyszłe moduły
 
 Interfejsy `WakeWordModule`, `MediaModule` i `HomeAutomationModule` oddzielają rdzeń APK od przyszłych silników. Docelowy wake word ma działać lokalnie, a STT/LLM/TTS na homelabie. Spotify, YouTube i Home Assistant nie są częścią prototypu 0.1.
+
+### Aktywność klientów
+
+Obecny prototyp ma wspólny aktywny widok dla podłączonych paneli. Komunikat WebSocket `panel.activity` synchronizuje reset licznika bezczynności, aby dodatkowa karta panelu nie przełączała aktywnie używanego tabletu. Reguły dotyku i bezczynności są wyłączone w wymuszonym podglądzie `/ha`. Docelowe profile wielu urządzeń powinny rozdzielać widoki i aktywność per Device ID.

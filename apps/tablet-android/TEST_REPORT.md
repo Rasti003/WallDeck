@@ -24,3 +24,11 @@
 1. Ustawić docelowy URL HTTPS, Device ID i właściwy Device Key.
 2. Zweryfikować challenge jednorazowość, wygaśnięcie i Secure/HttpOnly cookie po stronie backendu.
 3. Wykonać fizyczny test podłączania oraz odłączania ładowarki; symulacja Androida przeszła, ale nie zastępuje zachowania sprzętu i HyperOS.
+
+## Manager widoków — 2026-09-26
+
+- Urządzenie Xiaomi `2603ARP14G`, Android 16; instalacja aktualizacji przez USB: PASS.
+- `assembleDebug`, `testDebugUnitTest`, `lintDebug`: PASS (JDK 21).
+- Test na fizycznym WebView przez ADB: tapnięcie ramki aktywuje `ha`.
+- Drugie dotknięcie wewnątrz HA zeruje licznik: po kolejnych 20 s nadal `ha`, po 32 s `photos`. Zarejestrowano dwa natywne zdarzenia `userInteraction`.
+- Diagnostyka została wykonana przez debug WebView; zrzuty aplikacji są czarne zgodnie z `FLAG_SECURE`.

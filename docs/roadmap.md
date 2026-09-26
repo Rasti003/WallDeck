@@ -22,6 +22,8 @@
 - [x] szyfrowana, trwała konfiguracja HA w panelu `/admin`;
 - [x] uniwersalny wybór wielu encji HA, etykiety, sześć stref overlayu i aktualizacja w czasie rzeczywistym;
 - [x] osobny widok dashboardu Home Assistant pod `/ha`;
+- [x] skalowalny panel administratora z nawigacją sekcyjną;
+- [x] manager widoków: dotknięcie albumu otwiera HA, a 30 s bezczynności przywraca album;
 
 ## Najbliższy etap
 

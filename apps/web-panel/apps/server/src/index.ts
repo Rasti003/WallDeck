@@ -197,6 +197,16 @@ app.get("/api/events", { websocket: true }, (socket) => {
     homeAssistant: homeAssistant.status(),
     homeAssistantStates: homeAssistant.selectedStates(),
   }));
+  let lastActivity = 0;
+  socket.on("message", (raw: Buffer) => {
+    if (raw.toString().length > 256) return;
+    try {
+      if (JSON.parse(raw.toString()).type === "panel.activity" && Date.now() - lastActivity > 400) {
+        lastActivity = Date.now();
+        broadcast({ type: "panel.activity" });
+      }
+    } catch { /* Ignore malformed activity messages. */ }
+  });
   socket.on("close", () => sockets.delete(socket));
 });
 

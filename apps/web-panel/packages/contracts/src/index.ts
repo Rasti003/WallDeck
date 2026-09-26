@@ -3,6 +3,22 @@ import { z } from "zod";
 export const viewIdSchema = z.enum(["photos", "ha"]);
 export type ViewId = z.infer<typeof viewIdSchema>;
 
+export const viewRouterSettingsSchema = z.object({
+  tapAction: z.object({
+    enabled: z.boolean(),
+    sourceView: viewIdSchema,
+    targetView: viewIdSchema,
+  }),
+  inactivityAction: z.object({
+    enabled: z.boolean(),
+    seconds: z.number().int().min(5).max(3600),
+    targetView: viewIdSchema,
+  }),
+}).default({
+  tapAction: { enabled: true, sourceView: "photos", targetView: "ha" },
+  inactivityAction: { enabled: true, seconds: 30, targetView: "photos" },
+});
+
 export const overlayPositionSchema = z.enum([
   "top-left", "top-center", "top-right", "bottom-left", "bottom-center", "bottom-right",
 ]);
@@ -14,6 +30,7 @@ export const settingsSchema = z.object({
     photos: z.number().min(0.05).max(1).default(0.75),
     ha: z.number().min(0.05).max(1).default(0.85),
   }).default({ photos: 0.75, ha: 0.85 }),
+  viewRouter: viewRouterSettingsSchema,
   overlay: z.object({
     position: overlayPositionSchema,
     showClock: z.boolean(),
@@ -34,6 +51,10 @@ export const defaultSettings: WallDeckSettings = {
   photoIntervalSeconds: 30,
   transitionSeconds: 1.4,
   viewBrightness: { photos: 0.75, ha: 0.85 },
+  viewRouter: {
+    tapAction: { enabled: true, sourceView: "photos", targetView: "ha" },
+    inactivityAction: { enabled: true, seconds: 30, targetView: "photos" },
+  },
   overlay: {
     position: "bottom-left",
     showClock: true,

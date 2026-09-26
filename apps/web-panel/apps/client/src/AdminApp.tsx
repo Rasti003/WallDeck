@@ -28,6 +28,7 @@ export function AdminApp() {
   const [haSearch, setHaSearch] = useState("");
   const [entityDraft, setEntityDraft] = useState<{ entityId: string; label: string; position: WallDeckSettings["overlay"]["position"] }>({ entityId: "", label: "", position: "bottom-right" });
   const [haMessage, setHaMessage] = useState("Nie skonfigurowano");
+  const [section, setSection] = useState<"overview" | "views" | "photos" | "ha">("overview");
 
   useEffect(() => {
     Promise.all([api.settings(), api.views(), api.photos(), api.homeAssistant.config()]).then(([nextSettings, nextViews, photos, homeAssistant]) => {
@@ -53,7 +54,8 @@ export function AdminApp() {
     const protocol = location.protocol === "https:" ? "wss:" : "ws:";
     const socket = new WebSocket(`${protocol}//${location.host}/api/events`);
     socket.onmessage = (event) => {
-      const message = JSON.parse(event.data) as { type: string; status?: HomeAssistantStatus; homeAssistant?: HomeAssistantStatus; entities?: HomeAssistantSelectedState[]; homeAssistantStates?: HomeAssistantSelectedState[] };
+      const message = JSON.parse(event.data) as { type: string; viewId?: ViewId; status?: HomeAssistantStatus; homeAssistant?: HomeAssistantStatus; entities?: HomeAssistantSelectedState[]; homeAssistantStates?: HomeAssistantSelectedState[] };
+      if ((message.type === "snapshot" || message.type === "view.activated") && message.viewId) setViews(current => ({ ...current, current: message.viewId! }));
       const next = message.type === "snapshot" ? message.homeAssistant : message.status;
       if (next) {
         setHaStatus(next);
@@ -128,13 +130,40 @@ export function AdminApp() {
 
   return (
     <main className="admin-shell">
-      <header className="admin-hero">
-        <span className="admin-eyebrow">WALLDECK / ADMIN</span>
-        <h1>Sterowanie panelem</h1>
-        <p>Konfiguracja jest dostępna tylko pod adresem <code>/admin</code>. WallPanel nie pokazuje odnośnika do tego ekranu.</p>
-        <div className="admin-stats"><span><b>{photoCount}</b> zdjęć</span><span><b>{views.current}</b> aktywny widok</span></div>
-      </header>
+      <aside className="admin-sidebar">
+        <div className="admin-brand"><i>W</i><div><strong>WallDeck</strong><small>Panel administratora</small></div></div>
+        <nav aria-label="Sekcje konfiguracji">
+          {([
+            ["overview", "⌂", "Pulpit"],
+            ["views", "⌘", "Widoki i reguły"],
+            ["photos", "▧", "Album zdjęć"],
+            ["ha", "◉", "Home Assistant"],
+          ] as const).map(([id, icon, label]) => (
+            <button className={section === id ? "is-active" : ""} key={id} onClick={() => setSection(id)}><span>{icon}</span>{label}</button>
+          ))}
+        </nav>
+        <div className="admin-sidebar__status"><i className={haStatus?.connected ? "is-online" : ""} /><span><strong>{haStatus?.connected ? "System online" : "Połączenie częściowe"}</strong><small>{photoCount} zdjęć · {views.current === "photos" ? "Album" : "Home Assistant"}</small></span></div>
+      </aside>
 
+      <div className="admin-workspace">
+        <header className="admin-topbar">
+          <div><span className="admin-eyebrow">WALLDECK / ADMIN</span><h1>{section === "overview" ? "Pulpit" : section === "views" ? "Widoki i reguły" : section === "photos" ? "Album zdjęć" : "Home Assistant"}</h1></div>
+          <span className="admin-save-state">{status}</span>
+        </header>
+
+        {section === "overview" && <section className="admin-dashboard">
+          <div className="summary-grid">
+            <button onClick={() => setSection("views")}><small>Aktywny ekran</small><strong>{views.current === "photos" ? "Album zdjęć" : "Home Assistant"}</strong><span>Zmień lub ustaw reguły →</span></button>
+            <button onClick={() => setSection("photos")}><small>Biblioteka</small><strong>{photoCount} zdjęć</strong><span>Ustaw wygląd albumu →</span></button>
+            <button onClick={() => setSection("ha")}><small>Home Assistant</small><strong>{haStatus?.connected ? "Połączono" : "Rozłączono"}</strong><span>{haStatus?.entityCount ?? 0} dostępnych encji →</span></button>
+          </div>
+          <article className="admin-card activity-card">
+            <div><span className="admin-kicker">Szybki podgląd</span><h2>Przepływ panelu</h2></div>
+            <div className="flow-preview"><span>Album zdjęć</span><b>pojedyncze dotknięcie</b><span>Home Assistant</span><b>{settings.viewRouter.inactivityAction.seconds} s bezczynności</b><span>Album zdjęć</span></div>
+          </article>
+        </section>}
+
+        {section === "views" && <>
       <section className="admin-card">
         <div><span className="admin-kicker">Widoki</span><h2>Aktywny ekran</h2></div>
         <div className="view-list">
@@ -146,6 +175,24 @@ export function AdminApp() {
         </div>
       </section>
 
+      <form className="admin-card admin-form" onSubmit={save}>
+        <div><span className="admin-kicker">Manager widoków</span><h2>Reguły przełączania</h2></div>
+        <p className="form-intro">Reguły reagują na zdarzenia panelu. Dotknięcia wewnątrz dashboardu HA są wykrywane przez aplikację tabletową.</p>
+        <div className="rule-list">
+          <article>
+            <label className="switch-row"><input type="checkbox" checked={settings.viewRouter.tapAction.enabled} onChange={(e) => setSettings({ ...settings, viewRouter: { ...settings.viewRouter, tapAction: { ...settings.viewRouter.tapAction, enabled: e.target.checked } } })} /><span><strong>Pojedyncze dotknięcie</strong><small>Gdy użytkownik dotknie wskazanego widoku</small></span></label>
+            <div className="rule-flow"><select value={settings.viewRouter.tapAction.sourceView} onChange={(e) => setSettings({ ...settings, viewRouter: { ...settings.viewRouter, tapAction: { ...settings.viewRouter.tapAction, sourceView: e.target.value as ViewId } } })}>{views.available.map((view) => <option value={view.id} key={view.id}>{view.name}</option>)}</select><span>→</span><select value={settings.viewRouter.tapAction.targetView} onChange={(e) => setSettings({ ...settings, viewRouter: { ...settings.viewRouter, tapAction: { ...settings.viewRouter.tapAction, targetView: e.target.value as ViewId } } })}>{views.available.map((view) => <option value={view.id} key={view.id}>{view.name}</option>)}</select></div>
+          </article>
+          <article>
+            <label className="switch-row"><input type="checkbox" checked={settings.viewRouter.inactivityAction.enabled} onChange={(e) => setSettings({ ...settings, viewRouter: { ...settings.viewRouter, inactivityAction: { ...settings.viewRouter.inactivityAction, enabled: e.target.checked } } })} /><span><strong>Powrót po bezczynności</strong><small>Resetowany przy każdym dotknięciu panelu</small></span></label>
+            <div className="rule-flow"><label><input type="number" min="5" max="3600" value={settings.viewRouter.inactivityAction.seconds} onChange={(e) => setSettings({ ...settings, viewRouter: { ...settings.viewRouter, inactivityAction: { ...settings.viewRouter.inactivityAction, seconds: Number(e.target.value) } } })} /><small>sekund</small></label><span>→</span><select value={settings.viewRouter.inactivityAction.targetView} onChange={(e) => setSettings({ ...settings, viewRouter: { ...settings.viewRouter, inactivityAction: { ...settings.viewRouter.inactivityAction, targetView: e.target.value as ViewId } } })}>{views.available.map((view) => <option value={view.id} key={view.id}>{view.name}</option>)}</select></div>
+          </article>
+        </div>
+        <footer><span>{status}</span><button type="submit">Zapisz reguły</button></footer>
+      </form>
+      </>}
+
+      {section === "ha" &&
       <form className="admin-card admin-form ha-admin" onSubmit={saveHomeAssistant}>
         <div className="ha-heading">
           <div><span className="admin-kicker">Integracja</span><h2>Home Assistant</h2></div>
@@ -194,8 +241,9 @@ export function AdminApp() {
           </div>
         </div>
         <footer><span>{haMessage}</span><div className="button-row"><button className="button-secondary" type="button" onClick={testHomeAssistant}>Testuj połączenie</button><button type="submit">Zapisz integrację</button></div></footer>
-      </form>
+      </form>}
 
+      {section === "photos" &&
       <form className="admin-card admin-form" onSubmit={save}>
         <div><span className="admin-kicker">Widok 01</span><h2>Album zdjęć</h2></div>
         <label className="brightness-control">
@@ -228,7 +276,8 @@ export function AdminApp() {
           <label>Długość geograficzna <input type="number" step="0.0001" value={settings.overlay.weatherLocation.longitude ?? ""} onChange={(e) => updateOverlay({ weatherLocation: { ...settings.overlay.weatherLocation, longitude: e.target.value === "" ? null : Number(e.target.value) } })} /></label>
         </div>
         <footer><span>{status}</span><button type="submit">Zapisz ustawienia</button></footer>
-      </form>
+      </form>}
+      </div>
     </main>
   );
 }
