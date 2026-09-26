@@ -52,7 +52,14 @@ class MainActivity : ComponentActivity() {
             }
         }
         lifecycleScope.launch {
-            try { config = store.load(); config?.let { showPanel(it) } ?: showConfig() }
+            try {
+                val saved = store.load()
+                val debugUrl = intent.getStringExtra(DEBUG_PANEL_URL_EXTRA)?.takeIf { BuildConfig.DEBUG }
+                config = if (debugUrl != null) {
+                    PanelConfig(debugUrl, saved?.deviceId ?: "wallpanel-01", "", saved?.dock ?: true).also { store.save(it) }
+                } else saved
+                config?.let { showPanel(it) } ?: showConfig()
+            }
             catch (_: Exception) { toast("Nie można odszyfrować konfiguracji. Wprowadź ją ponownie."); showConfig() }
         }
     }
@@ -198,4 +205,8 @@ class MainActivity : ComponentActivity() {
     }
     private fun toast(text: String) = Toast.makeText(this, text, Toast.LENGTH_LONG).show()
     override fun onDestroy() { unregisterReceiver(batteryReceiver); dialog?.dismiss(); web?.destroy(); web = null; reply = null; super.onDestroy() }
+
+    private companion object {
+        const val DEBUG_PANEL_URL_EXTRA = "pl.home.wallpanel.DEBUG_PANEL_URL"
+    }
 }

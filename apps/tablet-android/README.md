@@ -10,6 +10,13 @@ Cienka aplikacja Android: Kotlin 2.1, AndroidX WebKit, coroutines, DataStore i A
 4. W katalogu `../web-panel` uruchom `./run.ps1`. W aplikacji zapisz domyślny `http://127.0.0.1:8080`, Device ID, pusty Device Key. Tunel działa również przez sparowane ADB Wi-Fi. Serwer i połączenie ADB muszą pozostać aktywne.
 5. Konfigurator otwiera **7 szybkich dotknięć lewego górnego rogu** (odstęp poniżej 650 ms). Przy pierwszym uruchomieniu otwiera się automatycznie.
 
+W debug APK adres panelu można ustawić również przez jawny intent ADB. Mechanizm działa wyłącznie, gdy `BuildConfig.DEBUG=true`, czyści testowy Device Key i zapisuje URL w szyfrowanym storage:
+
+```powershell
+adb shell am force-stop pl.home.wallpanel
+adb shell am start -n pl.home.wallpanel/.MainActivity --es pl.home.wallpanel.DEBUG_PANEL_URL "http://192.168.31.59:8787/panel"
+```
+
 ## Bezpieczeństwo i kontrakt bridge
 
 `../web-panel/wallpanel.js` udostępnia `await WallPanel.call(method, args)`. Transport: `WallPanelNative.postMessage(JSON.stringify({id: '1', method: 'battery', args: {}}))`; odpowiedź przez `onmessage`: `{id,result}` lub `{id,error}`. Wersja protokołu: 1. Eventy: `wallpanel:powerConnected`, `wallpanel:powerDisconnected`, `wallpanel:batteryChanged`, dane w `event.detail`. Zarejestruj odbiornik i wywołaj pierwszą metodę, aby rozpocząć odbiór eventów. Po przeładowaniu dokument tworzy nową sesję bridge.
