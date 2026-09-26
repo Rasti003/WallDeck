@@ -1,4 +1,4 @@
-import { useContext, useEffect, useState, type CSSProperties } from "react";
+import { useContext, useEffect, useRef, useState, type CSSProperties } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import type { AudioOutputState } from "@walldeck/contracts";
 import { PanelContext } from "../panel-context";
@@ -19,6 +19,15 @@ export function MusicView() {
   const [now, setNow] = useState(Date.now());
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
+  const [optionsOpen, setOptionsOpen] = useState(false);
+  const optionsRoot = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!optionsOpen) return;
+    const outside = (event: PointerEvent) => { if (!optionsRoot.current?.contains(event.target as Node)) setOptionsOpen(false); };
+    const escape = (event: KeyboardEvent) => { if (event.key === "Escape") { setOptionsOpen(false); optionsRoot.current?.querySelector<HTMLButtonElement>(".music-options-trigger")?.focus(); } };
+    window.addEventListener("pointerdown", outside); window.addEventListener("keydown", escape);
+    return () => { window.removeEventListener("pointerdown", outside); window.removeEventListener("keydown", escape); };
+  }, [optionsOpen]);
   const [sheet, setSheet] = useState<"audio" | "queue" | "playlists" | null>(null);
   const [seek, setSeek] = useState<number | null>(null);
   const [volume, setVolume] = useState<number | null>(null);
@@ -122,9 +131,12 @@ export function MusicView() {
             <div><span>{time(position)}</span><span>{time(state.track?.durationMs ?? 0)}</span></div>
           </div>
           <div className="music-controls">
-            <div className="music-secondary-controls">
-            <button aria-label="Losowanie" aria-pressed={state.shuffle} disabled={!ready || !state.capabilities.shuffle} onClick={() => void run(() => music.setShuffle(!state.shuffle))}>⤨</button>
-            <button aria-label="Powtarzanie" aria-pressed={state.repeat !== 0} disabled={!ready || !state.capabilities.repeatContext} onClick={() => void run(() => music.setRepeat(state.repeat === 0 ? 1 : state.repeat === 1 && state.capabilities.repeatTrack ? 2 : 0))}>{state.repeat === 2 ? "↻¹" : "↻"}</button>
+            <div className="music-options" ref={optionsRoot}>
+              <button className="music-options-trigger" aria-label="Opcje odtwarzania" aria-expanded={optionsOpen} aria-controls="music-playback-options" onClick={() => setOptionsOpen(!optionsOpen)}>⋯</button>
+              {optionsOpen && <div id="music-playback-options" className="music-options-popup" role="group" aria-label="Opcje odtwarzania">
+            <button aria-label="Losowanie" aria-pressed={state.shuffle} disabled={!ready || !state.capabilities.shuffle} onClick={() => void run(() => music.setShuffle(!state.shuffle))}><span>⤨</span> Losowanie</button>
+            <button aria-label="Powtarzanie" aria-pressed={state.repeat !== 0} disabled={!ready || !state.capabilities.repeatContext} onClick={() => void run(() => music.setRepeat(state.repeat === 0 ? 1 : state.repeat === 1 && state.capabilities.repeatTrack ? 2 : 0))}><span>{state.repeat === 2 ? "↻¹" : "↻"}</span> Powtarzanie</button>
+              </div>}
             </div>
             <button aria-label="Poprzedni utwór" disabled={!ready || !state.capabilities.previous} onClick={() => void run(music.previous)}>⏮</button>
             <motion.button className="music-play" aria-label={state.paused ? "Odtwórz" : "Pauza"} disabled={!connected || busy} whileTap={reducedMotion ? undefined : { scale: .94 }} onClick={() => void run(state.paused ? music.play : music.pause)}>

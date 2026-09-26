@@ -137,3 +137,5 @@ Music volume opens from an icon-only button at the right end of playback control
 Shuffle, repeat and volume use borderless icon controls matching track navigation.
 
 Playback controls use symmetric grid tracks: Play stays centered on the seek bar regardless of shuffle/repeat and volume widths. Narrow layouts stack the two secondary icons.
+
+Shuffle and repeat now live in the glass playback-options popover (ellipsis). The control row has one secondary icon on each side of centered playback controls. Outside press or Escape dismisses options.
