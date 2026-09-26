@@ -157,6 +157,10 @@ export class HomeAssistantClient {
       .slice(0, 200);
   }
 
+  entity(entityId: string): HomeAssistantEntity | null {
+    return this.entities.get(entityId) ?? null;
+  }
+
   async test(baseUrl: string, token: string) {
     const root = normalizedBaseUrl(baseUrl);
     const headers = { authorization: `Bearer ${token}`, "content-type": "application/json" };

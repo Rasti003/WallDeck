@@ -92,3 +92,12 @@ Xiaomi 2603ARP14G / Android 16: przed poprawką API aktywowało `assistant-demo`
 - Fizyczny WebView/CDP: zdarzenie kamerowe 2% wywołało `photos → assistant-expressive/sleep`; tapnięcie otworzyło `ha`, a kolejny niski pomiar nie przerwał HA. Zdarzenie 20% ponownie uzbroiło regułę. PASS.
 - Test wyłączenia: przy interwale 10 s odczyt 13,75% dotarł; po zmianie `cameraEnabled=false` przez 12 s nie pojawił się żaden kolejny event. Ustawienia i widok zdjęć przywrócono. PASS.
 - Web: typecheck, build, 22 testy klienta, 4 testy serwera i 2 testy synchronizatora: PASS. Widok admina zawiera osobny przełącznik kamery, progi 5%/15% i interwał 30 s.
+
+## 2026-09-26 — noc sterowana encją Home Assistant
+
+- Xiaomi `2603ARP14G`, Android 16 / API 36, istniejący APK 0.1.0 z nowym frontendem: PASS.
+- Kamera została wyłączona przez źródło `home-assistant`; `dumpsys media.camera` potwierdził brak aktywnych klientów kamery po ponownym uruchomieniu aplikacji.
+- Test end-to-end użył tymczasowo `sensor.mh_z19_co2_value_2`: stan 522,0 i próg wejścia 523,0 wywołały `photos → assistant-expressive/sleep` po odczycie serwerowym. Fizyczne tapnięcie tabletu wywołało `sleep → ha`. Po teście przywrócono brak wybranej encji i widok `photos`.
+- Panel `/admin` sprawdzono w przeglądarce: źródło HA, wyszukiwarka, selektor z bieżącym stanem i jednostką oraz dwa progi są widoczne; wyszukiwanie „oświetlenie” zawęża listę do encji światła.
+- Wykryta encja `sensor.esphome_sensors_box1_oswietlenie` ma jednostkę lx, ale podczas testu zwracała `unknown`, dlatego nie została automatycznie zapisana jako źródło.
+- Web: build, 23 testy klienta, 4 testy serwera i 2 testy synchronizatora: PASS. APK nie został zmieniony.

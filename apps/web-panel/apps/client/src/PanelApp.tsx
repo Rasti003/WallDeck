@@ -4,7 +4,7 @@ import { defaultSettings, type AssistantState, type DeviceReport, type ViewId, t
 import { api } from "./api";
 import { connectEvents } from "./events";
 import { nativeBridge } from "./native";
-import { ambientSleepAction, cameraSleepAction, inactivityTransition, viewAfterActivity, viewAfterSwipeDown, viewAfterTap } from "./view-manager";
+import { ambientSleepAction, cameraSleepAction, homeAssistantSleepAction, inactivityTransition, viewAfterActivity, viewAfterSwipeDown, viewAfterTap } from "./view-manager";
 import { viewRegistry } from "./views/registry";
 import { PanelContext } from "./panel-context";
 
@@ -82,11 +82,11 @@ export function PanelApp({ forcedView }: { forcedView?: ViewId }) {
   useEffect(() => {
     if (!nativeBridge.available) return;
     nativeBridge.call("cameraLightSampling", {
-      enabled: settings.ambientSleep.enabled && settings.ambientSleep.cameraEnabled,
+      enabled: settings.ambientSleep.enabled && settings.ambientSleep.source === "camera" && settings.ambientSleep.cameraEnabled,
       intervalSeconds: settings.ambientSleep.cameraSampleSeconds,
     }).catch(() => undefined);
     return () => { nativeBridge.call("cameraLightSampling", { enabled: false }).catch(() => undefined); };
-  }, [settings.ambientSleep.cameraEnabled, settings.ambientSleep.cameraSampleSeconds, settings.ambientSleep.enabled]);
+  }, [settings.ambientSleep.cameraEnabled, settings.ambientSleep.cameraSampleSeconds, settings.ambientSleep.enabled, settings.ambientSleep.source]);
 
   useEffect(() => {
     if (!settings.ambientSleep.enabled) {
@@ -130,6 +130,32 @@ export function PanelApp({ forcedView }: { forcedView?: ViewId }) {
       window.removeEventListener("wallpanel:ambientLightChanged", onLight);
       window.removeEventListener("wallpanel:cameraLightChanged", onCameraLight);
     };
+  }, [activeView, activate, assistantState, settings.ambientSleep]);
+
+  useEffect(() => {
+    const ambient = settings.ambientSleep;
+    if (!ambient.enabled || ambient.source !== "home-assistant" || !ambient.homeAssistantEntityId) return;
+    let cancelled = false;
+    const poll = async () => {
+      try {
+        const entity = await api.homeAssistant.entity(ambient.homeAssistantEntityId!);
+        if (cancelled) return;
+        const action = homeAssistantSleepAction(entity.state, ambient, darkEpisodeActive.current);
+        if (action === "sleep") {
+          darkEpisodeActive.current = true;
+          setAssistantIdleTransition(false);
+          setRequestedAssistantState("sleep");
+          activate("assistant-expressive");
+        } else if (action === "reset") {
+          darkEpisodeActive.current = false;
+          setRequestedAssistantState(null);
+          if (activeView === "assistant-expressive" && assistantState === "sleep") activate("photos");
+        }
+      } catch { /* Missing, unavailable and non-numeric HA states do not change the active view. */ }
+    };
+    void poll();
+    const timer = setInterval(poll, 10_000);
+    return () => { cancelled = true; clearInterval(timer); };
   }, [activeView, activate, assistantState, settings.ambientSleep]);
 
   const resetInactivity = useCallback(() => {

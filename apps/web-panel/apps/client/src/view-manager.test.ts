@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { defaultSettings, settingsSchema } from "@walldeck/contracts";
-import { ambientSleepAction, cameraSleepAction, inactivityTransition, viewAfterActivity, viewAfterSwipeDown, viewAfterTap } from "./view-manager";
+import { ambientSleepAction, cameraSleepAction, homeAssistantSleepAction, inactivityTransition, viewAfterActivity, viewAfterSwipeDown, viewAfterTap } from "./view-manager";
 
 describe("view manager", () => {
   it("migrates old settings to the default tap and inactivity rules", () => {
@@ -9,7 +9,7 @@ describe("view manager", () => {
     expect(settings.viewRouter.tapAction).toEqual({ enabled: true, sourceView: "photos", targetView: "ha" });
     expect(settings.viewRouter.swipeDownAction).toEqual({ enabled: true, sourceView: "photos", targetView: "ha" });
     expect(settings.viewRouter.inactivityAction).toEqual({ enabled: true, sourceView: "ha", seconds: 30, targetView: "photos", showAssistantIdleBeforePhotos: true, assistantIdleSeconds: 10 });
-    expect(settings.ambientSleep).toEqual({ enabled: true, sleepBelowLux: 5, resetAboveLux: 15, cameraEnabled: true, cameraSleepBelowPercent: 5, cameraResetAbovePercent: 15, cameraSampleSeconds: 30 });
+    expect(settings.ambientSleep).toEqual({ enabled: true, source: "home-assistant", homeAssistantEntityId: null, homeAssistantSleepBelow: 5, homeAssistantResetAbove: 15, sleepBelowLux: 5, resetAboveLux: 15, cameraEnabled: false, cameraSleepBelowPercent: 5, cameraResetAbovePercent: 15, cameraSampleSeconds: 30 });
   });
 
   it("opens HA from photos and schedules the assistant idle transition from HA", () => {
@@ -36,15 +36,25 @@ describe("view manager", () => {
   });
 
   it("enters sleep once below the light threshold and rearms above the reset threshold", () => {
-    const settings = defaultSettings.ambientSleep;
+    const settings = { ...defaultSettings.ambientSleep, source: "android-sensor" as const };
     expect(ambientSleepAction(4, settings, false)).toBe("sleep");
     expect(ambientSleepAction(3, settings, true)).toBeNull();
     expect(ambientSleepAction(10, settings, true)).toBeNull();
     expect(ambientSleepAction(15, settings, true)).toBe("reset");
     expect(ambientSleepAction(Number.NaN, settings, false)).toBeNull();
-    expect(cameraSleepAction(3, settings, false)).toBe("sleep");
-    expect(cameraSleepAction(10, settings, true)).toBeNull();
-    expect(cameraSleepAction(20, settings, true)).toBe("reset");
+    const cameraSettings = { ...settings, source: "camera" as const, cameraEnabled: true };
+    expect(cameraSleepAction(3, cameraSettings, false)).toBe("sleep");
+    expect(cameraSleepAction(10, cameraSettings, true)).toBeNull();
+    expect(cameraSleepAction(20, cameraSettings, true)).toBe("reset");
     expect(cameraSleepAction(0, { ...settings, cameraEnabled: false }, false)).toBeNull();
+  });
+
+  it("uses a numeric Home Assistant state with hysteresis", () => {
+    const settings = { ...defaultSettings.ambientSleep, homeAssistantEntityId: "sensor.outdoor_lux", homeAssistantSleepBelow: 8, homeAssistantResetAbove: 15 };
+    expect(homeAssistantSleepAction("7.5", settings, false)).toBe("sleep");
+    expect(homeAssistantSleepAction("10", settings, true)).toBeNull();
+    expect(homeAssistantSleepAction("15", settings, true)).toBe("reset");
+    expect(homeAssistantSleepAction("unknown", settings, false)).toBeNull();
+    expect(homeAssistantSleepAction("7", { ...settings, homeAssistantEntityId: null }, false)).toBeNull();
   });
 });

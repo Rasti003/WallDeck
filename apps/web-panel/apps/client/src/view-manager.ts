@@ -4,13 +4,20 @@ type RouterSettings = WallDeckSettings["viewRouter"];
 type AmbientSleepSettings = WallDeckSettings["ambientSleep"];
 
 export function ambientSleepAction(lux: number, settings: AmbientSleepSettings, darkEpisodeActive: boolean): "sleep" | "reset" | null {
-  if (!settings.enabled || !Number.isFinite(lux)) return null;
+  if (!settings.enabled || settings.source !== "android-sensor" || !Number.isFinite(lux)) return null;
   return thresholdAction(lux, settings.sleepBelowLux, settings.resetAboveLux, darkEpisodeActive);
 }
 
 export function cameraSleepAction(brightnessPercent: number, settings: AmbientSleepSettings, darkEpisodeActive: boolean): "sleep" | "reset" | null {
-  if (!settings.enabled || !settings.cameraEnabled || !Number.isFinite(brightnessPercent)) return null;
+  if (!settings.enabled || settings.source !== "camera" || !settings.cameraEnabled || !Number.isFinite(brightnessPercent)) return null;
   return thresholdAction(brightnessPercent, settings.cameraSleepBelowPercent, settings.cameraResetAbovePercent, darkEpisodeActive);
+}
+
+export function homeAssistantSleepAction(state: string, settings: AmbientSleepSettings, darkEpisodeActive: boolean): "sleep" | "reset" | null {
+  if (!settings.enabled || settings.source !== "home-assistant" || !settings.homeAssistantEntityId) return null;
+  const value = Number(state.trim().replace(",", "."));
+  if (!Number.isFinite(value)) return null;
+  return thresholdAction(value, settings.homeAssistantSleepBelow, settings.homeAssistantResetAbove, darkEpisodeActive);
 }
 
 function thresholdAction(value: number, sleepBelow: number, resetAbove: number, darkEpisodeActive: boolean): "sleep" | "reset" | null {

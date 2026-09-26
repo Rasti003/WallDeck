@@ -200,6 +200,11 @@ app.put("/api/ha/config", async (request, reply) => {
 });
 
 app.get<{ Querystring: { q?: string } }>("/api/ha/entities", async (request) => homeAssistant.searchEntities(request.query.q));
+app.get<{ Params: { entityId: string } }>("/api/ha/entities/:entityId", async (request, reply) => {
+  if (!/^[a-z0-9_]+\.[a-z0-9_]+$/i.test(request.params.entityId)) return reply.code(400).send({ error: "Nieprawidłowy identyfikator encji" });
+  const entity = homeAssistant.entity(request.params.entityId);
+  return entity ?? reply.code(404).send({ error: "Encja nie jest dostępna" });
+});
 app.get("/api/ha/overlay", async () => homeAssistant.selectedStates());
 
 app.get("/api/events", { websocket: true }, (socket) => {

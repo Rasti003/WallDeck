@@ -49,6 +49,8 @@ test("selected overlay contains arbitrary configured entities and presentation m
     { id: "temperature", state: "22.4", label: "Kuchnia", position: "top-right" },
     { id: "light", state: "on", label: "Salon", position: "bottom-right" },
   ]);
+  assert.equal(client.entity("sensor.kitchen_temperature")?.state, "22.4");
+  assert.equal(client.entity("sensor.missing"), null);
 });
 
 test("connection test reads version and entity count with bearer authentication", async () => {

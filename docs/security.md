@@ -34,6 +34,8 @@ Raport diagnostyczny urządzenia zawiera identyfikator panelu, model, wersje, st
 
 Zdarzenie `ambientLightChanged` zawiera wyłącznie liczbę lux. Nie uruchamia kamery, nie zapisuje historii pomiarów i jest dostępne tylko zaufanej głównej ramce na zasadach pozostałych eventów bridge.
 
+Reguła nocy oparta na Home Assistant pobiera z backendu wyłącznie publiczne metadane i bieżący stan jednej skonfigurowanej encji. Token HA pozostaje w zaszyfrowanej konfiguracji serwera. Identyfikator encji przechodzi walidację, a klient nie zapisuje historii jej wartości. Zmiana źródła na HA wyłącza natywne próbkowanie kamery.
+
 Fallback kamerowy wymaga jawnego uprawnienia Androida i można go wyłączyć w `/admin`. Surowe klatki pozostają w pamięci APK tylko podczas obliczania średniej luminancji: nie są zapisywane, przesyłane do WebView ani wysyłane na serwer. Bridge przekazuje jedynie liczbę `brightnessPercent`. Kamera jest zamykana po trzeciej klatce, po wyłączeniu ustawienia i po przejściu aplikacji w tło. Android może pokazywać systemowy wskaźnik prywatności podczas krótkiego pomiaru.
 
 Immersive fullscreen ogranicza przypadkowe wejście do interfejsu systemowego, ale nie stanowi zabezpieczenia kiosku. Android może przejściowo odsłonić paski gestem z krawędzi. Pełna blokada panelu powiadomień wymaga kontrolowanego wdrożenia Device Owner i lock task.

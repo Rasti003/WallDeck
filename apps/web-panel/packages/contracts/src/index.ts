@@ -10,6 +10,10 @@ export const assistantBrightnessSchema = z.object({
 
 export const ambientSleepSchema = z.object({
   enabled: z.boolean(),
+  source: z.enum(["home-assistant", "android-sensor", "camera"]).default("home-assistant"),
+  homeAssistantEntityId: z.string().trim().max(255).regex(/^[a-z0-9_]+\.[a-z0-9_]+$/i).nullable().default(null),
+  homeAssistantSleepBelow: z.number().finite().default(5),
+  homeAssistantResetAbove: z.number().finite().default(15),
   sleepBelowLux: z.number().min(0).max(10_000),
   resetAboveLux: z.number().min(0).max(10_000),
   cameraEnabled: z.boolean().default(true),
@@ -22,7 +26,10 @@ export const ambientSleepSchema = z.object({
 }).refine((value) => value.cameraResetAbovePercent > value.cameraSleepBelowPercent, {
   message: "Próg wybudzenia kamery musi być wyższy od progu snu",
   path: ["cameraResetAbovePercent"],
-}).default({ enabled: true, sleepBelowLux: 5, resetAboveLux: 15, cameraEnabled: true, cameraSleepBelowPercent: 5, cameraResetAbovePercent: 15, cameraSampleSeconds: 30 });
+}).refine((value) => value.homeAssistantResetAbove > value.homeAssistantSleepBelow, {
+  message: "Próg ponownego uzbrojenia encji HA musi być wyższy od progu snu",
+  path: ["homeAssistantResetAbove"],
+}).default({ enabled: true, source: "home-assistant", homeAssistantEntityId: null, homeAssistantSleepBelow: 5, homeAssistantResetAbove: 15, sleepBelowLux: 5, resetAboveLux: 15, cameraEnabled: false, cameraSleepBelowPercent: 5, cameraResetAbovePercent: 15, cameraSampleSeconds: 30 });
 
 export const viewIdSchema = z.preprocess(value => value === "assistant-demo" ? "assistant-expressive" : value, z.enum(["photos", "ha", "assistant-expressive"]));
 export type ViewId = z.infer<typeof viewIdSchema>;
@@ -88,7 +95,7 @@ export const defaultSettings: WallDeckSettings = {
   transitionSeconds: 1.4,
   viewBrightness: { photos: 0.75, ha: 0.85, "assistant-expressive": 0.65 },
   assistantBrightness: { globalEnabled: true, overrides: { sleep: .05 } },
-  ambientSleep: { enabled: true, sleepBelowLux: 5, resetAboveLux: 15, cameraEnabled: true, cameraSleepBelowPercent: 5, cameraResetAbovePercent: 15, cameraSampleSeconds: 30 },
+  ambientSleep: { enabled: true, source: "home-assistant", homeAssistantEntityId: null, homeAssistantSleepBelow: 5, homeAssistantResetAbove: 15, sleepBelowLux: 5, resetAboveLux: 15, cameraEnabled: false, cameraSleepBelowPercent: 5, cameraResetAbovePercent: 15, cameraSampleSeconds: 30 },
   viewRouter: {
     tapAction: { enabled: true, sourceView: "photos", targetView: "ha" },
     swipeDownAction: { enabled: true, sourceView: "photos", targetView: "ha" },
