@@ -104,3 +104,5 @@ The global App Remote observer detects the transition to connected + track + !pa
 The global player observer reconnects disconnected, installed Spotify with configured Client ID and authorize=false. Retry spacing is 60 seconds; connection errors do not prompt automatically.
 
 Music inactivity uses a 30-second rule independent of the HA inactivity source. Playback boolean changes restart/cancel the timer; repeated player snapshots do not reset it. The idle transition records Music as its interaction return target and always completes in photos.
+
+Admin StateMachinesAdmin presents the current transition catalogue with settings-derived timers and thresholds. Assistant states, delays and timeout destinations are read from the existing reducer. The catalogue is read-only and does not change runtime routing.

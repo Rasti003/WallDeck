@@ -80,3 +80,5 @@
 - [x] Restore an authorized Spotify App Remote session after panel startup without opening consent UI.
 
 - [x] Paused Music: 30 seconds inactivity -> assistant idle -> photos; activity resets timer and playback prevents exit.
+
+- [x] Admin: catalogue of state machines and transitions with current settings and assistant reducer metadata.

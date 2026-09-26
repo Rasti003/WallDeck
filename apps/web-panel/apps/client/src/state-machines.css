@@ -1,0 +1,13 @@
+.state-machines { display: grid; gap: 20px; }
+.state-machines > p { margin: 0; color: #64748b; line-height: 1.6; }
+.state-machine-scroll { overflow-x: auto; }
+.state-machine table { width: 100%; border-collapse: collapse; text-align: left; font-size: .92rem; }
+.state-machine th { color: #64748b; font-weight: 600; font-size: .8rem; }
+.state-machine td, .state-machine th { padding: 14px 12px; border-bottom: 1px solid #e2e8f0; vertical-align: top; line-height: 1.5; }
+.state-machine td:first-child { font-weight: 600; width: 23%; }
+.state-machine td:last-child { width: 34%; }
+.state-machine tr:last-child td { border-bottom: 0; }
+
+.state-machines, .state-machines > *, .state-machine-scroll { min-width: 0; max-width: 100%; }
+.state-machines p { overflow-wrap: anywhere; }
+.state-machine table { min-width: 560px; }

@@ -123,3 +123,5 @@ A connected Spotify playback start opens the dancing assistant, then Music. Tap 
 Spotify App Remote reconnects silently on panel startup and when disconnected (at most once a minute). Authorization errors require the explicit Connect button.
 
 When Music is not playing, 30 seconds without interaction starts assistant idle, then photos. Interactions reset the timer; resuming playback cancels it. Tap during this idle returns to Music. Idle duration uses the existing assistant idle setting.
+
+Admin: zakładka „Stany i przejścia” opisuje widoki, Music, Spotify, noc, animacje, album i zasilanie. Czasy/progi pochodzą z formularzy; lista animacji i automatyczne przejścia z reduktora asystenta. To dokumentacja zachowania, nie debugger na żywo.
