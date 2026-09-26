@@ -1,5 +1,5 @@
-export const calmStates = ["idle", "attention", "listening", "thinking", "speaking", "success", "error", "sleep"] as const;
-export const assistantStates = [...calmStates, "curious", "uncertain", "confirm", "surprised", "wink", "laughing"] as const;
+const baseStates = ["idle", "attention", "listening", "thinking", "speaking", "success", "error", "sleep"] as const;
+export const assistantStates = [...baseStates, "curious", "uncertain", "confirm", "surprised", "wink", "laughing"] as const;
 export type AssistantState = typeof assistantStates[number];
 export type AssistantEvent = { type: "select"; state: AssistantState } | { type: "timeout" };
 export const stateLabels: Record<AssistantState, string> = {

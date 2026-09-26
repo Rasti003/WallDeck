@@ -1,10 +1,9 @@
 import { useEffect, useReducer, useState } from "react";
 import { useIsPresent } from "motion/react";
-import { AssistantFace } from "../assistant/AssistantFace";
 import { ExpressiveAssistantFace } from "../assistant/ExpressiveAssistantFace";
-import { assistantStates, calmStates, assistantTransition, stateLabels, transientDelay } from "../assistant/assistant-state";
+import { assistantStates, assistantTransition, stateLabels, transientDelay } from "../assistant/assistant-state";
 
-export function AssistantDemoView({ expressive = false }: { expressive?: boolean }) {
+export function AssistantDemoView() {
   const isPresent = useIsPresent();
   const [state, dispatch] = useReducer(assistantTransition, "idle");
   const [audio, setAudio] = useState(.35);
@@ -29,11 +28,11 @@ export function AssistantDemoView({ expressive = false }: { expressive?: boolean
     return () => clearInterval(timer);
   }, [simulate, state]);
   return <section className="assistant-demo" aria-label="Asystent demo">
-    {expressive ? <ExpressiveAssistantFace state={!isPresent ? "sleep" : state} audioLevel={simulate ? simulatedAudio : audio} accentColor={accent} reducedMotion={reduced} /> : <AssistantFace state={calmStates.includes(state as typeof calmStates[number]) ? state as typeof calmStates[number] : "idle"} audioLevel={simulate ? simulatedAudio : audio} accentColor={accent} reducedMotion={reduced} />}
+    <ExpressiveAssistantFace state={!isPresent ? "sleep" : state} audioLevel={simulate ? simulatedAudio : audio} accentColor={accent} reducedMotion={reduced} />
     <button className="assistant-controls-toggle" aria-expanded={controls} onClick={() => setControls(!controls)}>{controls ? "Ukryj sterowanie ↘" : "Mimika ↗"}</button>
     {controls && <aside className="assistant-console" aria-label="Sterowanie demonstracją">
-      <header><span>WALLDECK / {expressive ? "EKSPRESYJNY" : "SPOKOJNY"}</span><strong>{stateLabels[state]}</strong><small>Demo · bez mikrofonu</small></header>
-      <div className="assistant-states">{(expressive ? assistantStates : calmStates).map((value) => <button key={value} aria-pressed={state === value} onClick={() => dispatch({ type: "select", state: value })}>{stateLabels[value]}</button>)}</div>
+      <header><span>WALLDECK / ASYSTENT</span><strong>{stateLabels[state]}</strong><small>Demo · bez mikrofonu</small></header>
+      <div className="assistant-states">{assistantStates.map((value) => <button key={value} aria-pressed={state === value} onClick={() => dispatch({ type: "select", state: value })}>{stateLabels[value]}</button>)}</div>
       <div className="assistant-options">
         <label className="assistant-audio">Otwarcie ust <output>{Math.round((simulate ? simulatedAudio : audio) * 100)}%</output><input aria-label="Poziom audio" type="range" min="0" max="1" step="0.01" value={audio} disabled={simulate} onChange={(e) => { setAudio(Number(e.target.value)); dispatch({ type: "select", state: "speaking" }); }} /></label>
         <label><input type="checkbox" checked={simulate} onChange={(e) => { setSimulate(e.target.checked); dispatch({ type: "select", state: "speaking" }); }} />Symuluj mowę</label>
@@ -43,5 +42,3 @@ export function AssistantDemoView({ expressive = false }: { expressive?: boolean
     </aside>}
   </section>;
 }
-
-export function ExpressiveAssistantDemoView() { return <AssistantDemoView expressive />; }

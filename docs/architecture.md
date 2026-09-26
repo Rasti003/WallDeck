@@ -32,19 +32,19 @@ WallDeck Server jest jedynym klientem Home Assistant. Konfigurację podaje się 
 
 ## Prototyp twarzy asystenta
 
-Kontrakt ekspresyjnej mimiki obejmuje dodatkowe stany curious, uncertain, confirm, surprised, wink i laughing. Wspólna maszyna obsługuje ich zakończenie, a spokojny renderer ma zawężony kontrakt ośmiu oryginalnych stanów. Generator ruchu ust śmiechu działa lokalnie i sprząta interwał po zmianie stanu; nie generuje dźwięku.
+Spokojny renderer usunięto. Jedyny widok to `assistant-expressive`; stary adres `/assistant-demo` przekierowuje do niego, a schemat kontraktu migruje stare identyfikatory w zapisanych regułach i żądaniach API. Nowy zapis ustawień usuwa nieużywane pole jasności spokojnej wersji. Historyczne wyniki testów pozostają w raporcie.
+
 
 Router renderuje kluczowane widoki w Motion AnimatePresence (mode wait). Wychodzący ekspresyjny asystent rozpoznaje fazę exit przez useIsPresent i przechodzi wizualnie w sleep; router wygasza go przed montażem następnego ekranu. Stan docelowy pozostaje kontrolowany przez istniejące API i reguły. Szybkie komendy zastępują oczekujący widok najnowszym wyborem.
 
-Wariant ekspresyjny jest osobnym widokiem `assistant-expressive` i kopią renderera SVG. Oryginalny `AssistantFace.tsx` pozostaje niezmieniony. Wspólne są kontrolki demo i kontrakt stanów; geometria oraz animacja ekspresyjna są niezależne, co umożliwia porównanie obu wersji. Wrażenie obrotu głowy powstaje przez transformacje grup SVG, względną skalę oczu i paralaksę nosa/ust, bez silnika 3D i dostępu do kamery.
 
 Wspólny transport `connectEvents` wznawia połączenie WebSocket po restarcie serwera lub rozłączeniu, stosując ograniczony exponential backoff z jitterem. Nowy socket odbiera snapshot widoku i HA; panel i album odświeżają ustawienia przez REST. Demontaż komponentu zamyka socket i usuwa zaplanowane ponowne połączenie. Admin pokazuje błąd nieudanej komendy aktywacji.
 
 Serwowanie frontendu: `registerClient` rozwiązuje pliki dynamicznie, również po przebudowie Vite w działającym serwerze. HTML ma `Cache-Control: no-cache`; fallback HTML obejmuje tylko znane trasy SPA. Nieznane API i brakujące assety zwracają 404, aby przeglądarka nie otrzymała HTML zamiast modułu JavaScript.
 
-Specyfikacja: [Notion, sekcja 15](https://www.notion.so/3e7827a850e3816ab406dabf341c372a). Widok `assistant-demo` dołącza do wspólnego rejestru widoków, walidacji API, reguł i jasności per widok. Trasa `/assistant-demo` wymusza lokalny podgląd; aktywacja przez API pokazuje go na zwykłym `/panel`.
+Specyfikacja: [Notion, sekcja 15](https://www.notion.so/3e7827a850e3816ab406dabf341c372a). Widok `assistant-expressive` dołącza do wspólnego rejestru widoków, walidacji API, reguł i jasności per widok. Trasa `/assistant-demo` wymusza lokalny podgląd; aktywacja przez API pokazuje go na zwykłym `/panel`.
 
-Podział odpowiedzialności: `assistant-state.ts` zawiera jawną maszynę stanów i mapowanie audio, `AssistantFace` renderuje osobne oczy, brwi, nos, usta i akcenty przez SVG + Motion, a `AssistantDemoView` dostarcza kontrolki oraz testowy poziom audio. To samodzielny prototyp bez powiązania z voice pipeline. Timer losowych mikroanimacji i timer audio są zwalniane przy odmontowaniu; nie powstaje historia próbek audio. Tryb sleep obniża intensywność grafiki, natomiast jasność okna pochodzi ze wspólnego mechanizmu per widok.
+Podział odpowiedzialności: `assistant-state.ts` zawiera jawną maszynę stanów i mapowanie audio, `ExpressiveAssistantFace` renderuje osobne oczy, brwi, nos, usta i akcenty przez SVG + Motion, a `AssistantDemoView` dostarcza kontrolki oraz testowy poziom audio. To samodzielny prototyp bez powiązania z voice pipeline. Timer losowych mikroanimacji i timer audio są zwalniane przy odmontowaniu; nie powstaje historia próbek audio. Tryb sleep obniża intensywność grafiki, natomiast jasność okna pochodzi ze wspólnego mechanizmu per widok.
 
 ## Przepływ uwierzytelnienia urządzenia (docelowy)
 

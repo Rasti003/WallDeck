@@ -28,6 +28,8 @@
 
 ## Najbliższy etap
 
+- [x] usunąć spokojny wariant asystenta po wyborze ekspresyjnego; zachować migrację dawnych reguł i adresu demo;
+
 - [x] zachować spokojny wariant asystenta i dodać ekspresyjną kopię z mocniejszą mimiką i ruchem wirtualnej głowy;
 
 - [x] prototyp SVG + Motion twarzy asystenta: osiem stanów, nieregularne mikroanimacje, usta sterowane audio, studio `/assistant-demo` i integracja z managerem widoków;

@@ -35,6 +35,8 @@
 
 ## Asystent demo — 2026-09-26
 
+Po usunięciu spokojnego renderera ponownie wykonano `assistant-smoke.mjs` na Xiaomi 2603ARP14G / Android 16 dla `assistant-expressive`: osiem bazowych stanów, automatyczne przejścia i reakcja ust PASS, brak błędów JavaScript. Krótki pomiar: 599 klatek / około 10 s, mediana 16,7 ms, p95 16,8 ms.
+
 Dodatkowe reakcje, Xiaomi 2603ARP14G / Android 16: przez ADB/CDP wywołano curious, uncertain, confirm, surprised, wink i laughing. Wszystkie wyrenderowane poprawnie; śmiech zmienił ścieżkę ust w czterech kolejnych próbkach i automatycznie wrócił do idle po upływie czasu. PASS.
 
 Animowane wejście/wyjście, Xiaomi 2603ARP14G / Android 16: test ADB/CDP potwierdził wejście `assistant-expressive`, stan `sleep` podczas wyjścia, następnie wyrenderowanie `photos`. Szybkie komendy expressive → ha → expressive zakończyły się na expressive i dokładnie jednym wyrenderowanym widoku. PASS.

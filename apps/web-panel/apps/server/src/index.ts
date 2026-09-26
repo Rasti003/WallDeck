@@ -119,7 +119,6 @@ app.get<{ Params: { id: string } }>("/api/photos/:id/file", async (request, repl
 app.get("/api/views", async () => ({ current: currentView, available: [
   { id: "photos", name: "Album zdjęć" },
   { id: "ha", name: "Home Assistant" },
-  { id: "assistant-demo", name: "Asystent demo" },
   { id: "assistant-expressive", name: "Asystent — ekspresyjny" },
 ] }));
 app.post("/api/views/activate", async (request, reply) => {

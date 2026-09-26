@@ -30,9 +30,9 @@ try {
   await cdp('Runtime.enable');
   await cdp('Page.reload', { ignoreCache: true });
   await new Promise(resolve => setTimeout(resolve, 2200));
-  await evaluate(`fetch('/api/views/activate', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({viewId:'assistant-demo'})}).then(r=>r.json())`);
+  await evaluate(`fetch('/api/views/activate', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({viewId:'assistant-expressive'})}).then(r=>r.json())`);
   await new Promise(resolve => setTimeout(resolve, 700));
-  assert.equal(await evaluate(`document.querySelector('.panel-router').dataset.view`), 'assistant-demo');
+  assert.equal(await evaluate(`document.querySelector('.panel-router').dataset.view`), 'assistant-expressive');
   const results = await evaluate(`(async () => {
     const wait = ms => new Promise(r => setTimeout(r, ms));
     const names = ['Spokój','Pobudka','Słucham','Myślę','Mówię','Gotowe','Ups…','Sen'];
