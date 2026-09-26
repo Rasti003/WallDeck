@@ -4,6 +4,6 @@
 
 .music-volume-trigger svg{flex-shrink:0}
 
-.music-secondary-controls{display:flex;align-items:center;gap:4px}.music-view .music-secondary-controls button{font-size:20px;padding:8px;min-width:40px;opacity:.7}.music-controls>.music-volume{display:flex;align-items:center}.music-controls .music-volume-trigger svg{width:20px;height:20px}
+.music-secondary-controls{display:flex;align-items:center;gap:4px}.music-view .music-secondary-controls button{font-size:20px;padding:8px;min-width:40px;opacity:.7}.music-controls>.music-volume{display:flex;align-items:center}.music-controls .music-volume-trigger svg{width:20px;height:20px;transform:translateY(3px)}
 
 .music-view .music-secondary-controls button,.music-view .music-controls .music-volume-trigger{border:0;background:transparent;border-radius:0}.music-view .music-secondary-controls button:hover:not(:disabled),.music-view .music-controls .music-volume-trigger:hover:not(:disabled){background:transparent;color:#c7eed4}
