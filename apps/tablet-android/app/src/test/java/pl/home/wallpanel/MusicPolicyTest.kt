@@ -4,6 +4,14 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class MusicPolicyTest {
+    @Test fun authorizesOnlyExplicitSpotifyBindingsOnModernAndroid() {
+        val action = "com.spotify.mobile.appprotocol.action.BIND_PROTOCOL_SERVICE"
+        assertTrue(MusicPolicy.allowAuthActivity(true, 36, "com.spotify.music", action))
+        assertFalse(MusicPolicy.allowAuthActivity(false, 36, "com.spotify.music", action))
+        assertFalse(MusicPolicy.allowAuthActivity(true, 33, "com.spotify.music", action))
+        assertFalse(MusicPolicy.allowAuthActivity(true, 36, "other.app", action))
+        assertFalse(MusicPolicy.allowAuthActivity(true, 36, "com.spotify.music", "other.action"))
+    }
     @Test fun rejectsUrlsAndCredentials() {
         assertTrue(MusicPolicy.validClientId("0123456789abcdef0123456789abcdef"))
         assertFalse(MusicPolicy.validClientId("client-secret"))

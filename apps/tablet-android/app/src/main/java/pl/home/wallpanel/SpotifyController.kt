@@ -64,7 +64,7 @@ class SpotifyController(private val activity: Activity, private val changed: (JS
         connection = "connecting"; error = null
         val attempt = generation
         val params = ConnectionParams.Builder(clientId).setRedirectUri(MusicPolicy.REDIRECT_URI).showAuthView(authorize).build()
-        SpotifyAppRemote.connect(activity, params, object : Connector.ConnectionListener {
+        SpotifyAppRemote.connect(SpotifyBindingContext(activity, authorize), params, object : Connector.ConnectionListener {
             override fun onConnected(appRemote: SpotifyAppRemote) {
                 if (attempt != generation) { SpotifyAppRemote.disconnect(appRemote); return }
                 remote = appRemote; connection = "connected"; error = null

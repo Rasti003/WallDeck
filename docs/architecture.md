@@ -93,3 +93,5 @@ Obecny prototyp ma wspólny aktywny widok dla podłączonych paneli. Komunikat W
 Android Activity działa w immersive fullscreen i ukrywa paski systemowe. Android zachowuje systemową kontrolę nad gestem rozpoczętym dokładnie na krawędzi; HyperOS może wtedy przejściowo pokazać status bar. Trwałe wyłączenie panelu powiadomień będzie wymagało zarządzanego trybu Device Owner/lock task.
 
 Diagnostyka Spotify: pole error w istniejącym kontrakcie stanu przechowuje kategorię wyjątku SDK, nie jego wiadomość. Music tłumaczy kategorię na instrukcję naprawy konfiguracji.
+
+SpotifyBindingContext dopasowuje bindService SDK 0.8.0 do Androida 14+: przekazuje BIND_ALLOW_ACTIVITY_STARTS jedynie podczas jawnie żądanej autoryzacji i wyłącznie do znanej usługi Spotify. Wrapper applicationContext jest używany także przy unbind, bez utrzymywania referencji do Activity. Kontrakt web/bridge v3 nie zmienia się.

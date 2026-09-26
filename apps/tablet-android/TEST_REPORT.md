@@ -124,3 +124,10 @@ Xiaomi 2603ARP14G / Android 16: przed poprawką API aktywowało `assistant-demo`
 
 - 2026-09-26, Xiaomi 2603ARP14G / Android 16: zainstalowano APK rozróżniający wyjątki SDK. Próba połączenia z zapisanym Client ID i authorize=true zwróciła SPOTIFY_UserNotAuthorizedException. Aplikacja WallDeck była na pierwszym planie. Nie uzyskano autoryzacji; nie wykonano testu playbacku.
 - Android assembleDebug/testDebugUnitTest/lintDebug PASS; web typecheck/test/build PASS (27 klient, 4 serwer, 2 synchronizator). Surowe wiadomości wyjątków nie są przekazywane do UI ani logowane przez nasz adapter.
+
+### Poprawka timeoutu okna zgody Spotify — Android 14+
+
+- 2026-09-26, Xiaomi 2603ARP14G / Android 16: log systemowy pokazał BAL_BLOCK dla com.spotify.appauthorization.sso.internalauth.AuthorizationActivityInternalProxy o 20:25:29 i 20:26:36. System blokował wyświetlenie zgody Spotify z powiązanej usługi, co prowadziło do timeoutu WallDeck.
+- Przygotowano SpotifyBindingContext z BIND_ALLOW_ACTIVITY_STARTS ograniczonym do jawnej autoryzacji i usługi Spotify. assembleDebug/testDebugUnitTest/lintDebug PASS; test jednostkowy obejmuje odrzucenie innych pakietów, akcji, starszego Androida i authorize=false.
+- Próba instalacji poprawionego APK została odrzucona przez tablet: INSTALL_FAILED_USER_RESTRICTED / Install canceled by user. Nie potwierdzono jeszcze działania poprawki na urządzeniu; wymagane ponowienie instalacji po potwierdzeniu użytkownika i test ekranu zgody.
+- Po zgodzie użytkownika ponowiono instalację: Success. Próba authorize=true otworzyła rzeczywistą com.spotify.appauthorization.sso.AuthorizationActivity na pierwszym planie tabletu; stan WallDeck: connecting, error=null. Potwierdzono usunięcie blokady wyświetlenia okna. Oczekiwanie na zatwierdzenie zgody przez użytkownika.

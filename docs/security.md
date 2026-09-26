@@ -47,3 +47,5 @@ Fallback kamerowy wymaga jawnego uprawnienia Androida i można go wyłączyć w 
 Immersive fullscreen ogranicza przypadkowe wejście do interfejsu systemowego, ale nie stanowi zabezpieczenia kiosku. Android może przejściowo odsłonić paski gestem z krawędzi. Pełna blokada panelu powiadomień wymaga kontrolowanego wdrożenia Device Owner i lock task.
 
 Diagnostyka Spotify przekazuje wyłącznie ograniczoną nazwę klasy błędu SDK; nie przekazuje surowej treści wyjątku. Frontend mapuje ją na wskazówki autoryzacji i połączenia.
+
+Autoryzacja Spotify na API 34+ używa BIND_ALLOW_ACTIVITY_STARTS wyłącznie przy authorize=true i bindzie do com.spotify.music z akcją App Remote. To jawne udostępnienie systemowej możliwości otwarcia okna zgody przez powiązaną usługę, gdy WallDeck jest widoczny. Nie dotyczy innych usług, nie nadaje uprawnień konta ani nie zatwierdza zgody za użytkownika.

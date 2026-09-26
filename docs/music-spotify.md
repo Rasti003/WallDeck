@@ -42,3 +42,5 @@ Po autoryzacji należy wykonać: play/pause/seek/skip/shuffle/repeat, aktualizac
 ### Diagnostyka połączenia
 
 Błędy Spotify zachowują teraz kategorię wyjątku SDK (bez treści wyjątku, tokenów lub identyfikatorów konta). Music pokazuje osobne wskazówki dla braku zgody, braku logowania, błędu uwierzytelnienia, offline i timeout. UserNotAuthorizedException nie wskazuje jednoznacznie błędnego pola: sprawdź rejestrację Android/package/SHA-1, Redirect URI i dostęp konta, a następnie zgodę app-remote-control.
+
+Timeout po zmianie konfiguracji może wynikać z blokady Androida 14+ przy otwieraniu zgody Spotify z tła. Poprawka SpotifyBindingContext przekazuje wymaganą flagę dla bindService; nie wymaga ręcznego nadawania Spotify uprawnienia do nakładek ani zmiany ustawień zabezpieczeń systemu. Potwierdzenie na urządzeniu jest wymagane po instalacji poprawionego APK.

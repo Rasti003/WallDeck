@@ -62,3 +62,7 @@ Na tablecie: przetestuj wszystkie przyciski strony, persist konfiguracji po pono
 Dokumentacja platformy: https://developer.android.com/reference/androidx/webkit/WebViewCompat ; https://developer.android.com/guide/components/activities/background-starts ; https://developer.android.com/develop/background-work/services/fgs/service-types
 
 Spotify: błąd połączenia zachowuje kategorię wyjątku SDK w polu error. Nazwa jest ograniczona do znaków alfanumerycznych/podkreślenia i 80 znaków; wiadomość wyjątku nie opuszcza APK. Frontend pokazuje odpowiednią instrukcję naprawy.
+
+### Android 14+ — okno autoryzacji
+
+App Remote 0.8.0 wiąże usługę Spotify przez applicationContext bez BIND_ALLOW_ACTIVITY_STARTS. Na Androidzie 16 powodowało to BAL_BLOCK przy otwieraniu AuthorizationActivityInternalProxy i timeout po 60 s. SpotifyBindingContext dodaje publiczną flagę Androida tylko dla authorize=true, pakietu com.spotify.music i dwóch znanych akcji App Remote na API 34+. Nie obniżamy target SDK ani nie uruchamiamy prywatnej Activity Spotify. System nadal wymaga widoczności aplikacji i zgody użytkownika.
