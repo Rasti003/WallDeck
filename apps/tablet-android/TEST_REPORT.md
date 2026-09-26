@@ -174,3 +174,6 @@ Android build/unit/lint PASS, APK installed. Physical injected downward swipe fr
 
 ## 2026-09-26: Menu exit icon
 Web build and Android assembleDebug/testDebugUnitTest/lintDebug PASS. APK installed via Wi-Fi. On physical tablet, menu showed exit icon with 17px SVG; invoking its click through WebView debugger returned launcher with lock-task NONE after 3 seconds, without auto-reopen. Native hardware/configuration exits retained.
+
+## 2026-09-26: Music volume popup
+Physical Xiaomi via Wi-Fi/WebView debugger: music-volume-smoke PASS lower volume, mute=0, restore>0, auto-dismiss after 6 seconds. Original volume, ambient configuration and active view restored. First attempt interrupted by active ambient sleep; rerun temporarily disabled it and restored settings. Web typecheck/build PASS; no APK change.

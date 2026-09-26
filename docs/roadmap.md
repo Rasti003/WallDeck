@@ -100,3 +100,5 @@
 - [x] Glass view menu, downward gesture, visible/order settings in admin and inactivity pause.
 
 - [x] Replace persistent large tablet-mode button with discreet menu tablet icon.
+
+- [x] Touch volume popover in Music: slider, minus/plus, mute restore, auto-dismiss.

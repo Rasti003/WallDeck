@@ -120,3 +120,5 @@ OEM hidden-task recovery uses MainActivity.onStop and appTasks visibility on API
 tabletMenu settings migrate with defaults, reject empty/duplicate entries. Web selector uses native swipeDown across embedded HA and web pointer gestures elsewhere, with a shared top handle. Native userInteraction now follows gesture classification on release. No new bridge capability; inactivity uses menu-open guard.
 
 Bridge v4 adds exitToTablet with empty args and {ok:true} acknowledgement, followed by native exit. TabletMenu discovers the capability before showing the footer icon. Existing trusted-origin/main-frame validation still gates the command.
+
+MusicVolume uses existing audio.getOutputs and mediaVolume bridge methods. Serial writes coalesce pending slider changes; UI reads back actual quantized Android volume. Native volume is polled while open; remembered non-zero level supports mute restore. No native bridge changes.

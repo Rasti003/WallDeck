@@ -129,3 +129,5 @@ Admin: zakładka „Stany i przejścia” opisuje widoki, Music, Spotify, noc, a
 Tablet menu: downward swipe in upper 40% or top handle opens a glass-style view selector. Admin > Views and rules > Menu tabletu controls enabled state, ordered visible views (minimum one). Menu overrides the legacy downward-swipe action and suspends inactivity while open. Xiaomi top-edge toolbar remains an OS limitation: start inside the panel or use the handle.
 
 Menu footer now contains a discreet 17px tablet icon (40px touch area) for exitToTablet, shown only when native capabilities advertise it. Desktop preview and older APKs omit it.
+
+Music includes a glass volume popover: live slider, ±5%, mute/restore, displayed native volume and auto-dismiss after 6 seconds without interaction. Controls tablet media audio, not remote Spotify Connect devices. Accessible without an active Spotify connection when native bridge exists.

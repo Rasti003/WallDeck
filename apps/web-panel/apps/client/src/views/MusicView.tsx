@@ -7,6 +7,7 @@ import { nativeBridge } from "../native";
 import { emptyMusicState, musicController as music, playbackPosition } from "../music/controller";
 import { musicErrorMessage } from "../music/errors";
 import "./music.css";
+import { MusicVolume } from "./MusicVolume";
 
 const time = (ms: number) => `${Math.floor(ms / 60_000)}:${String(Math.floor(ms / 1000) % 60).padStart(2, "0")}`;
 const connectionLabels = { disconnected: "Rozłączono", connecting: "Łączenie…", connected: "Połączono", error: "Połączenie wymaga uwagi" };
@@ -129,6 +130,7 @@ export function MusicView() {
             <button aria-label="Następny utwór" disabled={!ready || !state.capabilities.next} onClick={() => void run(music.next)}>⏭</button>
             <button aria-label="Powtarzanie" aria-pressed={state.repeat !== 0} disabled={!ready || !state.capabilities.repeatContext} onClick={() => void run(() => music.setRepeat(state.repeat === 0 ? 1 : state.repeat === 1 && state.capabilities.repeatTrack ? 2 : 0))}>{state.repeat === 2 ? "↻¹" : "↻"}</button>
           </div>
+          <MusicVolume available={available} />
           <button className="music-output" disabled={!available} onClick={() => setSheet("audio")}><span>◖))</span><div><strong>Wyjście audio</strong><small>{output?.bluetoothAvailable ? "Bluetooth dostępny · sprawdź wyjście w systemie" : "Głośność i urządzenia tabletu"}</small></div><span>›</span></button>
           {(message || state.error) && <p className="music-error" role="status">{message || musicErrorMessage(state.error)}</p>}
         </section>
