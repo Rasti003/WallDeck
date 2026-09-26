@@ -98,3 +98,5 @@
 - [x] User confirmed recovery from HyperOS X via hidden-task handling (task-removed alone was insufficient). OEM toolbar hiding remains unresolved.
 
 - [x] Glass view menu, downward gesture, visible/order settings in admin and inactivity pause.
+
+- [x] Replace persistent large tablet-mode button with discreet menu tablet icon.

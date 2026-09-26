@@ -82,3 +82,5 @@ HyperOS limitation: its top-edge window toolbar remains visible and X can close 
 Further diagnosis: HyperOS X hides the existing task while LOCKED remains active, so task-removed callbacks do not fire. On Android 12L+, onStop now checks the current task visibility after 1 second and restores it if still docked/locked, awake/unlocked, not deliberately exiting and Spotify is not connecting. Exact X reproduction awaits confirmation.
 
 Touch activity is emitted at release after excluding the native downward swipe, so assistant inactivity handling cannot consume the menu gesture before it completes.
+
+The large always-visible tablet-mode button was removed. Exit is now the small tablet icon in the web menu. Native configuration exit and 2-second Volume Down emergency exit remain available without the web page.

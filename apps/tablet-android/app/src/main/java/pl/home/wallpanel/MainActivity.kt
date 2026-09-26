@@ -31,7 +31,6 @@ import javax.crypto.spec.SecretKeySpec
 
 class MainActivity : ComponentActivity() {
     private lateinit var root: FrameLayout
-    private var tabletButton: Button? = null
     private var leavingKiosk = false
     private val emergencyHandler = Handler(Looper.getMainLooper())
     private val emergencyExit = Runnable { exitToTablet() }
@@ -250,14 +249,6 @@ class MainActivity : ComponentActivity() {
         }
         if (cfg.dock) startForegroundService(Intent(this, PowerService::class.java)) else stopService(Intent(this, PowerService::class.java))
         view.loadUrl(cfg.url)
-        tabletButton?.let { root.removeView(it) }
-        tabletButton = Button(this).apply {
-            text = "Tryb tabletu"
-            contentDescription = "Wyłącz kiosk i wróć do tabletu"
-            alpha = 0.65f
-            setOnClickListener { exitToTablet() }
-        }
-        root.addView(tabletButton, FrameLayout.LayoutParams(FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.END or Gravity.BOTTOM))
         updateKiosk()
     }
     private fun kioskActive() = getSystemService(android.app.ActivityManager::class.java).lockTaskModeState != android.app.ActivityManager.LOCK_TASK_MODE_NONE
@@ -390,7 +381,7 @@ class MainActivity : ComponentActivity() {
                 return
             }
             val result: Any = when (req.getString("method")) {
-                "capabilities" -> JSONObject().put("bridgeVersion", 3).put("methods", JSONArray(listOf("capabilities", "deviceInfo", "sensors", "cameraLightSampling", "battery", "brightness", "mediaVolume", "keepAwake", "haptics", "reload", "appVersion", "permissions", "signChallenge", "music.connect", "music.disconnect", "music.getState", "music.command", "music.getQueue", "audio.getOutputs", "audio.selectOutput", "audio.openSystemOutputPicker"))).put("wakeWord", false).put("spotify", true).put("youtube", false).put("homeAssistant", false)
+                "capabilities" -> JSONObject().put("bridgeVersion", 4).put("methods", JSONArray(listOf("capabilities", "deviceInfo", "sensors", "cameraLightSampling", "battery", "brightness", "mediaVolume", "keepAwake", "haptics", "reload", "exitToTablet", "appVersion", "permissions", "signChallenge", "music.connect", "music.disconnect", "music.getState", "music.command", "music.getQueue", "audio.getOutputs", "audio.selectOutput", "audio.openSystemOutputPicker"))).put("wakeWord", false).put("spotify", true).put("youtube", false).put("homeAssistant", false)
                 "music.connect" -> music.connect(args.getString("clientId"), args.optBoolean("authorize", false))
                 "music.disconnect" -> music.disconnect()
                 "music.getState" -> music.state()
@@ -426,6 +417,7 @@ class MainActivity : ComponentActivity() {
                     JSONObject().put("enabled", window.attributes.flags and WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON != 0)
                 }
                 "haptics" -> { val vibrator = getSystemService(Vibrator::class.java); if (vibrator.hasVibrator()) vibrator.vibrate(VibrationEffect.createOneShot(35, VibrationEffect.DEFAULT_AMPLITUDE)); JSONObject().put("available", vibrator.hasVibrator()) }
+                "exitToTablet" -> { emergencyHandler.postDelayed({ exitToTablet() }, 100); JSONObject().put("ok", true) }
                 "reload" -> { web?.post { web?.reload() }; JSONObject().put("ok", true) }
                 "signChallenge" -> {
                     val cfg = config!!

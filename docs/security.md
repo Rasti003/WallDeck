@@ -61,3 +61,5 @@ During managed kiosk, DISALLOW_CREATE_WINDOWS blocks additional non-application 
 OEM toolbar closure recovery intentionally excludes manual tablet mode and hardware emergency exits. No system packages or HyperOS features were disabled globally.
 
 REORDER_TASKS added for recovery of the existing WallDeck task after OEM hide. Recovery is limited to an active docked lock-task session; no polling of other app content.
+
+exitToTablet is deliberately exposed only through the existing trusted main-frame bridge. It uses the same native manual-exit suppression and policy cleanup; no new origin or permission was added.

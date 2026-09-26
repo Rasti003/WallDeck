@@ -171,3 +171,6 @@ User confirmed HyperOS X now restores WallDeck. Regression test: Volume Down 2.5
 
 ## 2026-09-26: Tablet view menu
 Android build/unit/lint PASS, APK installed. Physical injected downward swipe from inside upper panel opened menu (assistant view). tablet-menu-smoke PASS opening/closing via native swipe events on photos, HA, Music and assistant; settings restored. Web 30 client tests + 4 server + 2 album tests PASS; typecheck/build PASS. Browser visual inspection confirmed glass menu layout. OEM edge toolbar not hidden.
+
+## 2026-09-26: Menu exit icon
+Web build and Android assembleDebug/testDebugUnitTest/lintDebug PASS. APK installed via Wi-Fi. On physical tablet, menu showed exit icon with 17px SVG; invoking its click through WebView debugger returned launcher with lock-task NONE after 3 seconds, without auto-reopen. Native hardware/configuration exits retained.
