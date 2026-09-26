@@ -70,6 +70,7 @@ class MainActivity : ComponentActivity() {
     }
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        getSharedPreferences("kiosk", MODE_PRIVATE).edit().putBoolean("manualExit", false).apply()
         window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
         enterImmersiveMode()
         root = FrameLayout(this).apply { setBackgroundColor(Color.rgb(16, 23, 34)) }
@@ -268,8 +269,10 @@ class MainActivity : ComponentActivity() {
 
     private fun exitToTablet() {
         leavingKiosk = true
+        getSharedPreferences("kiosk", MODE_PRIVATE).edit().putBoolean("manualExit", true).apply()
         runCatching { if (kioskActive()) stopLockTask() }.onFailure {
             leavingKiosk = false
+            getSharedPreferences("kiosk", MODE_PRIVATE).edit().putBoolean("manualExit", false).apply()
             toast("Nie udało się wyłączyć kiosku. Użyj konfiguratora lub ADB.")
             return
         }

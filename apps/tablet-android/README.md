@@ -76,3 +76,5 @@ Managed dock kiosk: when Device Owner, dock monitoring is enabled and power is c
 Deployment verified: final emergency-exit update installed successfully. On the physical tablet, an injected 2.5-second Volume Down hold changed LOCKED to NONE and returned to the launcher.
 
 Kiosk hardening: WallDeck declares non-resizable/no picture-in-picture. Managed kiosk temporarily applies DISALLOW_CREATE_WINDOWS; native exit and DeviceAdminReceiver lock-task-exit callback clear this restriction.
+
+HyperOS limitation: its top-edge window toolbar remains visible and X can close the task even in managed kiosk. PowerService now attempts to reopen a removed WallDeck task after 700 ms while powered and Device Owner. Explicit native exits set a persistent suppression flag; no automatic reopen after those exits. This mitigates closure, not toolbar visibility.

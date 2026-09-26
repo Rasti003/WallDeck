@@ -57,3 +57,5 @@ Provisioning update: user removed remaining accounts; a subsequent authorized AD
 Managed kiosk allowlists WallDeck and Spotify only and sets LOCK_TASK_FEATURE_NONE. Device Owner persists after exiting kiosk. Native tablet-mode exit and Volume Down hold intentionally permit local escape: this is a household panel, not tamper-proof public signage. No keyguard disable or account restrictions are applied. Kiosk waits until keyguard is unlocked.
 
 During managed kiosk, DISALLOW_CREATE_WINDOWS blocks additional non-application windows. The restriction is cleared on explicit exit and lock-task-exit callback. This is distinct from manufacturer task windowing; Xiaomi gesture behavior still requires physical confirmation.
+
+OEM toolbar closure recovery intentionally excludes manual tablet mode and hardware emergency exits. No system packages or HyperOS features were disabled globally.

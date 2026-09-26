@@ -35,6 +35,18 @@ class PowerService : Service() {
         val filter = IntentFilter().apply { addAction(Intent.ACTION_POWER_CONNECTED); addAction(Intent.ACTION_POWER_DISCONNECTED); addAction(Intent.ACTION_BATTERY_CHANGED) }
         if (Build.VERSION.SDK_INT >= 33) registerReceiver(receiver, filter, RECEIVER_NOT_EXPORTED) else registerReceiver(receiver, filter)
     }
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        super.onTaskRemoved(rootIntent)
+        if (rootIntent?.component?.packageName != packageName) return
+        // OEM close controls can remove a locked task; deliberate exits must stay closed.
+        Handler(Looper.getMainLooper()).postDelayed({
+            val powered = registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
+                ?.getIntExtra(BatteryManager.EXTRA_PLUGGED, 0)?.let { it != 0 } ?: false
+            val manualExit = getSharedPreferences("kiosk", MODE_PRIVATE).getBoolean("manualExit", false)
+            val owner = getSystemService(android.app.admin.DevicePolicyManager::class.java).isDeviceOwnerApp(packageName)
+            if (powered && owner && !manualExit) runCatching { startActivity(panelIntent()) }
+        }, 700)
+    }
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int) = START_STICKY
     override fun onDestroy() { unregisterReceiver(receiver); super.onDestroy() }
     override fun onBind(intent: Intent?) = null

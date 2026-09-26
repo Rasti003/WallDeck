@@ -161,3 +161,6 @@ Installation retried with kiosk NONE and launcher foreground: Success, no confir
 
 ## 2026-09-26: Floating-window hardening
 assembleDebug/testDebugUnitTest/lintDebug PASS; APK installed after exiting kiosk. Physical tablet reports RESIZE_MODE_UNRESIZEABLE, LOCKED and no_create_windows. Injected top-edge downward swipe left WallDeck foreground and LOCKED. Emergency exit produced NONE and no no_create_windows entries; relaunched WallDeck. Exact Xiaomi toolbar visibility remains for user confirmation.
+
+## 2026-09-26: HyperOS close-button mitigation
+User confirmed window sizing blocked but OEM toolbar X still closes WallDeck. Added task-removed recovery with deliberate-exit suppression. assembleDebug/testDebugUnitTest/lintDebug PASS; APK installed successfully over Wi-Fi and WallDeck launched. Actual OEM X recovery awaits user reproduction; toolbar itself is not hidden.

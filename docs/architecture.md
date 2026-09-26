@@ -112,3 +112,5 @@ Device Owner provisioning entry point added to the native app. It does not autom
 Native MainActivity controls managed kiosk lifecycle from dock configuration and physical power. No bridge/API changes. Native exit control is independent of WebView and HA. PowerService may launch through Device Owner privileges or overlay permission. Stopping the Activity leaves power monitoring active; it relaunches on a new power-connected event, not battery level updates.
 
 MainActivity disables resizing/PiP at manifest level. DeviceAdminReceiver now clears kiosk window restrictions on system lock-task exit.
+
+PowerService handles onTaskRemoved for WallDeck only, checks physical power, Device Owner and a persistent manual-exit flag before attempting restart after 700 ms. Activity launch clears suppression, explicit exits set it. Monitoring must remain running; this does not recover Android force-stop.
