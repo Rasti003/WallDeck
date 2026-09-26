@@ -140,11 +140,11 @@ Przepływ docelowy:
 1. WallDeck tworzy urządzenie Ambient i pokazuje kod lub QR do autoryzacji.
 2. Użytkownik wskazuje albumy albo inne źródła w Google Photos.
 3. Backend zapisuje identyfikator urządzenia i bezpiecznie przechowuje token odświeżania.
-4. Co około 15 minut oraz po ręcznym odświeżeniu backend pobiera listę dla wybranego `mediaSourceId`.
+4. Raz dziennie oraz po ręcznym użyciu „Synchronizuj teraz” backend pobiera listę dla wybranego `mediaSourceId`.
 5. Nowe identyfikatory zdjęć trafiają do katalogu WallDeck, a usunięte przestają być prezentowane.
 6. Serwer pobiera z `baseUrl` wariant dopasowany do ekranu i przekazuje go tabletowi.
 
-Limit wynosi 240 wywołań listy na urządzenie na dobę, więc interwał 15 minut daje bezpieczny zapas. API potrafi listować konkretne źródło i stronicować wyniki.
+Limit wynosi 240 wywołań listy na urządzenie na dobę. Synchronizacja dobowa pozostawia duży zapas na stronicowanie albumu, ponowienia po błędach i ręczne odświeżenie. API potrafi listować konkretne źródło i stronicować wyniki.
 
 Istotne ograniczenie: dostęp do Ambient API wymaga przyjęcia projektu do Google Photos Partner Program oraz późniejszej weryfikacji OAuth i integracji. Uzyskanie dostępu jest zależnością zewnętrzną i warunkiem wydania tej funkcji. Integrację projektujemy od razu, ale nie deklarujemy jej jako gotowej przed potwierdzeniem dostępu przez Google.
 
