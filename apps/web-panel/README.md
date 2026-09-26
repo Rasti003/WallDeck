@@ -2,6 +2,8 @@
 
 To początek aplikacji WWW wyświetlanej przez WebView. Obecnie zawiera stronę diagnostyczną, która testuje Android Bridge. Docelowy interfejs, backend oraz integracje nie są jeszcze zaimplementowane.
 
+Przyjęty stack i etapy implementacji opisuje [plan architektury](../../docs/web-architecture-plan.md): React 19, TypeScript, Vite, Motion, XState, Fastify, SQLite i Docker Compose.
+
 ## Uruchomienie prototypu
 
 ```powershell

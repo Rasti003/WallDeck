@@ -25,6 +25,7 @@ APK pozostaje cienką warstwą sprzętową. Interfejs rozwijamy jako aplikację 
 ## Dokumentacja
 
 - [Architektura systemu](docs/architecture.md)
+- [Architektura i stack panelu WWW](docs/web-architecture-plan.md)
 - [Bezpieczeństwo](docs/security.md)
 - [Plan rozwoju](docs/roadmap.md)
 - [Zasady pracy z repozytorium](CONTRIBUTING.md)

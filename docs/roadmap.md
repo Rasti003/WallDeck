@@ -11,10 +11,14 @@
 - [x] obsługa podłączenia i odłączenia zasilania;
 - [x] strona diagnostyczna bridge;
 - [x] test na Xiaomi z Androidem 16 przez ADB Wi-Fi.
+- [x] plan architektury i technologii WallDeck Web;
 
 ## Najbliższy etap
 
-- [ ] wybrać stack właściwego panelu WWW;
+- [x] wybrać stack właściwego panelu WWW;
+- [ ] utworzyć React/Vite client, Fastify server i wspólne kontrakty Zod;
+- [ ] przygotować maszynę trybów UI w XState;
+- [ ] przygotować Google Photos Picker oraz lokalny katalog zdjęć;
 - [ ] przygotować HTTPS i DNS w homelabie;
 - [ ] zaimplementować backend rejestracji urządzeń i sesji;
 - [ ] zaprojektować główny interfejs panelu;
