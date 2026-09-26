@@ -134,8 +134,8 @@ export function MusicView() {
             <div className="music-options" ref={optionsRoot}>
               <button className="music-options-trigger" aria-label="Opcje odtwarzania" aria-expanded={optionsOpen} aria-controls="music-playback-options" onClick={() => setOptionsOpen(!optionsOpen)}>⋯</button>
               {optionsOpen && <div id="music-playback-options" className="music-options-popup" role="group" aria-label="Opcje odtwarzania">
-            <button aria-label="Losowanie" aria-pressed={state.shuffle} disabled={!ready || !state.capabilities.shuffle} onClick={() => void run(() => music.setShuffle(!state.shuffle))}><span>⤨</span> Losowanie</button>
-            <button aria-label="Powtarzanie" aria-pressed={state.repeat !== 0} disabled={!ready || !state.capabilities.repeatContext} onClick={() => void run(() => music.setRepeat(state.repeat === 0 ? 1 : state.repeat === 1 && state.capabilities.repeatTrack ? 2 : 0))}><span>{state.repeat === 2 ? "↻¹" : "↻"}</span> Powtarzanie</button>
+            <button title="Losowanie" aria-label="Losowanie" aria-pressed={state.shuffle} disabled={!ready || !state.capabilities.shuffle} onClick={() => void run(() => music.setShuffle(!state.shuffle))}><span>⤨</span></button>
+            <button title="Powtarzanie" aria-label="Powtarzanie" aria-pressed={state.repeat !== 0} disabled={!ready || !state.capabilities.repeatContext} onClick={() => void run(() => music.setRepeat(state.repeat === 0 ? 1 : state.repeat === 1 && state.capabilities.repeatTrack ? 2 : 0))}><span>{state.repeat === 2 ? "↻¹" : "↻"}</span></button>
               </div>}
             </div>
             <button aria-label="Poprzedni utwór" disabled={!ready || !state.capabilities.previous} onClick={() => void run(music.previous)}>⏮</button>
