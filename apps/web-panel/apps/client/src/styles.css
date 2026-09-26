@@ -105,6 +105,11 @@ button, input, select { font: inherit; }
 .admin-form footer { display: flex; justify-content: space-between; align-items: center; gap: 1rem; margin-top: 2rem; color: #687268; font-size: .86rem; }
 .admin-form footer button { padding: .95rem 1.5rem; border: 0; border-radius: 999px; color: white; background: #203d2b; cursor: pointer; }
 .admin-form footer button:hover { background: #315f44; }
+.music-admin .music-fields { grid-template-columns: minmax(0, 1fr); max-width: 620px; margin-top: 24px; }
+.music-admin > p { max-width: 760px; font-size: .9rem; line-height: 1.65; color: #687268; }
+.music-admin dl { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 24px; background: #f3f6f1; border-radius: 14px; padding: 20px; margin: 24px 0; }
+.music-admin dt { color: #687268; font-size: .8rem; }.music-admin dd { margin: 0; overflow-wrap: anywhere; grid-row: 2; font-size: .85rem; }
+.music-admin h3 { font-size: 1rem; margin-top: 30px; }
 
 @media (max-width: 720px) {
   .admin-shell { padding: 24px 16px; }

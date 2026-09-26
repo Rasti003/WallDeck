@@ -1,8 +1,10 @@
 # WallDeck Android 0.1
 
-Cienka aplikacja Android: Kotlin 2.1, AndroidX WebKit, coroutines, DataStore i Android Keystore. Android 9+, compile/target SDK 35, AGP 8.9.2, Gradle 8.11.1, JDK 17–23. Brak wake word, Spotify, YouTube i HA; kontrakty rozszerzeń są w `FutureModules.kt`.
+Cienka aplikacja Android: Kotlin 2.1, AndroidX WebKit, coroutines, DataStore i Android Keystore. Android 9+, compile/target SDK 35, AGP 8.9.2, Gradle 8.11.1, JDK 17–23. Adapter Spotify App Remote kontroluje aplikację Spotify. Wake word i YouTube pozostają kontraktami rozszerzeń; HA obsługuje panel WWW.
 
 ## Uruchomienie
+
+Przed pierwszym buildem uruchom `./scripts/setup-spotify.ps1`. Skrypt pobiera oficjalny Spotify App Remote 0.8.0, sprawdza przypięty SHA-256 i zapisuje AAR w ignorowanym katalogu `app/libs`. Biblioteka podlega warunkom Spotify: [SDK i licencja](https://github.com/spotify/android-sdk). Pliku SDK nie commitujemy.
 
 1. Otwórz projekt w Android Studio lub ustaw `JAVA_HOME` i `sdk.dir` w lokalnym `local.properties`; wykonaj `./gradlew assembleDebug testDebugUnitTest lintDebug` (Windows: `gradlew.bat`).
 2. `adb devices -l`. Dla Wi-Fi: `adb pair IP:PORT_PAROWANIA` (kod wpisz interaktywnie), następnie `adb connect IP:PORT_DEBUGOWANIA`. Porty są różne i mogą się zmieniać.
@@ -19,7 +21,7 @@ adb shell am start -n pl.home.wallpanel/.MainActivity --es pl.home.wallpanel.DEB
 
 ## Bezpieczeństwo i kontrakt bridge
 
-`../web-panel/wallpanel.js` udostępnia `await WallPanel.call(method, args)`. Transport: `WallPanelNative.postMessage(JSON.stringify({id: '1', method: 'battery', args: {}}))`; odpowiedź przez `onmessage`: `{id,result}` lub `{id,error}`. Wersja protokołu: 2. Metody `deviceInfo` i `sensors` zwracają rozmiar ekranu oraz katalog sensorów Androida; dla sensora światła `value` zawiera luks, jeśli firmware pozwala aplikacji odebrać pomiar. `cameraLightSampling` włącza krótkie, okresowe pomiary luminancji przednią kamerą i wymaga uprawnienia `CAMERA`; wyłączenie zamyka aktywną sesję. Eventy: `wallpanel:powerConnected`, `wallpanel:powerDisconnected`, `wallpanel:batteryChanged`, `wallpanel:ambientLightChanged`, `wallpanel:cameraLightChanged` i `wallpanel:userInteraction`, dane w `event.detail`. Eventy światła przekazują odpowiednio `{lux}` i `{brightnessPercent}`. `userInteraction` jest emitowane przy rozpoczęciu dotyku całego WebView, również wewnątrz cross-origin iframe, aby manager widoków mógł zerować licznik bezczynności. Zarejestruj odbiornik i wywołaj pierwszą metodę, aby rozpocząć odbiór eventów. Po przeładowaniu dokument tworzy nową sesję bridge.
+`../web-panel/wallpanel.js` udostępnia `await WallPanel.call(method, args)`. Transport: `WallPanelNative.postMessage(JSON.stringify({id: '1', method: 'battery', args: {}}))`; odpowiedź przez `onmessage`: `{id,result}` lub `{id,error}`. Wersja protokołu: 3 (zgodna wstecz z v2). Metody `deviceInfo` i `sensors` zwracają rozmiar ekranu oraz katalog sensorów Androida; dla sensora światła `value` zawiera luks, jeśli firmware pozwala aplikacji odebrać pomiar. `cameraLightSampling` włącza krótkie, okresowe pomiary luminancji przednią kamerą i wymaga uprawnienia `CAMERA`; wyłączenie zamyka aktywną sesję. Eventy: `wallpanel:powerConnected`, `wallpanel:powerDisconnected`, `wallpanel:batteryChanged`, `wallpanel:ambientLightChanged`, `wallpanel:cameraLightChanged` i `wallpanel:userInteraction`, dane w `event.detail`. Eventy światła przekazują odpowiednio `{lux}` i `{brightnessPercent}`. `userInteraction` jest emitowane przy rozpoczęciu dotyku całego WebView, również wewnątrz cross-origin iframe, aby manager widoków mógł zerować licznik bezczynności. Zarejestruj odbiornik i wywołaj pierwszą metodę, aby rozpocząć odbiór eventów. Po przeładowaniu dokument tworzy nową sesję bridge.
 
 Metody: capabilities, deviceInfo, battery, appVersion, permissions, brightness (`value`: -1 = systemowa, 0..1), mediaVolume (`value`: 0..1), keepAwake (`enabled`: boolean), haptics, reload, signChallenge. Pominięcie argumentów w brightness/mediaVolume/keepAwake odczytuje aktualną wartość. Jasność i keep-awake dotyczą tylko okna aplikacji; głośność dotyczy systemowego strumienia multimediów.
 
@@ -44,6 +46,14 @@ Po POWER_CONNECTED monitor próbuje otworzyć Activity, jeżeli przyznano uprawn
 Po POWER_DISCONNECTED emitowany jest event i wykonywane `finishAndRemoveTask()`. Android pokazuje poprzednie zadanie lub launcher; aplikacja nie może zagwarantować powrotu do konkretnej aplikacji. Event przed zamknięciem jest best-effort: strona może nie zdążyć go obsłużyć. Monitor zostaje aktywny do następnego podłączenia. Start aplikacji na odłączonym tablecie nadal pozwala ją skonfigurować.
 
 ## Weryfikacja urządzenia
+
+### Spotify / bridge v3
+
+Instrukcja konta i testu: [Music / Spotify](../../docs/music-spotify.md). Nowe metody: `music.connect({clientId, authorize})`, `music.disconnect`, `music.getState`, `music.command({action,...})`, `music.getQueue`, `audio.getOutputs`, `audio.selectOutput({id})`, `audio.openSystemOutputPicker`. Zdarzenie `musicStateChanged` przekazuje ten sam model co odczyt stanu. Stare metody pozostają zgodne wstecz.
+
+`connect` zwraca stan po rozpoczęciu próby, nie potwierdzenie autoryzacji. Wynik przychodzi eventem; limit oczekiwania to 60 s. Komendy playbacku odpowiadają dopiero po wyniku SDK. Opuszczenie widoku i rozłączenie App Remote nie pauzują Spotify. Nie żądamy Audio Focus ani dostępu do mikrofonu. Kolejka i wybór wyjścia zwracają `supported:false`; fallback otwiera ustawienia Bluetooth, nie udaje wyboru trasy Spotify.
+
+`scripts/music-smoke.mjs` sprawdza fizyczny WebView przez przekierowany port CDP 9222: bridge, walidację Client ID, jasność Music, nawigację Home/reentry i diagnostykę audio. Nie autoryzuje konta ani nie uruchamia odtwarzania.
 
 `gradlew connectedDebugAndroidTest` sprawdza roundtrip Keystore/DataStore i brak plaintext sekretu na dysku, używając osobnego kontekstu APK testowego. Testy jednostkowe obejmują normalizację originu, obce hosty/porty/schematy, URL z sekretami i transport klucza.
 

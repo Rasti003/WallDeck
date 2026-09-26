@@ -1,4 +1,5 @@
 import { z } from "zod";
+export type { MusicState, AudioOutputState, MusicController } from "./music.js";
 
 export const assistantStates = ["idle", "attention", "listening", "thinking", "speaking", "success", "error", "sleep", "curious", "uncertain", "confirm", "surprised", "wink", "laughing"] as const;
 export const assistantStateSchema = z.enum(assistantStates);
@@ -32,7 +33,7 @@ export const ambientSleepSchema = z.object({
   path: ["homeAssistantResetAbove"],
 }).default({ enabled: true, source: "home-assistant", homeAssistantEntityId: null, homeAssistantSleepBelow: 5, homeAssistantResetAbove: 15, sleepEntryDelaySeconds: 1.6, sleepBelowLux: 5, resetAboveLux: 15, cameraEnabled: false, cameraSleepBelowPercent: 5, cameraResetAbovePercent: 15, cameraSampleSeconds: 30 });
 
-export const viewIdSchema = z.preprocess(value => value === "assistant-demo" ? "assistant-expressive" : value, z.enum(["photos", "ha", "assistant-expressive"]));
+export const viewIdSchema = z.preprocess(value => value === "assistant-demo" ? "assistant-expressive" : value, z.enum(["photos", "ha", "assistant-expressive", "music"]));
 export type ViewId = z.infer<typeof viewIdSchema>;
 
 export const viewRouterSettingsSchema = z.object({
@@ -65,13 +66,15 @@ export const overlayPositionSchema = z.enum([
 ]);
 
 export const settingsSchema = z.object({
+  music: z.object({ clientId: z.string().trim().regex(/^([a-fA-F0-9]{32})?$/).default("") }).default({ clientId: "" }),
   photoIntervalSeconds: z.number().int().min(10).max(3600),
   transitionSeconds: z.number().min(0.3).max(5),
   viewBrightness: z.object({
     photos: z.number().min(0.05).max(1).default(0.75),
     ha: z.number().min(0.05).max(1).default(0.85),
+    music: z.number().min(0.05).max(1).default(0.65),
     "assistant-expressive": z.number().min(0.05).max(1).default(0.65),
-  }).default({ photos: 0.75, ha: 0.85, "assistant-expressive": 0.65 }),
+  }).default({ photos: 0.75, ha: 0.85, music: 0.65, "assistant-expressive": 0.65 }),
   viewRouter: viewRouterSettingsSchema,
   assistantBrightness: assistantBrightnessSchema,
   ambientSleep: ambientSleepSchema,
@@ -92,9 +95,10 @@ export const settingsSchema = z.object({
 export type WallDeckSettings = z.infer<typeof settingsSchema>;
 
 export const defaultSettings: WallDeckSettings = {
+  music: { clientId: "" },
   photoIntervalSeconds: 30,
   transitionSeconds: 1.4,
-  viewBrightness: { photos: 0.75, ha: 0.85, "assistant-expressive": 0.65 },
+  viewBrightness: { photos: 0.75, ha: 0.85, music: 0.65, "assistant-expressive": 0.65 },
   assistantBrightness: { globalEnabled: true, overrides: { sleep: .05 } },
   ambientSleep: { enabled: true, source: "home-assistant", homeAssistantEntityId: null, homeAssistantSleepBelow: 5, homeAssistantResetAbove: 15, sleepEntryDelaySeconds: 1.6, sleepBelowLux: 5, resetAboveLux: 15, cameraEnabled: false, cameraSleepBelowPercent: 5, cameraResetAbovePercent: 15, cameraSampleSeconds: 30 },
   viewRouter: {

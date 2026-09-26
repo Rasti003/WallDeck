@@ -15,6 +15,8 @@ android {
     kotlinOptions { jvmTarget = "17" }
 }
 dependencies {
+    implementation(files("libs/spotify-app-remote-release-0.8.0.aar"))
+    implementation("com.google.code.gson:gson:2.11.0")
     implementation("androidx.activity:activity-ktx:1.10.1")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.9.0")
     implementation("androidx.webkit:webkit:1.13.0")
@@ -22,4 +24,12 @@ dependencies {
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test:runner:1.6.2")
     androidTestImplementation("androidx.test.ext:junit:1.2.1")
+}
+
+tasks.named("preBuild") {
+    doFirst {
+        check(file("libs/spotify-app-remote-release-0.8.0.aar").isFile) {
+            "Missing Spotify SDK. Run scripts/setup-spotify.ps1 (pinned official SDK with SHA-256 verification)."
+        }
+    }
 }

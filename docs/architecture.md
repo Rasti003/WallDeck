@@ -74,7 +74,17 @@ Android może ograniczyć start Activity z tła. Xiaomi/HyperOS może dodatkowo 
 
 ## Przyszłe moduły
 
-Interfejsy `WakeWordModule`, `MediaModule` i `HomeAutomationModule` oddzielają rdzeń APK od przyszłych silników. Docelowy wake word ma działać lokalnie, a STT/LLM/TTS na homelabie. Spotify, YouTube i Home Assistant nie są częścią prototypu 0.1.
+Interfejsy `WakeWordModule`, `MediaModule` i `HomeAutomationModule` oddzielają rdzeń APK od przyszłych silników. Docelowy wake word ma działać lokalnie, a STT/LLM/TTS na homelabie. Spotify używa adaptera App Remote opisanego poniżej; HA obsługuje web/backend. YouTube pozostaje przyszłym modułem.
+
+## Music / Spotify — bridge v3
+
+`MusicView → MusicController → Android Bridge → SpotifyController → Spotify App Remote → Spotify Android → systemowe audio`. React renderuje dane i animacje; adapter Kotlin utrzymuje połączenie i subskrypcje poza cyklem życia komponentu. Nawigacja nie wysyła pause/disconnect. Activity zwalnia App Remote podczas zniszczenia, pozostawiając player Spotify niezależny.
+
+Wspólny kontrakt znajduje się w `packages/contracts/src/music.ts`. Stan obejmuje connection, błąd, aktualny utwór, artwork, pozycję i czas pomiaru, prędkość, shuffle/repeat oraz ograniczenia playera. Web interpoluje postęp tylko podczas potwierdzonego odtwarzania. Opóźnione wyniki poprzedniej generacji połączenia są odrzucane. Artwork pozostaje w pamięci, nie trafia do storage zdjęć ani serwera.
+
+Odczyt rzeczywistej kolejki wymaga dodatkowej integracji, ponieważ App Remote ma tylko operację dodawania do kolejki. Diagnostyka Androida pokazuje dostępne wyjścia, nie deklaruje aktywnej trasy innej aplikacji. Fallback otwiera ustawienia Bluetooth. Sterowanie audio focus i rozróżnianie pauzy użytkownika od przerwania przez asystenta pozostają osobnym etapem; obecny adapter nie przejmuje fokusu ani mikrofonu.
+
+Kontrakt domenowy może zostać użyty przez przyszły MCP/automatyzacje; transport z serwera do konkretnego urządzenia i jego autoryzacja nie są jeszcze wdrożone. Client ID jest obecnie wspólnym ustawieniem aplikacji, a każda instalacja tabletu autoryzuje lokalne Spotify.
 
 ### Aktywność klientów
 

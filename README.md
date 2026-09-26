@@ -37,4 +37,4 @@ Aplikacja Android obsługuje konfigurowalny URL, Device ID i Device Key, szyfrow
 
 Panel WWW obsługuje obecnie album zdjęć, pogodę, jasność per widok oraz centralną integrację Home Assistant. Konfiguracja HA odbywa się w `/admin`; token jest szyfrowany na serwerze i nie wraca do klienta. Administrator może dodać do overlayu dowolne encje HA, nadać im etykiety i przypisać do sześciu stref ekranu. Ich wartości aktualizują się w czasie rzeczywistym, a pełny dashboard jest dostępny jako widok `/ha`.
 
-Wake word, Spotify i YouTube mają obecnie wyłącznie kontrakty rozszerzeń. Nie są jeszcze zaimplementowane.
+Music ma pierwszy adapter Spotify App Remote, widok odtwarzania i konfigurację w adminie. Wymaga Client ID i autoryzacji na tablecie; test rzeczywistego playbacku/BT pozostaje do wykonania. Wake word i YouTube mają wyłącznie kontrakty rozszerzeń.

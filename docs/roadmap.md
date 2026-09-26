@@ -56,7 +56,11 @@
 
 - [ ] rozszerzyć Home Assistant o komendy, sceny i semantyczne modele pomieszczeń;
 - [ ] odtwarzacz YouTube wewnątrz panelu;
-- [ ] sterowanie Spotify;
+- [x] pierwszy adapter Spotify App Remote, MusicController, Music View, Home, konfiguracja Client ID/jasności i diagnostyka wyjść;
+- [ ] Client ID + autoryzacja Spotify i fizyczny test playbacku → Bluetooth, sterowania i odtwarzania po zmianie widoku;
+- [ ] prawdziwy Up Next przez dodatkowy adapter/autoryzację, playlisty i search;
+- [ ] like/favorite, animacje prawdziwej kolejki/shared element i długotrwały test 60 fps;
+- [ ] transport MusicController dla MCP/automatyzacji oraz audio focus/duck/pause/resume asystenta;
 - [ ] routing audio tablet/Bluetooth;
 - [ ] lokalny wake word, VAD i bufor audio;
 - [ ] STT → LLM → TTS na homelabie;

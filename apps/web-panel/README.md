@@ -4,6 +4,8 @@ Aplikacja WWW panelu ściennego. Pierwszy widok prezentuje lokalną kopię album
 
 ## Dostępne ekrany
 
+- `/music` — podgląd Music; aktywacja `music` w managerze wyświetla go na `/panel`. Sterowanie wymaga APK z bridge v3.
+
 - `/panel` — pełnoekranowy widok dla aplikacji tabletowej;
 - `/admin` — osobny panel ustawień otwierany z telefonu lub komputera. WallPanel nie pokazuje prowadzącego do niego odnośnika.
 
@@ -14,6 +16,12 @@ Panel administratora ma stałą nawigację z osobnymi sekcjami: pulpit, widoki i
 Każdy widok ma własne ustawienie jasności. Po aktywacji widoku klient wysyła jego poziom do Android Bridge, więc przyszłe ekrany nocne mogą automatycznie przyciemniać tablet, a dzienne przywracać wyższą jasność.
 
 ## Uruchomienie
+
+### Music / Spotify
+
+Sekcja **Music · Spotify** w `/admin` zapisuje publiczny Client ID oraz jasność widoku Music. Autoryzacja odbywa się przyciskiem na tablecie. Widok ma artwork, metadane, kontekst, interpolowany postęp, kontrolki playbacku i panel diagnostyki audio. Przyciski uwzględniają ograniczenia zwracane przez konto Spotify. Zmiana widoku nie zatrzymuje odtwarzania. Tap całego ekranu i gest w dół nie wywołują nawigacji z Music; służy do tego Home.
+
+`MusicController` jest oddzielony od Reacta i używa zaufanego bridge. Nie ma jeszcze zdalnego transportu MCP/server→tablet. Up Next i playlisty pokazują jawny stan niedostępności. Szczegóły konfiguracji i pozostałe testy: [Music / Spotify](../../docs/music-spotify.md).
 
 Panel, admin, album i widok HA automatycznie wznawiają WebSocket po rozłączeniu (od 1 do 15 sekund między próbami, z niewielką losową zwłoką). Snapshot przywraca aktualny widok i stan HA; panel oraz album ponownie pobierają ustawienia. Po wdrożeniu tej poprawki starsze, już otwarte karty trzeba jednorazowo odświeżyć.
 

@@ -132,6 +132,7 @@ app.get("/api/views", async () => ({ current: currentView, available: [
   { id: "photos", name: "Album zdjęć" },
   { id: "ha", name: "Home Assistant" },
   { id: "assistant-expressive", name: "Asystent — ekspresyjny" },
+  { id: "music", name: "Music · Spotify" },
 ] }));
 app.post("/api/views/activate", async (request, reply) => {
   const parsed = viewIdSchema.safeParse((request.body as { viewId?: unknown } | null)?.viewId);

@@ -22,6 +22,12 @@ Udostępniony link Google Photos traktujemy jak sekret o ograniczonym zakresie. 
 
 ## Odpowiedzialność panelu WWW
 
+### Spotify App Remote
+
+Bridge v3 zachowuje allowlist originu i kontrolę głównej ramki. Późne odpowiedzi komend są dostarczane wyłącznie do bieżącego dokumentu/odbiornika. Web może przekazać publiczny 32-znakowy Client ID, nigdy Client Secret. Redirect URI jest stały: `walldeck://spotify-callback`. SDK i Spotify zarządzają autoryzacją; tokeny nie są zwracane do JS ani zapisywane w konfiguracji serwera.
+
+Komendy mają allowlist, walidowany zakres seek/repeat i wyłącznie URI Spotify o określonym typie. Nie ma arbitralnych intentów, adresów ani wykonywania komend systemowych. Nazwy utworów i urządzeń renderuje React jako tekst. Metadane konta/artwork pozostają w pamięci tabletu. SDK pobieramy z oficjalnego przypiętego release z kontrolą SHA-256; AAR jest ignorowany przez Git. Nie dodano uprawnień Bluetooth, mikrofonu ani odczytu powiadomień.
+
 Jasność per mimika używa istniejącego zaufanego bridge i dotyczy wyłącznie okna WallDeck. Nie zapisuje globalnej jasności systemu ani nie wymaga nowych uprawnień. Backend waliduje nazwy min oraz zakres 5–100%; fallback -1 jest wyliczany w kliencie jako powrót do ustawień Androida.
 
 Widok asystenta jest demonstracją grafiki. Suwak i generator lokalny są jedynymi źródłami poziomu audio; nie korzysta z mikrofonu, kamery, zewnętrznego TTS ani nowych uprawnień Androida. Do API aktywacji dodano tylko walidowany identyfikator `assistant-demo`.

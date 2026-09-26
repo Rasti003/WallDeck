@@ -24,7 +24,7 @@ test("serves assets created after startup and never returns HTML for missing ass
       assert.equal(response.statusCode, 404);
       assert.doesNotMatch(response.headers["content-type"], /html/);
     }
-    for (const url of ["/admin", "/panel", "/ha", "/assistant-demo", "/index.html"]) {
+    for (const url of ["/admin", "/panel", "/ha", "/music", "/assistant-demo", "/index.html"]) {
       const response = await app.inject(url);
       assert.equal(response.statusCode, 200);
       assert.match(response.headers["content-type"], /html/);

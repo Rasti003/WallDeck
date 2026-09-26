@@ -109,3 +109,13 @@ Xiaomi 2603ARP14G / Android 16: przed poprawką API aktywowało `assistant-demo`
 - Po teście przywrócono wybraną przez użytkownika encję `sensor.esphome_sensors_box1_oswietlenie`, źródło HA, wyłączoną kamerę i widok `photos`.
 - Powtarzalny test znajduje się w `scripts/sleep-entry-smoke.mjs`. Web: typecheck i build PASS; 24 testy klienta, 4 testy serwera i 2 testy synchronizatora PASS. APK nie został zmieniony.
 - Po dodaniu konfiguracji czasu powtórzono test z wartością 2,4 s: pierwsze `idle` po 342 ms, `sleep` po 2735 ms, zmierzony odstęp 2393 ms. PASS. Panel admina pokazuje pole „Spokojna twarz przed zaśnięciem” z wartością 1,6 s i zakresem 0,3–10 s. Po teście przywrócono 1,6 s, encję użytkownika i widok zdjęć.
+
+## 2026-09-26 — Music / Spotify, etap bez autoryzacji konta
+
+- Xiaomi 2603ARP14G, Android 16 / API 36, ADB USB: nowy APK z bridge v3 zainstalowany poprawnie.
+- `scripts/music-smoke.mjs` na fizycznym WebView: PASS. Spotify jest zainstalowane; stan disconnected przy nieustawionym Client ID.
+- Music renderuje się poprawnie, Home otwiera HA, ponowna aktywacja Music pozostawia dokładnie jeden widok. Panel wyjść audio otwiera się i zamyka. Jasność Music odczytana z Androida: 0,65.
+- Android zwrócił dwa dostępne wyjścia. Aktywna trasa Spotify pozostaje null; wybór wyjścia i odczyt kolejki jawnie zwracają supported:false. Niepoprawny Client ID został odrzucony.
+- Sprawdzono wygląd Music na tablecie oraz sekcję Music w przeglądarce /admin. Po testach przywrócono wcześniejszy widok zdjęć; nie zmieniono konfiguracji nocy ani głośności.
+- Android assembleDebug/testDebugUnitTest/lintDebug PASS (0 błędów lint, 23 ostrzeżenia). Web typecheck/build, 27 testów klienta, 4 testy serwera, 2 synchronizatora PASS.
+- NIE TESTOWANO: autoryzacji Spotify, rzeczywistych metadanych/okładki, komend playbacku, utrzymania odtwarzania po zmianie widoku, wyjścia BT ani długiego odsłuchu. Wymagane są Client ID i zgoda konta Spotify. Nie oznaczamy kompletnego MVP jako ukończonego.

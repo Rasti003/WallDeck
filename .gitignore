@@ -5,6 +5,7 @@
 Thumbs.db
 
 # Android / Gradle
+apps/tablet-android/app/libs/*.aar
 **/.gradle/
 **/.kotlin/
 **/build/

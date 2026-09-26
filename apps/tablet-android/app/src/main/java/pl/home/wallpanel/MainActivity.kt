@@ -43,6 +43,8 @@ class MainActivity : ComponentActivity() {
     private var swipeStartedAt = 0L
     private val store by lazy { ConfigStore(applicationContext) }
     private val audio by lazy { getSystemService(AudioManager::class.java) }
+    private val music by lazy { SpotifyController(this) { state -> runOnUiThread { event("musicStateChanged", state) } } }
+    private val audioOutputs by lazy { AudioOutputs(this) }
     private val sensorManager by lazy { getSystemService(SensorManager::class.java) }
     private val cameraLightSampler by lazy {
         CameraLightSampler(this) { level -> runOnUiThread { event("cameraLightChanged", JSONObject().put("brightnessPercent", level)) } }
@@ -284,8 +286,29 @@ class MainActivity : ComponentActivity() {
             val req = JSONObject(raw); id = req.get("id")
             require(id is String && (id as String).length <= 128) { "INVALID_ID" }
             val args = req.optJSONObject("args") ?: JSONObject()
+            if (req.getString("method") == "music.command") {
+                val requestId = id
+                music.command(args.getString("action"), args) { result, error ->
+                    runOnUiThread {
+                        // Never deliver account metadata or late replies into a replaced document.
+                        if (reply === proxy && web?.url?.let { PanelPolicy.sameOrigin(it, trusted) } == true) {
+                            val response = JSONObject().put("id", requestId)
+                            if (error == null) response.put("result", result) else response.put("error", error)
+                            proxy.postMessage(response.toString())
+                        }
+                    }
+                }
+                return
+            }
             val result: Any = when (req.getString("method")) {
-                "capabilities" -> JSONObject().put("bridgeVersion", 2).put("methods", JSONArray(listOf("capabilities", "deviceInfo", "sensors", "cameraLightSampling", "battery", "brightness", "mediaVolume", "keepAwake", "haptics", "reload", "appVersion", "permissions", "signChallenge"))).put("wakeWord", false).put("spotify", false).put("youtube", false).put("homeAssistant", false)
+                "capabilities" -> JSONObject().put("bridgeVersion", 3).put("methods", JSONArray(listOf("capabilities", "deviceInfo", "sensors", "cameraLightSampling", "battery", "brightness", "mediaVolume", "keepAwake", "haptics", "reload", "appVersion", "permissions", "signChallenge", "music.connect", "music.disconnect", "music.getState", "music.command", "music.getQueue", "audio.getOutputs", "audio.selectOutput", "audio.openSystemOutputPicker"))).put("wakeWord", false).put("spotify", true).put("youtube", false).put("homeAssistant", false)
+                "music.connect" -> music.connect(args.getString("clientId"), args.optBoolean("authorize", false))
+                "music.disconnect" -> music.disconnect()
+                "music.getState" -> music.state()
+                "music.getQueue" -> JSONObject().put("supported", false).put("reason", "APP_REMOTE_QUEUE_UNAVAILABLE")
+                "audio.getOutputs" -> audioOutputs.state()
+                "audio.selectOutput" -> JSONObject().put("supported", false).put("fallback", "bluetooth-settings")
+                "audio.openSystemOutputPicker" -> audioOutputs.openSystemOutputPicker()
                 "deviceInfo" -> deviceInfo()
                 "sensors" -> sensors()
                 "cameraLightSampling" -> {
@@ -335,7 +358,7 @@ class MainActivity : ComponentActivity() {
         }
     }
     private fun toast(text: String) = Toast.makeText(this, text, Toast.LENGTH_LONG).show()
-    override fun onDestroy() { cameraLightSampler.destroy(); sensorManager.unregisterListener(lightListener); unregisterReceiver(batteryReceiver); dialog?.dismiss(); web?.destroy(); web = null; reply = null; super.onDestroy() }
+    override fun onDestroy() { music.disconnect(); cameraLightSampler.destroy(); sensorManager.unregisterListener(lightListener); unregisterReceiver(batteryReceiver); dialog?.dismiss(); web?.destroy(); web = null; reply = null; super.onDestroy() }
 
     private companion object {
         const val DEBUG_PANEL_URL_EXTRA = "pl.home.wallpanel.DEBUG_PANEL_URL"
