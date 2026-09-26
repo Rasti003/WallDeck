@@ -263,7 +263,7 @@ Po ponownym połączeniu klient wysyła ostatni numer rewizji. Serwer zwraca bra
 - [x] własne etykiety, sześć stref ekranu i aktualizacje `state_changed` bez odświeżania;
 - [x] osobny widok dashboardu pod `/ha`;
 - [x] reconnect, snapshot stanu i podstawowa diagnostyka;
-- [ ] skonfigurować kontrolowany reverse proxy lub nagłówki HA dla osadzania dashboardu (obecna instancja zwraca `X-Frame-Options: SAMEORIGIN`);
+- [x] dopuścić osadzanie dashboardu w obecnej instancji HA przez `http.use_x_frame_options: false`; konfiguracja zweryfikowana, HA uruchomiony ponownie, a widok `/ha` sprawdzony;
 - [ ] mapowanie kolejnych encji do modeli pomieszczeń i obsługa komend.
 
 ### Etap 4 — ramka zdjęć
