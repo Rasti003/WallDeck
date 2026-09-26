@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { defaultSettings, type AssistantState, type DeviceReport, type ViewId, type WallDeckSettings } from "@walldeck/contracts";
+import { TabletMenu } from "./TabletMenu";
 import { api } from "./api";
 import { connectEvents } from "./events";
 import { nativeBridge } from "./native";
@@ -12,6 +13,9 @@ import { musicController } from "./music/controller";
 import type { MusicState } from "@walldeck/contracts";
 
 export function PanelApp({ forcedView }: { forcedView?: ViewId }) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuOpenRef = useRef(false);
+  menuOpenRef.current = menuOpen;
   const reducedMotion = useReducedMotion();
   const [viewId, setViewId] = useState<ViewId>("photos");
   const [settings, setSettings] = useState<WallDeckSettings>(defaultSettings);
@@ -82,6 +86,7 @@ export function PanelApp({ forcedView }: { forcedView?: ViewId }) {
   }, [forcedView]);
 
   const activeView = forcedView ?? viewId;
+  useEffect(() => { if (!settings.tabletMenu.enabled) setMenuOpen(false); }, [settings.tabletMenu.enabled]);
 
   useEffect(() => {
     if (previousView.current !== activeView) {
@@ -231,7 +236,7 @@ export function PanelApp({ forcedView }: { forcedView?: ViewId }) {
         : assistantIdleTransition && idleFromMusic.current && activeView === "assistant-expressive"
           ? { target: "photos" as const, seconds: settings.viewRouter.inactivityAction.assistantIdleSeconds, startsAssistantIdle: false, completesAssistantIdle: true }
           : inactivityTransition(activeView, settings.viewRouter, assistantIdleTransition);
-    if (forcedView || !transition) return;
+    if (forcedView || menuOpen || !transition) return;
     idleTimer.current = setTimeout(() => {
       if (activeView === "ha" && cameFromMusic.current && musicPlaying.current) {
         interruptionPending.current = false;
@@ -257,9 +262,10 @@ export function PanelApp({ forcedView }: { forcedView?: ViewId }) {
       if (transition.completesAssistantIdle) setAssistantIdleTransition(false);
       activate(transition.target);
     }, transition.seconds * 1_000);
-  }, [activeView, activate, assistantIdleTransition, danceTransition, forcedView, musicInactive, settings.viewRouter]);
+  }, [activeView, activate, assistantIdleTransition, danceTransition, forcedView, menuOpen, musicInactive, settings.viewRouter]);
 
   const registerActivity = useCallback(() => {
+    if (menuOpenRef.current) return;
     const target = danceTransition && activeView === "assistant-expressive" ? "music" : assistantIdleTransition && idleFromMusic.current && activeView === "assistant-expressive" ? "music" : viewAfterActivity(activeView, settings.viewRouter, assistantIdleTransition);
     if (target) {
       if (interruptionPending.current) return;
@@ -285,13 +291,13 @@ export function PanelApp({ forcedView }: { forcedView?: ViewId }) {
       }
     };
     window.addEventListener("walldeck:remoteActivity", registerActivity);
-    window.addEventListener("pointerdown", activity, { passive: true });
+    window.addEventListener("pointerup", activity, { passive: true });
     window.addEventListener("keydown", activity);
     window.addEventListener("wallpanel:userInteraction", activity);
     return () => {
       if (idleTimer.current) clearTimeout(idleTimer.current);
       window.removeEventListener("walldeck:remoteActivity", registerActivity);
-      window.removeEventListener("pointerdown", activity);
+      window.removeEventListener("pointerup", activity);
       window.removeEventListener("keydown", activity);
       window.removeEventListener("wallpanel:userInteraction", activity);
     };
@@ -325,9 +331,15 @@ export function PanelApp({ forcedView }: { forcedView?: ViewId }) {
 
   const View = viewRegistry[activeView];
   const activateSwipeDown = useCallback(() => {
+    if (!forcedView && settings.tabletMenu.enabled) {
+      menuOpenRef.current = true;
+      if (idleTimer.current) clearTimeout(idleTimer.current);
+      setMenuOpen(true);
+      return;
+    }
     const target = viewAfterSwipeDown(activeView, settings.viewRouter);
     if (!forcedView && target) activate(target);
-  }, [activeView, activate, forcedView, settings.viewRouter]);
+  }, [activeView, activate, forcedView, settings.viewRouter, settings.tabletMenu.enabled]);
 
   useEffect(() => {
     window.addEventListener("wallpanel:swipeDown", activateSwipeDown);
@@ -343,7 +355,7 @@ export function PanelApp({ forcedView }: { forcedView?: ViewId }) {
       onPointerUp={(event) => {
         const start = touchStart.current;
         touchStart.current = null;
-        if (!start) return;
+        if (!start || menuOpenRef.current) return;
         const deltaX = event.clientX - start.x;
         const deltaY = event.clientY - start.y;
         if (start.y <= innerHeight * 0.4 && deltaY >= 96 && Math.abs(deltaX) <= deltaY * 0.65 && Date.now() - start.time <= 900) {
@@ -358,6 +370,7 @@ export function PanelApp({ forcedView }: { forcedView?: ViewId }) {
         }
       }}
     >
+      {!forcedView && settings.tabletMenu.enabled && <TabletMenu open={menuOpen} current={activeView} views={settings.tabletMenu.views} onOpen={activateSwipeDown} onClose={() => setMenuOpen(false)} onSelect={view => { setMenuOpen(false); setDanceTransition(false); setAssistantIdleTransition(false); setRequestedAssistantState(null); activate(view); }} />}
       <PanelContext.Provider value={{ settings, activeView, requestedAssistantState }}>
       <AnimatePresence mode="wait" custom={instantTransition}>
         <motion.div

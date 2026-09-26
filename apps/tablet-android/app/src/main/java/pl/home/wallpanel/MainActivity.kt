@@ -103,7 +103,6 @@ class MainActivity : ComponentActivity() {
             swipeStartX = ev.x
             swipeStartY = ev.y
             swipeStartedAt = SystemClock.elapsedRealtime()
-            event("userInteraction", JSONObject().put("kind", "touch"))
         }
         if (ev.actionMasked == MotionEvent.ACTION_UP) {
             val deltaX = ev.x - swipeStartX
@@ -117,6 +116,7 @@ class MainActivity : ComponentActivity() {
                 return true
             }
         }
+        if (ev.actionMasked == MotionEvent.ACTION_UP) event("userInteraction", JSONObject().put("kind", "touch"))
         if (ev.actionMasked == MotionEvent.ACTION_UP && ev.x < 72 * resources.displayMetrics.density && ev.y < 120 * resources.displayMetrics.density) {
             val now = SystemClock.elapsedRealtime()
             cornerTaps = if (now - lastTap < 650) cornerTaps + 1 else 1

@@ -66,6 +66,7 @@ export const overlayPositionSchema = z.enum([
 ]);
 
 export const settingsSchema = z.object({
+  tabletMenu: z.object({ enabled: z.boolean().default(true), views: z.array(z.enum(["photos", "ha", "music", "assistant-expressive"])).min(1).max(4).refine(v => new Set(v).size === v.length).default(["photos", "ha", "music", "assistant-expressive"]) }).default({ enabled: true, views: ["photos", "ha", "music", "assistant-expressive"] }),
   music: z.object({ clientId: z.string().trim().regex(/^([a-fA-F0-9]{32})?$/).default("") }).default({ clientId: "" }),
   photoIntervalSeconds: z.number().int().min(10).max(3600),
   transitionSeconds: z.number().min(0.3).max(5),
@@ -95,6 +96,7 @@ export const settingsSchema = z.object({
 export type WallDeckSettings = z.infer<typeof settingsSchema>;
 
 export const defaultSettings: WallDeckSettings = {
+  tabletMenu: { enabled: true, views: ["photos", "ha", "music", "assistant-expressive"] },
   music: { clientId: "" },
   photoIntervalSeconds: 30,
   transitionSeconds: 1.4,

@@ -11,6 +11,7 @@ import {
 } from "@walldeck/contracts";
 import { api } from "./api";
 import { connectEvents } from "./events";
+import { menuLabels } from "./TabletMenu";
 import { StateMachinesAdmin } from "./StateMachinesAdmin";
 import { AssistantAdmin } from "./assistant/AssistantAdmin";
 import { createOverlayItemId } from "./overlay-item-id";
@@ -267,6 +268,11 @@ export function AdminApp() {
         </section>}
 
         {section === "views" && <>
+      <form className="admin-card admin-form" onSubmit={save}><h2>Menu tabletu</h2><p>Pasek widoków otwierany gestem w dół lub uchwytem u góry ekranu. Zastępuje regułę gestu w dół, gdy jest włączony.</p>
+      <label><input type="checkbox" checked={settings.tabletMenu.enabled} onChange={e=>setSettings({...settings,tabletMenu:{...settings.tabletMenu,enabled:e.target.checked}})} /> Włącz menu na wszystkich widokach</label>
+      {([...settings.tabletMenu.views,...(Object.keys(menuLabels) as ViewId[]).filter(v=>!settings.tabletMenu.views.includes(v))]).map(v=><div key={v} className="rule-flow"><label><input type="checkbox" checked={settings.tabletMenu.views.includes(v)} disabled={settings.tabletMenu.views.length===1&&settings.tabletMenu.views.includes(v)} onChange={e=>setSettings({...settings,tabletMenu:{...settings.tabletMenu,views:e.target.checked?[...settings.tabletMenu.views,v]:settings.tabletMenu.views.filter(x=>x!==v)}})} />{menuLabels[v]}</label><button type="button" disabled={settings.tabletMenu.views.indexOf(v)<=0} onClick={()=>{const next=[...settings.tabletMenu.views];const i=next.indexOf(v);[next[i-1],next[i]]=[next[i],next[i-1]];setSettings({...settings,tabletMenu:{...settings.tabletMenu,views:next}})}} aria-label={`Przesuń ${menuLabels[v]} wyżej`}>↑</button></div>)}
+      <button type="submit">Zapisz menu</button></form>
+
       <section className="admin-card">
         <div><span className="admin-kicker">Widoki</span><h2>Aktywny ekran</h2></div>
         <div className="view-list">

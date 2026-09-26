@@ -116,3 +116,5 @@ MainActivity disables resizing/PiP at manifest level. DeviceAdminReceiver now cl
 PowerService handles onTaskRemoved for WallDeck only, checks physical power, Device Owner and a persistent manual-exit flag before attempting restart after 700 ms. Activity launch clears suppression, explicit exits set it. Monitoring must remain running; this does not recover Android force-stop.
 
 OEM hidden-task recovery uses MainActivity.onStop and appTasks visibility on API 32+, plus REORDER_TASKS to move its own task forward. It avoids destroyed/finishing Activities, deliberate exits, disconnected power, keyguard/screen-off and Spotify connecting state. It does not hide the OEM toolbar.
+
+tabletMenu settings migrate with defaults, reject empty/duplicate entries. Web selector uses native swipeDown across embedded HA and web pointer gestures elsewhere, with a shared top handle. Native userInteraction now follows gesture classification on release. No new bridge capability; inactivity uses menu-open guard.

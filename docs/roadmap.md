@@ -96,3 +96,5 @@
 - [ ] Confirm Xiaomi top-edge floating-window toolbar no longer appears with user gesture.
 
 - [x] User confirmed recovery from HyperOS X via hidden-task handling (task-removed alone was insufficient). OEM toolbar hiding remains unresolved.
+
+- [x] Glass view menu, downward gesture, visible/order settings in admin and inactivity pause.

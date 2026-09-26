@@ -80,3 +80,5 @@ Kiosk hardening: WallDeck declares non-resizable/no picture-in-picture. Managed 
 HyperOS limitation: its top-edge window toolbar remains visible and X can close the task even in managed kiosk. PowerService now attempts to reopen a removed WallDeck task after 700 ms while powered and Device Owner. Explicit native exits set a persistent suppression flag; no automatic reopen after those exits. This mitigates closure, not toolbar visibility.
 
 Further diagnosis: HyperOS X hides the existing task while LOCKED remains active, so task-removed callbacks do not fire. On Android 12L+, onStop now checks the current task visibility after 1 second and restores it if still docked/locked, awake/unlocked, not deliberately exiting and Spotify is not connecting. Exact X reproduction awaits confirmation.
+
+Touch activity is emitted at release after excluding the native downward swipe, so assistant inactivity handling cannot consume the menu gesture before it completes.

@@ -168,3 +168,6 @@ User confirmed window sizing blocked but OEM toolbar X still closes WallDeck. Ad
 Follow-up: user X test failed for task-removed recovery. ADB confirmed MainActivity still present but hidden, launcher foreground, LOCKED retained and monitor running. Added API-32+ hidden-task recovery. assembleDebug/testDebugUnitTest/lintDebug PASS after API guards. APK update installed successfully and launched; exact OEM X result pending user test.
 
 User confirmed HyperOS X now restores WallDeck. Regression test: Volume Down 2.5 s followed by 3 s wait leaves launcher foreground and lock-task NONE; deliberate exit is not overridden. Relaunched panel afterwards.
+
+## 2026-09-26: Tablet view menu
+Android build/unit/lint PASS, APK installed. Physical injected downward swipe from inside upper panel opened menu (assistant view). tablet-menu-smoke PASS opening/closing via native swipe events on photos, HA, Music and assistant; settings restored. Web 30 client tests + 4 server + 2 album tests PASS; typecheck/build PASS. Browser visual inspection confirmed glass menu layout. OEM edge toolbar not hidden.
