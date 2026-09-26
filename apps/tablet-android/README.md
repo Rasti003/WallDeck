@@ -68,3 +68,5 @@ Spotify: błąd połączenia zachowuje kategorię wyjątku SDK w polu error. Naz
 App Remote 0.8.0 wiąże usługę Spotify przez applicationContext bez BIND_ALLOW_ACTIVITY_STARTS. Na Androidzie 16 powodowało to BAL_BLOCK przy otwieraniu AuthorizationActivityInternalProxy i timeout po 60 s. SpotifyBindingContext dodaje publiczną flagę Androida tylko dla authorize=true, pakietu com.spotify.music i dwóch znanych akcji App Remote na API 34+. Nie obniżamy target SDK ani nie uruchamiamy prywatnej Activity Spotify. System nadal wymaga widoczności aplikacji i zgody użytkownika.
 
 Device Owner preparation: WallDeckAdminReceiver and res/xml/device_admin.xml provide a provisioning entry point only, without automatic policies or kiosk activation. On the current tablet, ADB provisioning was rejected because existing accounts are present. No accounts were removed. Full kiosk and safe exit controls remain pending.
+
+Provisioning update: after the user removed all accounts, Device Owner registration succeeded without a factory reset. WallDeck is now the device owner on the test tablet. Kiosk remains inactive pending implementation of entry and safe exits.

@@ -85,3 +85,6 @@
 
 - [x] Prepare native Device Owner receiver and attempt no-reset provisioning.
 - [ ] Resolve provisioning blocker: existing tablet accounts. Full kiosk, native emergency exit and power-disconnect exit remain pending.
+
+- [x] Resolve account blocker and provision WallDeck as Device Owner without reset.
+- [ ] Implement and test managed kiosk entry, native emergency exit, tablet-mode button and power-disconnect exit.

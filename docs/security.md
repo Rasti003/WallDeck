@@ -51,3 +51,5 @@ Diagnostyka Spotify przekazuje wyłącznie ograniczoną nazwę klasy błędu SDK
 Autoryzacja Spotify na API 34+ używa BIND_ALLOW_ACTIVITY_STARTS wyłącznie przy authorize=true i bindzie do com.spotify.music z akcją App Remote. To jawne udostępnienie systemowej możliwości otwarcia okna zgody przez powiązaną usługę, gdy WallDeck jest widoczny. Nie dotyczy innych usług, nie nadaje uprawnień konta ani nie zatwierdza zgody za użytkownika.
 
 WallDeckAdminReceiver is exported only behind android.permission.BIND_DEVICE_ADMIN; its policy list is empty. Device Owner is a broad management role and requires deliberate provisioning. The attempted registration was refused by Android due to existing accounts; no owner or active admin remained. Do not remove accounts or reset the device as an automatic workaround.
+
+Provisioning update: user removed remaining accounts; a subsequent authorized ADB registration succeeded. WallDeck now holds Device Owner on the physical test tablet. No kiosk policies have been applied. Earlier failed-attempt reports above describe the previous state.

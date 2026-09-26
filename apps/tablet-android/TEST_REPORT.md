@@ -149,3 +149,6 @@ Xiaomi 2603ARP14G / Android 16 over Wi-Fi: real Spotify connected and paused. mu
 
 ## 2026-09-26: No-reset Device Owner attempt
 Xiaomi 2603ARP14G, Android 16, Wi-Fi ADB. assembleDebug/testDebugUnitTest/lintDebug PASS; update installation Success. dpm set-device-owner pl.home.wallpanel/.WallDeckAdminReceiver rejected: Not allowed to set the device owner because there are already some accounts on the device. Verified no owners, no enabled device admins, lock task NONE. WallDeck restarted in foreground. No accounts/settings removed and no reset performed.
+
+## 2026-09-26: Device Owner retry succeeded
+Physical Xiaomi 2603ARP14G, Android 16 over Wi-Fi. After the user removed remaining accounts, account count was 0. dpm set-device-owner succeeded for pl.home.wallpanel/.WallDeckAdminReceiver. dpm list-owners confirms DeviceOwner on user 0. Lock task remains NONE. No factory reset performed; full kiosk activation and exit lifecycle are not implemented yet.
