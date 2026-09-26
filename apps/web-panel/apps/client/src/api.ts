@@ -51,7 +51,7 @@ export const api = {
       body: JSON.stringify(config),
     }),
     entities: (query = "") => json<HomeAssistantEntity[]>(`/api/ha/entities?q=${encodeURIComponent(query)}`),
-    state: () => json<HomeAssistantSelectedState | null>("/api/ha/state"),
+    overlay: () => json<HomeAssistantSelectedState[]>("/api/ha/overlay"),
   },
 };
 

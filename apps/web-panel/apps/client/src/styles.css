@@ -32,6 +32,10 @@ button, input, select { font: inherit; }
 .ambient-overlay__weather small { font-size: .68em; opacity: .72; }
 .ambient-overlay__ha { margin-top: .65rem; font-size: clamp(.72rem, 1vw, 1rem); opacity: .76; }
 .ambient-overlay__ha i { display: inline-block; width: .5rem; height: .5rem; margin-right: .4rem; border-radius: 50%; background: #8de6b1; box-shadow: 0 0 12px #8de6b1; }
+.ambient-overlay__entities { display: flex; flex-wrap: wrap; justify-content: inherit; gap: .5rem; margin-top: .8rem; }
+.ambient-overlay__entity { display: grid; min-width: 7.5rem; gap: .1rem; padding: .65rem .8rem; border: 1px solid rgba(255,255,255,.16); border-radius: 14px; background: rgba(8,10,14,.38); box-shadow: 0 10px 30px rgba(0,0,0,.15); backdrop-filter: blur(14px); }
+.ambient-overlay__entity small { max-width: 13rem; overflow: hidden; font-size: clamp(.62rem, .8vw, .78rem); opacity: .72; text-overflow: ellipsis; white-space: nowrap; }
+.ambient-overlay__entity strong { font-size: clamp(.95rem, 1.25vw, 1.25rem); font-weight: 580; }
 
 .panel-state { position: fixed; inset: 0; display: grid; place-content: center; gap: .75rem; text-align: center; background: #080a0e; }
 .panel-state strong { font-size: 1.5rem; }
@@ -68,6 +72,16 @@ button, input, select { font: inherit; }
 .entity-picker > div { display: grid; gap: .25rem; }
 .entity-picker small { color: #747b75; }
 .entity-picker input, .entity-picker select { width: 100%; padding: .85rem 1rem; border: 1px solid #d2d5cd; border-radius: 12px; color: #252a26; background: rgba(255,255,255,.75); }
+.entity-add-grid { display: grid; grid-template-columns: 1fr 1.5fr 1fr 1fr auto; align-items: end; gap: .65rem; }
+.entity-add-grid label { display: grid; gap: .4rem; color: #5d655e; font-size: .76rem; font-weight: 650; }
+.entity-add-button { min-height: 46px; padding: .75rem 1rem; border: 0; border-radius: 12px; color: white; background: #315f44; cursor: pointer; }
+.entity-add-button:disabled { cursor: default; opacity: .4; }
+.entity-overlay-list { display: grid; gap: .6rem; }
+.entity-overlay-list > p { margin: .3rem 0 0; color: #747b75; }
+.entity-overlay-list article { display: grid; grid-template-columns: minmax(180px, 1.4fr) 1fr 1fr auto; align-items: center; gap: .65rem; padding: .75rem; border-radius: 14px; background: rgba(222,226,216,.52); }
+.entity-overlay-list article > div { display: grid; min-width: 0; gap: .2rem; }
+.entity-overlay-list article small { overflow: hidden; color: #747b75; text-overflow: ellipsis; white-space: nowrap; }
+.entity-overlay-list article button { padding: .65rem .8rem; border: 1px solid #d3b7aa; border-radius: 10px; color: #844e3a; background: #f5e8e1; cursor: pointer; }
 .button-row { display: flex; gap: .7rem; }
 .admin-form footer .button-secondary { color: #315f44; border: 1px solid #9eafa3; background: transparent; }
 .brightness-control { display: grid; gap: .8rem; margin: 0 0 1.5rem; padding: 1.1rem 1.2rem; border: 1px solid #d9dbd3; border-radius: 16px; background: rgba(255,255,255,.46); }
@@ -94,6 +108,7 @@ button, input, select { font: inherit; }
   .admin-shell { padding: 24px 16px; }
   .admin-stats { margin-bottom: 2rem; }
   .field-grid, .toggle-grid, .ha-metrics { grid-template-columns: 1fr; }
+  .entity-add-grid, .entity-overlay-list article { grid-template-columns: 1fr; }
   .admin-form footer { align-items: stretch; flex-direction: column; }
   .button-row { flex-direction: column; }
 }

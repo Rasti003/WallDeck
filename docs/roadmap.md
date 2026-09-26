@@ -20,7 +20,7 @@
 - [x] jasność tabletu konfigurowana osobno dla każdego widoku;
 - [x] centralny adapter Home Assistant REST/WebSocket z reconnectem;
 - [x] szyfrowana, trwała konfiguracja HA w panelu `/admin`;
-- [x] wybór czujnika CO₂ i aktualizacja overlayu w czasie rzeczywistym;
+- [x] uniwersalny wybór wielu encji HA, etykiety, sześć stref overlayu i aktualizacja w czasie rzeczywistym;
 - [x] osobny widok dashboardu Home Assistant pod `/ha`;
 
 ## Najbliższy etap

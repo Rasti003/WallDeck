@@ -35,6 +35,6 @@ APK pozostaje cienką warstwą sprzętową. Interfejs rozwijamy jako aplikację 
 
 Aplikacja Android obsługuje konfigurowalny URL, Device ID i Device Key, szyfrowany storage, bridge ograniczony do zaufanego originu, informacje o urządzeniu, baterię, jasność okna, głośność, keep-awake, haptics, przeładowanie oraz zdarzenia zasilania. Po podłączeniu zasilania może wejść na pierwszy plan, a po odłączeniu zamyka Activity i odsłania poprzednią aplikację, na ile pozwala Android/HyperOS.
 
-Panel WWW obsługuje obecnie album zdjęć, pogodę, jasność per widok oraz centralną integrację Home Assistant. Konfiguracja HA odbywa się w `/admin`; token jest szyfrowany na serwerze i nie wraca do klienta. Wybrany czujnik CO₂ aktualizuje overlay w czasie rzeczywistym, a pełny dashboard jest dostępny jako widok `/ha`.
+Panel WWW obsługuje obecnie album zdjęć, pogodę, jasność per widok oraz centralną integrację Home Assistant. Konfiguracja HA odbywa się w `/admin`; token jest szyfrowany na serwerze i nie wraca do klienta. Administrator może dodać do overlayu dowolne encje HA, nadać im etykiety i przypisać do sześciu stref ekranu. Ich wartości aktualizują się w czasie rzeczywistym, a pełny dashboard jest dostępny jako widok `/ha`.
 
 Wake word, Spotify i YouTube mają obecnie wyłącznie kontrakty rozszerzeń. Nie są jeszcze zaimplementowane.

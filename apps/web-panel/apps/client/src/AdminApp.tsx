@@ -2,6 +2,8 @@ import { useEffect, useState, type FormEvent } from "react";
 import {
   defaultSettings,
   type HomeAssistantEntity,
+  type HomeAssistantOverlayItem,
+  type HomeAssistantSelectedState,
   type HomeAssistantStatus,
   type ViewId,
   type WallDeckSettings,
@@ -20,38 +22,45 @@ export function AdminApp() {
   const [photoCount, setPhotoCount] = useState(0);
   const [status, setStatus] = useState("Ładowanie…");
   const [haStatus, setHaStatus] = useState<HomeAssistantStatus | null>(null);
-  const [haForm, setHaForm] = useState({ baseUrl: "", token: "", dashboardUrl: "", co2EntityId: "" });
+  const [haForm, setHaForm] = useState<{ baseUrl: string; token: string; dashboardUrl: string; overlayEntities: HomeAssistantOverlayItem[] }>({ baseUrl: "", token: "", dashboardUrl: "", overlayEntities: [] });
   const [haEntities, setHaEntities] = useState<HomeAssistantEntity[]>([]);
-  const [haSearch, setHaSearch] = useState("co2");
+  const [haLiveStates, setHaLiveStates] = useState<HomeAssistantSelectedState[]>([]);
+  const [haSearch, setHaSearch] = useState("");
+  const [entityDraft, setEntityDraft] = useState<{ entityId: string; label: string; position: WallDeckSettings["overlay"]["position"] }>({ entityId: "", label: "", position: "bottom-right" });
   const [haMessage, setHaMessage] = useState("Nie skonfigurowano");
 
   useEffect(() => {
     Promise.all([api.settings(), api.views(), api.photos(), api.homeAssistant.config()]).then(([nextSettings, nextViews, photos, homeAssistant]) => {
       setSettings(nextSettings); setViews(nextViews); setPhotoCount(photos.length); setStatus("Gotowe");
       setHaStatus(homeAssistant);
-      setHaForm({ baseUrl: homeAssistant.baseUrl, token: "", dashboardUrl: homeAssistant.dashboardUrl, co2EntityId: homeAssistant.co2EntityId ?? "" });
+      setHaForm({ baseUrl: homeAssistant.baseUrl, token: "", dashboardUrl: homeAssistant.dashboardUrl, overlayEntities: homeAssistant.overlayEntities });
       setHaMessage(homeAssistant.configured ? (homeAssistant.connected ? "Połączono" : homeAssistant.lastError ?? "Łączenie…") : "Nie skonfigurowano");
     }).catch((error) => setStatus(String(error)));
   }, []);
 
   useEffect(() => {
     if (!haStatus?.configured) return;
+    if (haSearch.trim().length < 2) { setHaEntities([]); return; }
     const load = () => api.homeAssistant.entities(haSearch).then(setHaEntities).catch(() => undefined);
     load();
     const timer = setInterval(load, 5_000);
     return () => clearInterval(timer);
   }, [haStatus?.configured, haSearch]);
 
+  useEffect(() => { if (haStatus?.configured) api.homeAssistant.overlay().then(setHaLiveStates).catch(() => undefined); }, [haStatus?.configured]);
+
   useEffect(() => {
     const protocol = location.protocol === "https:" ? "wss:" : "ws:";
     const socket = new WebSocket(`${protocol}//${location.host}/api/events`);
     socket.onmessage = (event) => {
-      const message = JSON.parse(event.data) as { type: string; status?: HomeAssistantStatus; homeAssistant?: HomeAssistantStatus };
+      const message = JSON.parse(event.data) as { type: string; status?: HomeAssistantStatus; homeAssistant?: HomeAssistantStatus; entities?: HomeAssistantSelectedState[]; homeAssistantStates?: HomeAssistantSelectedState[] };
       const next = message.type === "snapshot" ? message.homeAssistant : message.status;
       if (next) {
         setHaStatus(next);
         setHaMessage(next.connected ? "Połączono" : next.lastError ?? (next.configured ? "Łączenie…" : "Nie skonfigurowano"));
       }
+      if (message.type === "snapshot" && message.homeAssistantStates) setHaLiveStates(message.homeAssistantStates);
+      if (message.type === "ha.stateChanged" && message.entities) setHaLiveStates(message.entities);
     };
     return () => socket.close();
   }, []);
@@ -89,13 +98,32 @@ export function AdminApp() {
         baseUrl: haForm.baseUrl,
         token: haForm.token || undefined,
         dashboardUrl: haForm.dashboardUrl,
-        co2EntityId: haForm.co2EntityId || null,
+        overlayEntities: haForm.overlayEntities,
       });
       setSettings(await api.saveSettings(settings));
       setHaStatus(next);
       setHaForm((current) => ({ ...current, token: "" }));
       setHaMessage("Zapisano bezpiecznie. Trwa pobieranie stanu encji…");
     } catch (error) { setHaMessage(`Błąd: ${error instanceof Error ? error.message : String(error)}`); }
+  }
+
+  function addOverlayEntity() {
+    if (!entityDraft.entityId || haForm.overlayEntities.some((item) => item.entityId === entityDraft.entityId)) return;
+    const selected = haEntities.find((item) => item.entityId === entityDraft.entityId);
+    setHaForm((current) => ({
+      ...current,
+      overlayEntities: [...current.overlayEntities, {
+        id: crypto.randomUUID(),
+        entityId: entityDraft.entityId,
+        label: entityDraft.label.trim() || selected?.friendlyName || entityDraft.entityId,
+        position: entityDraft.position,
+      }],
+    }));
+    setEntityDraft({ entityId: "", label: "", position: entityDraft.position });
+  }
+
+  function updateOverlayEntity(id: string, patch: Partial<HomeAssistantOverlayItem>) {
+    setHaForm((current) => ({ ...current, overlayEntities: current.overlayEntities.map((item) => item.id === id ? { ...item, ...patch } : item) }));
   }
 
   return (
@@ -140,12 +168,30 @@ export function AdminApp() {
           <small>Zostanie zastosowana po aktywowaniu widoku Home Assistant.</small>
         </label>
         <div className="entity-picker">
-          <div><strong>Czujnik CO₂ w overlayu</strong><small>Wyszukaj encję, a potem wybierz ją z listy.</small></div>
-          <input placeholder="Szukaj po nazwie lub entity_id" value={haSearch} onChange={(e) => setHaSearch(e.target.value)} />
-          <select value={haForm.co2EntityId} onChange={(e) => setHaForm({ ...haForm, co2EntityId: e.target.value })}>
-            <option value="">Bez czujnika CO₂</option>
-            {haEntities.map((entity) => <option key={entity.entityId} value={entity.entityId}>{entity.friendlyName} · {entity.state} {entity.unit ?? ""} ({entity.entityId})</option>)}
-          </select>
+          <div><strong>Elementy Home Assistant na zdjęciach</strong><small>Dodaj dowolne encje i przypisz każdej etykietę oraz miejsce na ekranie.</small></div>
+          <div className="entity-add-grid">
+            <label>Szukaj encji<input placeholder="wpisz co najmniej 2 znaki" value={haSearch} onChange={(e) => setHaSearch(e.target.value)} /></label>
+            <label>Encja<select value={entityDraft.entityId} onChange={(e) => setEntityDraft({ ...entityDraft, entityId: e.target.value })}>
+              <option value="">Wybierz encję…</option>
+              {haEntities.map((entity) => <option key={entity.entityId} value={entity.entityId}>{entity.friendlyName} · {entity.state} {entity.unit ?? ""} ({entity.entityId})</option>)}
+            </select></label>
+            <label>Etykieta<input placeholder="Automatycznie z HA" value={entityDraft.label} onChange={(e) => setEntityDraft({ ...entityDraft, label: e.target.value })} /></label>
+            <label>Pozycja<select value={entityDraft.position} onChange={(e) => setEntityDraft({ ...entityDraft, position: e.target.value as HomeAssistantOverlayItem["position"] })}>{positions.map((position) => <option key={position.value} value={position.value}>{position.label}</option>)}</select></label>
+            <button type="button" className="entity-add-button" disabled={!entityDraft.entityId} onClick={addOverlayEntity}>Dodaj na ekran</button>
+          </div>
+          <div className="entity-overlay-list">
+            {haForm.overlayEntities.length === 0 && <p>Nie dodano jeszcze żadnej encji.</p>}
+            {haForm.overlayEntities.map((item) => {
+              const live = haLiveStates.find((entity) => entity.id === item.id);
+              const catalog = haEntities.find((entity) => entity.entityId === item.entityId);
+              return <article key={item.id}>
+                <div><strong>{live?.friendlyName ?? catalog?.friendlyName ?? item.entityId}</strong><small>{item.entityId} · {live ? `${live.state} ${live.unit ?? ""}` : catalog ? `${catalog.state} ${catalog.unit ?? ""}` : "oczekuje na stan"}</small></div>
+                <input aria-label={`Etykieta ${item.entityId}`} value={item.label} onChange={(e) => updateOverlayEntity(item.id, { label: e.target.value })} />
+                <select aria-label={`Pozycja ${item.entityId}`} value={item.position} onChange={(e) => updateOverlayEntity(item.id, { position: e.target.value as HomeAssistantOverlayItem["position"] })}>{positions.map((position) => <option key={position.value} value={position.value}>{position.label}</option>)}</select>
+                <button type="button" onClick={() => setHaForm((current) => ({ ...current, overlayEntities: current.overlayEntities.filter((candidate) => candidate.id !== item.id) }))}>Usuń</button>
+              </article>;
+            })}
+          </div>
         </div>
         <footer><span>{haMessage}</span><div className="button-row"><button className="button-secondary" type="button" onClick={testHomeAssistant}>Testuj połączenie</button><button type="submit">Zapisz integrację</button></div></footer>
       </form>

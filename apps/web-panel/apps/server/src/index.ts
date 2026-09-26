@@ -73,7 +73,7 @@ function broadcast(message: unknown) {
 const haConfigStore = new HomeAssistantConfigStore(runtimeRoot);
 const homeAssistant = new HomeAssistantClient((event) => {
   if (event.type === "status") broadcast({ type: "ha.statusChanged", status: homeAssistant.status() });
-  else broadcast({ type: "ha.stateChanged", entity: event.entity });
+  else broadcast({ type: "ha.stateChanged", entities: event.entities });
 });
 
 const storedHaConfig = await haConfigStore.load();
@@ -187,7 +187,7 @@ app.put("/api/ha/config", async (request, reply) => {
 });
 
 app.get<{ Querystring: { q?: string } }>("/api/ha/entities", async (request) => homeAssistant.searchEntities(request.query.q));
-app.get("/api/ha/state", async () => homeAssistant.selectedState());
+app.get("/api/ha/overlay", async () => homeAssistant.selectedStates());
 
 app.get("/api/events", { websocket: true }, (socket) => {
   sockets.add(socket);
@@ -195,7 +195,7 @@ app.get("/api/events", { websocket: true }, (socket) => {
     type: "snapshot",
     viewId: currentView,
     homeAssistant: homeAssistant.status(),
-    homeAssistantState: homeAssistant.selectedState(),
+    homeAssistantStates: homeAssistant.selectedStates(),
   }));
   socket.on("close", () => sockets.delete(socket));
 });

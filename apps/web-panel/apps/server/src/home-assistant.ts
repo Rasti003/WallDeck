@@ -4,6 +4,7 @@ import path from "node:path";
 import type {
   HomeAssistantConfigInput,
   HomeAssistantEntity,
+  HomeAssistantOverlayItem,
   HomeAssistantSelectedState,
   HomeAssistantStatus,
 } from "@walldeck/contracts";
@@ -11,11 +12,17 @@ import type {
 interface StoredConfig {
   baseUrl: string;
   dashboardUrl: string;
-  co2EntityId: string | null;
+  overlayEntities?: HomeAssistantOverlayItem[];
+  co2EntityId?: string | null;
   token: { iv: string; tag: string; ciphertext: string };
 }
 
-interface RuntimeConfig extends Omit<StoredConfig, "token"> { token: string }
+interface RuntimeConfig {
+  baseUrl: string;
+  dashboardUrl: string;
+  overlayEntities: HomeAssistantOverlayItem[];
+  token: string;
+}
 interface RawState {
   entity_id: string;
   state: string;
@@ -67,7 +74,13 @@ export class HomeAssistantConfigStore {
       const token = Buffer.concat([
         decipher.update(Buffer.from(stored.token.ciphertext, "base64")), decipher.final(),
       ]).toString("utf8");
-      return { baseUrl: stored.baseUrl, dashboardUrl: stored.dashboardUrl, co2EntityId: stored.co2EntityId, token };
+      const overlayEntities = stored.overlayEntities ?? (stored.co2EntityId ? [{
+        id: "legacy-co2",
+        entityId: stored.co2EntityId,
+        label: "CO₂",
+        position: "bottom-left" as const,
+      }] : []);
+      return { baseUrl: stored.baseUrl, dashboardUrl: stored.dashboardUrl, overlayEntities, token };
     } catch {
       return null;
     }
@@ -83,12 +96,12 @@ export class HomeAssistantConfigStore {
     const stored: StoredConfig = {
       baseUrl: normalizedBaseUrl(input.baseUrl),
       dashboardUrl: input.dashboardUrl.trim(),
-      co2EntityId: input.co2EntityId || null,
+      overlayEntities: input.overlayEntities,
       token: { iv: iv.toString("base64"), tag: cipher.getAuthTag().toString("base64"), ciphertext: ciphertext.toString("base64") },
     };
     await writeFile(this.configPath, `${JSON.stringify(stored, null, 2)}\n`, { encoding: "utf8", mode: 0o600 });
     await chmod(this.configPath, 0o600).catch(() => undefined);
-    return { ...stored, token };
+    return { baseUrl: stored.baseUrl, dashboardUrl: stored.dashboardUrl, overlayEntities: stored.overlayEntities ?? [], token };
   }
 }
 
@@ -103,7 +116,7 @@ export class HomeAssistantClient {
   private connected = false;
   private lastError: string | null = null;
 
-  constructor(private readonly onEvent: (event: { type: "status" } | { type: "state"; entity: HomeAssistantSelectedState | null }) => void) {}
+  constructor(private readonly onEvent: (event: { type: "status" } | { type: "state"; entities: HomeAssistantSelectedState[] }) => void) {}
 
   get token() { return this.config?.token; }
 
@@ -113,17 +126,27 @@ export class HomeAssistantClient {
       connected: this.connected,
       baseUrl: this.config?.baseUrl ?? "",
       dashboardUrl: this.config?.dashboardUrl ?? "",
-      co2EntityId: this.config?.co2EntityId ?? null,
+      overlayEntities: this.config?.overlayEntities ?? [],
       version: this.version,
       entityCount: this.entities.size,
       lastError: this.lastError,
     };
   }
 
-  selectedState(): HomeAssistantSelectedState | null {
-    const entityId = this.config?.co2EntityId;
-    const entity = entityId ? this.entities.get(entityId) : null;
-    return entity ? { entityId: entity.entityId, state: entity.state, friendlyName: entity.friendlyName, unit: entity.unit, updatedAt: entity.lastChanged } : null;
+  selectedStates(): HomeAssistantSelectedState[] {
+    return (this.config?.overlayEntities ?? []).flatMap((item) => {
+      const entity = this.entities.get(item.entityId);
+      return entity ? [{
+        id: item.id,
+        entityId: entity.entityId,
+        state: entity.state,
+        friendlyName: entity.friendlyName,
+        label: item.label || entity.friendlyName,
+        position: item.position,
+        unit: entity.unit,
+        updatedAt: entity.lastChanged,
+      }] : [];
+    });
   }
 
   searchEntities(query = ""): HomeAssistantEntity[] {
@@ -154,11 +177,11 @@ export class HomeAssistantClient {
     await this.connect();
   }
 
-  updateSelection(co2EntityId: string | null, dashboardUrl: string) {
+  updateSelection(overlayEntities: HomeAssistantOverlayItem[], dashboardUrl: string) {
     if (!this.config) return;
-    this.config.co2EntityId = co2EntityId;
+    this.config.overlayEntities = overlayEntities;
     this.config.dashboardUrl = dashboardUrl;
-    this.onEvent({ type: "state", entity: this.selectedState() });
+    this.onEvent({ type: "state", entities: this.selectedStates() });
     this.onEvent({ type: "status" });
   }
 
@@ -230,7 +253,7 @@ export class HomeAssistantClient {
       } else if (message.type === "result" && message.id === 1 && Array.isArray(message.result)) {
         this.entities = new Map((message.result as RawState[]).map((item) => [item.entity_id, entityFromState(item)]));
         this.onEvent({ type: "status" });
-        this.onEvent({ type: "state", entity: this.selectedState() });
+        this.onEvent({ type: "state", entities: this.selectedStates() });
       } else if (message.type === "event") {
         const event = message.event as { data?: { entity_id?: string; new_state?: RawState | null } } | undefined;
         const entityId = event?.data?.entity_id;
@@ -238,7 +261,9 @@ export class HomeAssistantClient {
         if (entityId && newState) this.entities.set(entityId, entityFromState(newState));
         else if (entityId) this.entities.delete(entityId);
         this.onEvent({ type: "status" });
-        if (entityId === this.config?.co2EntityId) this.onEvent({ type: "state", entity: this.selectedState() });
+        if (this.config?.overlayEntities.some((item) => item.entityId === entityId)) {
+          this.onEvent({ type: "state", entities: this.selectedStates() });
+        }
       }
     } catch (error) {
       this.lastError = error instanceof Error ? error.message : String(error);

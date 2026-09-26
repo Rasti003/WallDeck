@@ -259,8 +259,8 @@ Po ponownym połączeniu klient wysyła ostatni numer rewizji. Serwer zwraca bra
 - [x] test połączenia, status, wersja i liczba wykrytych encji;
 - [x] adapter WebSocket/REST po stronie serwera;
 - [x] centralny magazyn znormalizowanych stanów encji;
-- [x] wyszukiwarka i wybór czujnika CO₂;
-- [x] wartość CO₂ w overlayu i aktualizacje `state_changed` bez odświeżania;
+- [x] wyszukiwarka dowolnych encji oraz konfiguracja wielu elementów overlayu;
+- [x] własne etykiety, sześć stref ekranu i aktualizacje `state_changed` bez odświeżania;
 - [x] osobny widok dashboardu pod `/ha`;
 - [x] reconnect, snapshot stanu i podstawowa diagnostyka;
 - [ ] skonfigurować kontrolowany reverse proxy lub nagłówki HA dla osadzania dashboardu (obecna instancja zwraca `X-Frame-Options: SAMEORIGIN`);

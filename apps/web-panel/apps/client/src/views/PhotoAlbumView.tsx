@@ -14,23 +14,37 @@ function weatherSymbol(code: number, isDay: boolean) {
   return "☂";
 }
 
-function Overlay({ settings, weather, homeAssistant }: { settings: WallDeckSettings; weather: WeatherNow | null; homeAssistant: HomeAssistantSelectedState | null }) {
+const overlayPositions: WallDeckSettings["overlay"]["position"][] = ["top-left", "top-center", "top-right", "bottom-left", "bottom-center", "bottom-right"];
+
+function Overlay({ settings, weather, homeAssistant }: { settings: WallDeckSettings; weather: WeatherNow | null; homeAssistant: HomeAssistantSelectedState[] }) {
   const now = useNow();
   const { overlay } = settings;
   return (
-    <div className={`ambient-overlay ambient-overlay--${overlay.position}`}>
-      {overlay.showClock && <div className="ambient-overlay__time">{now.toLocaleTimeString("pl-PL", { hour: "2-digit", minute: "2-digit" })}</div>}
-      {overlay.showDate && <div className="ambient-overlay__date">{now.toLocaleDateString("pl-PL", { weekday: "long", day: "numeric", month: "long" })}</div>}
-      {overlay.showWeather && weather && (
-        <div className="ambient-overlay__weather">
-          <span>{weatherSymbol(weather.weatherCode, weather.isDay)}</span>
-          <span>{Math.round(weather.temperature)}°</span>
-          <small>{weather.label}</small>
+    <>
+      {overlayPositions.map((position) => {
+        const isPrimary = position === overlay.position;
+        const entities = homeAssistant.filter((item) => item.position === position);
+        if (!isPrimary && entities.length === 0) return null;
+        return <div key={position} className={`ambient-overlay ambient-overlay--${position}`}>
+          {isPrimary && overlay.showClock && <div className="ambient-overlay__time">{now.toLocaleTimeString("pl-PL", { hour: "2-digit", minute: "2-digit" })}</div>}
+          {isPrimary && overlay.showDate && <div className="ambient-overlay__date">{now.toLocaleDateString("pl-PL", { weekday: "long", day: "numeric", month: "long" })}</div>}
+          {isPrimary && overlay.showWeather && weather && (
+            <div className="ambient-overlay__weather">
+              <span>{weatherSymbol(weather.weatherCode, weather.isDay)}</span>
+              <span>{Math.round(weather.temperature)}°</span>
+              <small>{weather.label}</small>
+            </div>
+          )}
+          {entities.length > 0 && <div className="ambient-overlay__entities">
+            {entities.map((entity) => <div className="ambient-overlay__entity" key={entity.id}>
+              <small>{entity.label}</small>
+              <strong>{entity.state}{entity.unit ? ` ${entity.unit}` : ""}</strong>
+            </div>)}
+          </div>}
+          {isPrimary && entities.length === 0 && overlay.showHomeAssistantPlaceholder && <div className="ambient-overlay__ha"><i /> Dom spokojny</div>}
         </div>
-      )}
-      {homeAssistant && <div className="ambient-overlay__ha"><i /> CO₂ {homeAssistant.state}{homeAssistant.unit ? ` ${homeAssistant.unit}` : ""}</div>}
-      {!homeAssistant && overlay.showHomeAssistantPlaceholder && <div className="ambient-overlay__ha"><i /> Dom spokojny</div>}
-    </div>
+      })}
+    </>
   );
 }
 
@@ -39,7 +53,7 @@ export function PhotoAlbumView() {
   const [photos, setPhotos] = useState<PhotoItem[]>([]);
   const [settings, setSettings] = useState<WallDeckSettings | null>(null);
   const [weather, setWeather] = useState<WeatherNow | null>(null);
-  const [homeAssistant, setHomeAssistant] = useState<HomeAssistantSelectedState | null>(null);
+  const [homeAssistant, setHomeAssistant] = useState<HomeAssistantSelectedState[]>([]);
   const [layout, setLayout] = useState<PhotoLayout | null>(null);
   const [error, setError] = useState<string | null>(null);
   const nextLayout = useRef<PhotoLayout | null>(null);
@@ -53,7 +67,7 @@ export function PhotoAlbumView() {
       .catch((reason) => setError(reason instanceof Error ? reason.message : String(reason)));
   }, []);
 
-  useEffect(() => { api.homeAssistant.state().then(setHomeAssistant).catch(() => undefined); }, []);
+  useEffect(() => { api.homeAssistant.overlay().then(setHomeAssistant).catch(() => undefined); }, []);
 
   const refreshWeather = useCallback(() => {
     api.weather().then(setWeather).catch(() => setWeather(null));
@@ -93,10 +107,10 @@ export function PhotoAlbumView() {
     const protocol = location.protocol === "https:" ? "wss:" : "ws:";
     const socket = new WebSocket(`${protocol}//${location.host}/api/events`);
     socket.onmessage = (event) => {
-      const message = JSON.parse(event.data) as { type: string; settings?: WallDeckSettings; entity?: HomeAssistantSelectedState | null; homeAssistantState?: HomeAssistantSelectedState | null };
+      const message = JSON.parse(event.data) as { type: string; settings?: WallDeckSettings; entities?: HomeAssistantSelectedState[]; homeAssistantStates?: HomeAssistantSelectedState[] };
       if (message.type === "settings.changed" && message.settings) setSettings(message.settings);
-      if (message.type === "ha.stateChanged") setHomeAssistant(message.entity ?? null);
-      if (message.type === "snapshot") setHomeAssistant(message.homeAssistantState ?? null);
+      if (message.type === "ha.stateChanged") setHomeAssistant(message.entities ?? []);
+      if (message.type === "snapshot") setHomeAssistant(message.homeAssistantStates ?? []);
     };
     return () => socket.close();
   }, []);
