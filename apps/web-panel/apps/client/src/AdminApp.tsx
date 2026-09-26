@@ -180,6 +180,8 @@ export function AdminApp() {
         <div><span className="admin-kicker">Manager widoków</span><h2>Reguły przełączania</h2></div>
         <label className="brightness-control">Jasność widoku Asystent demo: {Math.round(settings.viewBrightness["assistant-demo"] * 100)}%<input aria-label="Jasność asystenta" type="range" min="5" max="100" value={Math.round(settings.viewBrightness["assistant-demo"] * 100)} onChange={(event) => setSettings({ ...settings, viewBrightness: { ...settings.viewBrightness, "assistant-demo": Number(event.target.value) / 100 } })} /></label>
         <a href="/assistant-demo" target="_blank" rel="noreferrer">Otwórz studio mimiki asystenta ↗</a>
+        <label className="brightness-control">Jasność asystenta ekspresyjnego: {Math.round(settings.viewBrightness["assistant-expressive"] * 100)}%<input aria-label="Jasność asystenta ekspresyjnego" type="range" min="5" max="100" value={Math.round(settings.viewBrightness["assistant-expressive"] * 100)} onChange={(event) => setSettings({ ...settings, viewBrightness: { ...settings.viewBrightness, "assistant-expressive": Number(event.target.value) / 100 } })} /></label>
+        <a href="/assistant-expressive" target="_blank" rel="noreferrer">Otwórz ekspresyjną wersję twarzy ↗</a>
         <p className="form-intro">Reguły reagują na zdarzenia panelu. Dotknięcia wewnątrz dashboardu HA są wykrywane przez aplikację tabletową.</p>
         <div className="rule-list">
           <article>

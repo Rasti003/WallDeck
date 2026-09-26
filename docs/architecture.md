@@ -32,6 +32,8 @@ WallDeck Server jest jedynym klientem Home Assistant. Konfigurację podaje się 
 
 ## Prototyp twarzy asystenta
 
+Wariant ekspresyjny jest osobnym widokiem `assistant-expressive` i kopią renderera SVG. Oryginalny `AssistantFace.tsx` pozostaje niezmieniony. Wspólne są kontrolki demo i kontrakt stanów; geometria oraz animacja ekspresyjna są niezależne, co umożliwia porównanie obu wersji. Wrażenie obrotu głowy powstaje przez transformacje grup SVG, względną skalę oczu i paralaksę nosa/ust, bez silnika 3D i dostępu do kamery.
+
 Wspólny transport `connectEvents` wznawia połączenie WebSocket po restarcie serwera lub rozłączeniu, stosując ograniczony exponential backoff z jitterem. Nowy socket odbiera snapshot widoku i HA; panel i album odświeżają ustawienia przez REST. Demontaż komponentu zamyka socket i usuwa zaplanowane ponowne połączenie. Admin pokazuje błąd nieudanej komendy aktywacji.
 
 Serwowanie frontendu: `registerClient` rozwiązuje pliki dynamicznie, również po przebudowie Vite w działającym serwerze. HTML ma `Cache-Control: no-cache`; fallback HTML obejmuje tylko znane trasy SPA. Nieznane API i brakujące assety zwracają 404, aby przeglądarka nie otrzymała HTML zamiast modułu JavaScript.

@@ -13,7 +13,7 @@ export async function registerClient(app: FastifyInstance, root: string) {
   });
   app.setNotFoundHandler((request, reply) => {
     const pathname = new URL(request.url, "http://localhost").pathname;
-    const isPage = ["/", "/panel", "/admin", "/ha", "/assistant-demo"].some(
+    const isPage = ["/", "/panel", "/admin", "/ha", "/assistant-demo", "/assistant-expressive"].some(
       route => pathname === route || (route !== "/" && pathname.startsWith(`${route}/`)),
     );
     if ((request.method === "GET" || request.method === "HEAD") && isPage) {

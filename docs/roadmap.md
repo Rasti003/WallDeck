@@ -28,6 +28,8 @@
 
 ## Najbliższy etap
 
+- [x] zachować spokojny wariant asystenta i dodać ekspresyjną kopię z mocniejszą mimiką i ruchem wirtualnej głowy;
+
 - [x] prototyp SVG + Motion twarzy asystenta: osiem stanów, nieregularne mikroanimacje, usta sterowane audio, studio `/assistant-demo` i integracja z managerem widoków;
 - [ ] wielogodzinny test pamięci i płynności animacji asystenta na docelowym WebView;
 

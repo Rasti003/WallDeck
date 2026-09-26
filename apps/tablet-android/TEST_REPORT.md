@@ -35,6 +35,8 @@
 
 ## Asystent demo — 2026-09-26
 
+Wariant ekspresyjny (`assistant-expressive`), Xiaomi 2603ARP14G / Android 16: powtórzono skrypt `assistant-smoke.mjs` z identyfikatorem nowego widoku. Wszystkie osiem stanów, attention → listening, success → idle i reakcja ust na audio PASS, zero wyjątków JavaScript. Widoczny WebView 1170 × 731 CSS px: 599 klatek w około 10 s, mediana 16,7 ms, p95 i maks. 16,8 ms. Krótki test rAF, bez oceny wielogodzinnej stabilności. Oryginalny renderer spokojnego wariantu pozostaje niezmieniony.
+
 ### Ponowne połączenie — 2026-09-26
 
 Xiaomi 2603ARP14G / Android 16: przed poprawką API aktywowało `assistant-demo`, ale DOM WebView pozostawał na `photos` po wcześniejszym restarcie backendu. Po załadowaniu poprawki wykonano kolejny rzeczywisty restart backendu, bez odświeżania WebView. Admin otrzymał snapshot `photos`, a kliknięcie „Asystent demo” w adminie przełączyło fizyczny WebView na `assistant-demo` (potwierdzone odczytem DOM przez ADB/CDP). PASS.

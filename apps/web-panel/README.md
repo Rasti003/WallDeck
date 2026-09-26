@@ -46,6 +46,8 @@ i ustawić w APK adres `http://127.0.0.1:8080/panel`.
 
 ### Asystent demo
 
+Zachowany wariant spokojny: `/assistant-demo`, oryginalny renderer `AssistantFace.tsx`. Osobna kopia `/assistant-expressive` / „Asystent — ekspresyjny” używa `ExpressiveAssistantFace.tsx`: mocniejsze usta i brwi, spojrzenia poprzedzające ruch twarzy, przesunięcie i przechył całej twarzy oraz paralaksa oczu, nosa i ust sugerująca niewidoczną głowę. Bez rysowania obrysu. Oba warianty mają niezależne identyfikatory, ustawienie jasności i można przypisać je do reguł. Ograniczenie ruchu zatrzymuje autonomiczne rozglądanie; stany attention/listening/speaking skupiają twarz centralnie.
+
 Widok `assistant-demo` jest dostępny w `/admin` → Widoki i reguły, przez API aktywacji oraz jako niezależne studio `/assistant-demo`. Osobna trasa wymusza podgląd i nie podlega regułom przełączania; widok wywołany na `/panel` respektuje normalne reguły, w tym powrót po bezczynności. Ma własną jasność ustawianą w adminie.
 
 Twarz w SVG + Motion zajmuje czarny ekran, ma jeden zmienny kolor akcentu i osiem stanów: idle, attention, listening, thinking, speaking, success, error, sleep. Sterowanie można schować. Studio oferuje suwak audio, symulację mowy i ograniczenie ruchu; respektuje też systemowe `prefers-reduced-motion`. Ustawienia mimiki w demo są lokalne i resetują się po ponownym otwarciu widoku.

@@ -5,7 +5,7 @@ import { PanelApp } from "./PanelApp";
 import "./styles.css";
 
 const isAdmin = location.pathname === "/admin" || location.pathname.startsWith("/admin/");
-const forcedView = location.pathname === "/assistant-demo" || location.pathname.startsWith("/assistant-demo/") ? "assistant-demo" : location.pathname === "/ha" || location.pathname.startsWith("/ha/") ? "ha" : undefined;
+const forcedView = (["assistant-demo", "assistant-expressive", "ha"] as const).find(view => location.pathname === `/${view}` || location.pathname.startsWith(`/${view}/`));
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>{isAdmin ? <AdminApp /> : <PanelApp forcedView={forcedView} />}</StrictMode>,

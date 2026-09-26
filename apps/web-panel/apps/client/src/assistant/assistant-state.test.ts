@@ -18,7 +18,7 @@ describe("assistant state machine", () => {
     for (const boundary of [.25, .5, .75]) expect(Math.abs(mouthOpening(boundary - .0001) - mouthOpening(boundary + .0001))).toBeLessThan(.02);
   });
   it("migrates existing settings and accepts the new view in routing", () => {
-    expect(settingsSchema.parse({ ...defaultSettings, viewBrightness: { photos: .3, ha: .4 } }).viewBrightness).toEqual({ photos: .3, ha: .4, "assistant-demo": .65 });
+    expect(settingsSchema.parse({ ...defaultSettings, viewBrightness: { photos: .3, ha: .4 } }).viewBrightness).toEqual({ photos: .3, ha: .4, "assistant-demo": .65, "assistant-expressive": .65 });
     expect(viewIdSchema.parse("assistant-demo")).toBe("assistant-demo");
   });
 });
