@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { defaultSettings, type ViewId, type WallDeckSettings } from "@walldeck/contracts";
 import { api } from "./api";
 import { connectEvents } from "./events";
@@ -7,6 +8,7 @@ import { inactivityTarget, viewAfterSwipeDown, viewAfterTap } from "./view-manag
 import { viewRegistry } from "./views/registry";
 
 export function PanelApp({ forcedView }: { forcedView?: ViewId }) {
+  const reducedMotion = useReducedMotion();
   const [viewId, setViewId] = useState<ViewId>("photos");
   const [settings, setSettings] = useState<WallDeckSettings>(defaultSettings);
   const connection = useRef<ReturnType<typeof connectEvents> | null>(null);
@@ -108,7 +110,18 @@ export function PanelApp({ forcedView }: { forcedView?: ViewId }) {
         if (!forcedView && target) activate(target);
       }}
     >
-      <View />
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={activeView}
+          className="panel-view-transition"
+          data-rendered-view={activeView}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1, transition: { duration: reducedMotion ? 0 : .25 } }}
+          exit={{ opacity: 0, transition: { duration: reducedMotion ? 0 : activeView === "assistant-expressive" ? .65 : .2, delay: reducedMotion ? 0 : activeView === "assistant-expressive" ? .2 : 0 } }}
+        >
+          <View />
+        </motion.div>
+      </AnimatePresence>
     </div>
   );
 }

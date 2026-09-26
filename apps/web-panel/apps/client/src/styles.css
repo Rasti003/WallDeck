@@ -11,6 +11,8 @@ html, body, #root { width: 100%; min-height: 100%; margin: 0; }
 body { min-height: 100vh; }
 button, input, select { font: inherit; }
 
+.panel-router { background: #000; min-height: 100dvh; }
+.panel-view-transition { position: fixed; inset: 0; }
 .photo-view { position: fixed; inset: 0; overflow: hidden; background: #080a0e; user-select: none; }
 .photo-layout { position: absolute; inset: 0; display: grid; gap: clamp(3px, .35vw, 8px); background: #080a0e; }
 .photo-layout--single { grid-template-columns: 1fr; }

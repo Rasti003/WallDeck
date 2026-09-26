@@ -44,7 +44,7 @@ function Eye({ x, side, state, blink, gaze, reduced }: { x: number; side: number
   return <g transform={`translate(${x} 273)`}>
     <motion.path fill="none" stroke="currentColor" strokeWidth="11" strokeLinecap="round"
       animate={{ d: `M -116 ${-104 + side * (asymmetry ? 15 : 3)} Q 0 ${state === "success" ? -170 : state === "error" ? -95 : -145 - gaze.y * 12} 116 ${-104 - side * (asymmetry ? 15 : 3)}`, y: pose.brow + (asymmetry ? side * 18 : gaze.y * -9 + side * gaze.x * 9), rotate: asymmetry ? side * 12 : side * 3 + gaze.x * 5, opacity: state === "sleep" ? .24 : .85 }} transition={{ duration: reduced ? 0 : .65 }} />
-    <motion.g animate={{ scaleY: blink ? .035 : pose.eye * (asymmetry && side === -1 ? .89 : 1) }} style={{ transformOrigin: "0px 0px" }} transition={{ duration: reduced ? 0 : blink ? .09 : .38 }}>
+    <motion.g initial={{ scaleY: reduced ? pose.eye : .035 }} animate={{ scaleY: blink ? .035 : pose.eye * (asymmetry && side === -1 ? .89 : 1) }} style={{ transformOrigin: "0px 0px" }} transition={{ duration: reduced ? 0 : blink ? .09 : .38 }}>
       <defs><clipPath id={clip}><rect x="-125" y="-76" width="250" height="152" rx="60" /></clipPath></defs>
       <rect x="-125" y="-76" width="250" height="152" rx="60" fill="currentColor" fillOpacity=".08" stroke="currentColor" strokeWidth="5" />
       <g clipPath={`url(#${clip})`}>
@@ -83,6 +83,7 @@ export function ExpressiveAssistantFace({ state, audioLevel = 0, accentColor = "
   const head = reduced || state === "sleep" ? { x: 0, y: 0 } : looking;
   return <div className={`assistant-face ${reduced ? "is-reduced" : ""}`} data-variant="expressive" data-state={state} style={{ "--assistant-accent": accentColor } as CSSProperties}>
     <svg viewBox="0 0 1200 650" role="img" aria-label={`Asystent: ${stateLabels[state]}`}>
+      <motion.g style={{ transformOrigin: "600px 325px" }} initial={{ opacity: reduced ? 1 : 0, scale: reduced ? 1 : .82, y: reduced ? 0 : 45 }} animate={{ opacity: 1, scale: 1, y: 0 }} transition={{ duration: reduced ? 0 : .9, ease: [.16, 1, .3, 1] }}>
       <motion.g animate={{ opacity: state === "sleep" ? .32 : 1 }} transition={{ duration: reduced ? 0 : 1 }}>
         <g className="assistant-breath">
         <motion.g className="assistant-virtual-head" style={{ transformOrigin: "600px 325px" }} animate={{ x: head.x * 125, y: head.y * 55, rotate: head.x * 5, scaleX: 1 - Math.abs(head.x) * .07, scaleY: 1 - Math.abs(head.y) * .025 }} transition={{ duration: reduced ? 0 : 1.15, ease: [.22, 1, .36, 1] }}>
@@ -99,6 +100,7 @@ export function ExpressiveAssistantFace({ state, audioLevel = 0, accentColor = "
           </g>
         </motion.g>
         </g>
+      </motion.g>
       </motion.g>
     </svg>
   </div>;

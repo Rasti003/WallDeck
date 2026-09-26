@@ -1,9 +1,11 @@
 import { useEffect, useReducer, useState } from "react";
+import { useIsPresent } from "motion/react";
 import { AssistantFace } from "../assistant/AssistantFace";
 import { ExpressiveAssistantFace } from "../assistant/ExpressiveAssistantFace";
 import { assistantStates, assistantTransition, stateLabels, transientDelay } from "../assistant/assistant-state";
 
 export function AssistantDemoView({ expressive = false }: { expressive?: boolean }) {
+  const isPresent = useIsPresent();
   const Face = expressive ? ExpressiveAssistantFace : AssistantFace;
   const [state, dispatch] = useReducer(assistantTransition, "idle");
   const [audio, setAudio] = useState(.35);
@@ -28,7 +30,7 @@ export function AssistantDemoView({ expressive = false }: { expressive?: boolean
     return () => clearInterval(timer);
   }, [simulate, state]);
   return <section className="assistant-demo" aria-label="Asystent demo">
-    <Face state={state} audioLevel={simulate ? simulatedAudio : audio} accentColor={accent} reducedMotion={reduced} />
+    <Face state={expressive && !isPresent ? "sleep" : state} audioLevel={simulate ? simulatedAudio : audio} accentColor={accent} reducedMotion={reduced} />
     <button className="assistant-controls-toggle" aria-expanded={controls} onClick={() => setControls(!controls)}>{controls ? "Ukryj sterowanie ↘" : "Mimika ↗"}</button>
     {controls && <aside className="assistant-console" aria-label="Sterowanie demonstracją">
       <header><span>WALLDECK / {expressive ? "EKSPRESYJNY" : "SPOKOJNY"}</span><strong>{stateLabels[state]}</strong><small>Demo · bez mikrofonu</small></header>
