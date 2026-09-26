@@ -11,6 +11,8 @@ Thumbs.db
 **/local.properties
 *.jks
 photo-sync.config.json
+.walldeck-sync.json
+.walldeck-album.json
 *.keystore
 
 # JavaScript
