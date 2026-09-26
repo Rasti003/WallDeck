@@ -60,7 +60,7 @@ try {
   await evaluate(`document.querySelector('.music-home').click()`);await waitView('ha');await waitView('assistant-expressive','dancing');
   await evaluate('window.__dancePlaying=false');await waitView('photos');
   console.log('PASS: pause during dancing falls back to photos');
-  await evaluate('window.__dancePlaying=true');await activate('ha');await waitView('ha');await waitView('assistant-expressive','idle');await waitView('photos');
-  console.log('PASS: HA entered from photos keeps the gallery return');
+  await evaluate('window.__dancePlaying=true');await waitView('assistant-expressive','dancing');await waitView('music');
+  console.log('PASS: playback start from photos opens dance then Music');
  }
 } finally {await evaluate('clearInterval(window.__danceFixture)');await save(originalSettings);await activate(originalView);socket.close();}

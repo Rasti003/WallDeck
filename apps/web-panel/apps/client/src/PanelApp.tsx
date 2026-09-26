@@ -7,6 +7,7 @@ import { nativeBridge } from "./native";
 import { ambientSleepAction, cameraSleepAction, homeAssistantSleepAction, inactivityTransition, viewAfterActivity, viewAfterSwipeDown, viewAfterTap } from "./view-manager";
 import { viewRegistry } from "./views/registry";
 import { PanelContext } from "./panel-context";
+import { createPlaybackStartDetector } from "./music/playback-start";
 import { musicController } from "./music/controller";
 import type { MusicState } from "@walldeck/contracts";
 
@@ -89,23 +90,48 @@ export function PanelApp({ forcedView }: { forcedView?: ViewId }) {
     if (activeView !== "assistant-expressive") setDanceTransition(false);
   }, [activeView]);
 
-  useEffect(() => {
-    if (!nativeBridge.available) return;
-    let disposed = false;
-    const update = (state: MusicState) => { if (!disposed) musicPlaying.current = state.connection === "connected" && !state.paused && Boolean(state.track); };
-    const unsubscribe = musicController.subscribePlaybackState(update);
-    const refresh = () => musicController.getPlaybackState().then(update).catch(() => { if (!disposed) musicPlaying.current = false; });
-    void refresh();
-    const timer = setInterval(refresh, 5000);
-    return () => { disposed = true; clearInterval(timer); unsubscribe(); };
-  }, []);
-
   const activate = useCallback((nextView: ViewId, instant = false) => {
     if (forcedView) return;
     setInstantTransition(instant);
     setViewId(nextView);
     api.activateView(nextView).catch(() => undefined);
   }, [forcedView]);
+
+  const playbackView = useRef(activeView);
+  playbackView.current = activeView;
+  useEffect(() => {
+    if (!nativeBridge.available) return;
+    let disposed = false;
+    let eventRevision = 0;
+    let refreshing = false;
+    const started = createPlaybackStartDetector();
+    const update = (state: MusicState) => {
+      if (disposed) return;
+      musicPlaying.current = state.connection === "connected" && !state.paused && Boolean(state.track);
+      if (!started(state) || forcedView || playbackView.current === "music") return;
+      if (idleTimer.current) clearTimeout(idleTimer.current);
+      interruptionPending.current = false;
+      setAssistantIdleTransition(false);
+      setDanceTransition(true);
+      setRequestedAssistantState("dancing");
+      activate("assistant-expressive");
+    };
+    const unsubscribe = musicController.subscribePlaybackState(state => { eventRevision++; update(state); });
+    const refresh = async () => {
+      if (refreshing) return;
+      refreshing = true;
+      const revision = eventRevision;
+      try {
+        const state = await musicController.getPlaybackState();
+        // A delayed poll must not overwrite a more recent player event.
+        if (revision === eventRevision) update(state);
+      } catch { /* Missing telemetry does not establish a playback transition. */ }
+      finally { refreshing = false; }
+    };
+    void refresh();
+    const timer = setInterval(refresh, 5000);
+    return () => { disposed = true; clearInterval(timer); unsubscribe(); };
+  }, [activate, forcedView]);
 
   useEffect(() => {
     if (!nativeBridge.available) return;

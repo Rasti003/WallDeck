@@ -97,3 +97,6 @@ Diagnostyka Spotify: pole error w istniejącym kontrakcie stanu przechowuje kate
 SpotifyBindingContext dopasowuje bindService SDK 0.8.0 do Androida 14+: przekazuje BIND_ALLOW_ACTIVITY_STARTS jedynie podczas jawnie żądanej autoryzacji i wyłącznie do znanej usługi Spotify. Wrapper applicationContext jest używany także przy unbind, bez utrzymywania referencji do Activity. Kontrakt web/bridge v3 nie zmienia się.
 
 Manager widoków utrzymuje obserwację MusicState niezależnie od montowania MusicView. Na końcu timera HA rozstrzyga docelowy przepływ na podstawie pochodzenia Music i aktualnego playbacku. Przejście dancing jest zarządzane przez manager, nie przez 8-sekundowy timer demo twarzy. Dotyk usuwa timer i używa natychmiastowego przejścia Motion. Nie zmieniono kontraktu bridge ani APK. Źródłem stanu pozostaje lokalne Spotify; podgląd w zwykłej przeglądarce nie zakłada odtwarzania.
+
+### Playback-triggered Music view
+The global App Remote observer detects the transition to connected + track + !paused independently of the current view, then invokes dance -> Music. Music and forced previews are not interrupted. Disconnects retain the last known edge state; stale polls cannot overwrite newer player events. This does not start or transfer playback. Observation is limited to local App Remote telemetry.

@@ -116,3 +116,6 @@ Dance (dancing): an eight-second smile, head sway and alternating raised hands, 
 ### Powrót z HA podczas muzyki
 
 Po wejściu Music → HA manager sprawdza playback również poza ekranem Music (eventy bridge i odczyt co 5 s). Gdy przy końcu bezczynności Spotify jest connected, ma utwór i paused=false, następuje HA → dancing → Music. Czas tańca korzysta z assistantIdleSeconds, opisanego w adminie jako czas idle/tańca. Dotyk/aktywność podczas tańca pomija animację wyjścia i wejścia, otwierając Music natychmiast. Pauza/utrata połączenia podczas tańca przywraca docelowy widok zwykłej reguły po końcu przejścia. Wejście do HA z galerii zachowuje zwykły powrót. Historia wejścia jest lokalna dla bieżącej sesji panelu; reload w HA ją zeruje. Reguła nocy może przerwać taniec. Animacja nie analizuje ani nie synchronizuje się z dźwiękiem Spotify.
+
+### Automatic Music activation
+A connected Spotify playback start opens the dancing assistant, then Music. Tap skips the dance. Repeated snapshots, track changes and reconnects do not reopen the view. Initial already-playing state also activates Music. Dance duration uses the assistant idle / dance setting. Requires an active App Remote connection. Playback on another device is detected only if the tablet Spotify reports it; account-wide Web API monitoring is not implemented.

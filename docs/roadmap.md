@@ -73,3 +73,6 @@
 - [x] Dancing expression with hands, idle return and per-expression brightness.
 
 - [x] Music → HA → bezczynność → taniec → Music podczas playbacku; natychmiastowy powrót dotykiem podczas tańca; fallback po pauzie.
+
+- [x] Automatically show dance -> Music on an observed Spotify playback start, without repeating on track updates.
+- [ ] Verify App Remote reports playback started on other devices; otherwise add account-wide Spotify Web API observation.
