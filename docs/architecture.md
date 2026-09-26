@@ -102,3 +102,5 @@ Manager widoków utrzymuje obserwację MusicState niezależnie od montowania Mus
 The global App Remote observer detects the transition to connected + track + !paused independently of the current view, then invokes dance -> Music. Music and forced previews are not interrupted. Disconnects retain the last known edge state; stale polls cannot overwrite newer player events. This does not start or transfer playback. Observation is limited to local App Remote telemetry.
 
 The global player observer reconnects disconnected, installed Spotify with configured Client ID and authorize=false. Retry spacing is 60 seconds; connection errors do not prompt automatically.
+
+Music inactivity uses a 30-second rule independent of the HA inactivity source. Playback boolean changes restart/cancel the timer; repeated player snapshots do not reset it. The idle transition records Music as its interaction return target and always completes in photos.

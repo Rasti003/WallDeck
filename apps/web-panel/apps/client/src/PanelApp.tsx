@@ -19,6 +19,8 @@ export function PanelApp({ forcedView }: { forcedView?: ViewId }) {
   const [danceTransition, setDanceTransition] = useState(false);
   const [instantTransition, setInstantTransition] = useState(false);
   const musicPlaying = useRef(false);
+  const [musicInactive, setMusicInactive] = useState(false);
+  const idleFromMusic = useRef(false);
   const cameFromMusic = useRef(false);
   const previousView = useRef<ViewId>(forcedView ?? "photos");
   const [assistantState, setAssistantState] = useState<AssistantState>("idle");
@@ -109,6 +111,7 @@ export function PanelApp({ forcedView }: { forcedView?: ViewId }) {
     const update = (state: MusicState) => {
       if (disposed) return;
       musicPlaying.current = state.connection === "connected" && !state.paused && Boolean(state.track);
+      setMusicInactive(!musicPlaying.current);
       if (!started(state) || forcedView || playbackView.current === "music") return;
       if (idleTimer.current) clearTimeout(idleTimer.current);
       interruptionPending.current = false;
@@ -223,7 +226,11 @@ export function PanelApp({ forcedView }: { forcedView?: ViewId }) {
     if (idleTimer.current) clearTimeout(idleTimer.current);
     const transition = danceTransition && activeView === "assistant-expressive"
       ? { target: "music" as const, seconds: settings.viewRouter.inactivityAction.assistantIdleSeconds, startsAssistantIdle: false, completesAssistantIdle: true }
-      : inactivityTransition(activeView, settings.viewRouter, assistantIdleTransition);
+      : activeView === "music"
+        ? musicInactive ? { target: "assistant-expressive" as const, seconds: 30, startsAssistantIdle: true, completesAssistantIdle: false } : null
+        : assistantIdleTransition && idleFromMusic.current && activeView === "assistant-expressive"
+          ? { target: "photos" as const, seconds: settings.viewRouter.inactivityAction.assistantIdleSeconds, startsAssistantIdle: false, completesAssistantIdle: true }
+          : inactivityTransition(activeView, settings.viewRouter, assistantIdleTransition);
     if (forcedView || !transition) return;
     idleTimer.current = setTimeout(() => {
       if (activeView === "ha" && cameFromMusic.current && musicPlaying.current) {
@@ -240,7 +247,9 @@ export function PanelApp({ forcedView }: { forcedView?: ViewId }) {
         activate(musicPlaying.current ? "music" : settings.viewRouter.inactivityAction.targetView);
         return;
       }
+      if (activeView === "music" && musicPlaying.current) return;
       if (transition.startsAssistantIdle) {
+        idleFromMusic.current = activeView === "music";
         interruptionPending.current = false;
         setRequestedAssistantState("idle");
         setAssistantIdleTransition(true);
@@ -248,10 +257,10 @@ export function PanelApp({ forcedView }: { forcedView?: ViewId }) {
       if (transition.completesAssistantIdle) setAssistantIdleTransition(false);
       activate(transition.target);
     }, transition.seconds * 1_000);
-  }, [activeView, activate, assistantIdleTransition, danceTransition, forcedView, settings.viewRouter]);
+  }, [activeView, activate, assistantIdleTransition, danceTransition, forcedView, musicInactive, settings.viewRouter]);
 
   const registerActivity = useCallback(() => {
-    const target = danceTransition && activeView === "assistant-expressive" ? "music" : viewAfterActivity(activeView, settings.viewRouter, assistantIdleTransition);
+    const target = danceTransition && activeView === "assistant-expressive" ? "music" : assistantIdleTransition && idleFromMusic.current && activeView === "assistant-expressive" ? "music" : viewAfterActivity(activeView, settings.viewRouter, assistantIdleTransition);
     if (target) {
       if (interruptionPending.current) return;
       interruptionPending.current = true;

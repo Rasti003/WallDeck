@@ -143,3 +143,6 @@ Xiaomi 2603ARP14G / Android 16: przed poprawką API aktywowało `assistant-demo`
 
 ## 2026-09-26: Wi-Fi Spotify diagnosis
 Physical Xiaomi 2603ARP14G, Android 16: initial App Remote state disconnected, paused, no track. After frontend update and reload, silent reconnect succeeded: connected, paused, track present. music-start-smoke.mjs PASS: synthetic playing event opens dancing; tap immediately opens Music; settings/view restored. Actual playback from a second device not yet confirmed. Previous music-return-smoke simulation failed waiting for HA because its first synthetic start now triggers auto-navigation; this is not a passing regression test. Web typecheck/build and 35 unit tests PASS.
+
+## 2026-09-26: Paused Music inactivity
+Xiaomi 2603ARP14G / Android 16 over Wi-Fi: real Spotify connected and paused. music-idle-smoke.mjs PASS: interaction after 20 seconds resets timer; Music still visible 15 seconds later; after 30 seconds inactivity assistant idle appears, then photos. Test idle duration 3 seconds; original settings and view restored. Web typecheck, 35 tests and build PASS.

@@ -78,3 +78,5 @@
 - [ ] Verify App Remote reports playback started on other devices; otherwise add account-wide Spotify Web API observation.
 
 - [x] Restore an authorized Spotify App Remote session after panel startup without opening consent UI.
+
+- [x] Paused Music: 30 seconds inactivity -> assistant idle -> photos; activity resets timer and playback prevents exit.

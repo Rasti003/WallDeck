@@ -121,3 +121,5 @@ Po wejściu Music → HA manager sprawdza playback również poza ekranem Music 
 A connected Spotify playback start opens the dancing assistant, then Music. Tap skips the dance. Repeated snapshots, track changes and reconnects do not reopen the view. Initial already-playing state also activates Music. Dance duration uses the assistant idle / dance setting. Requires an active App Remote connection. Playback on another device is detected only if the tablet Spotify reports it; account-wide Web API monitoring is not implemented.
 
 Spotify App Remote reconnects silently on panel startup and when disconnected (at most once a minute). Authorization errors require the explicit Connect button.
+
+When Music is not playing, 30 seconds without interaction starts assistant idle, then photos. Interactions reset the timer; resuming playback cancels it. Tap during this idle returns to Music. Idle duration uses the existing assistant idle setting.
