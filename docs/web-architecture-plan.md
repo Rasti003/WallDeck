@@ -254,10 +254,17 @@ Po ponownym połączeniu klient wysyła ostatni numer rewizji. Serwer zwraca bra
 
 ### Etap 3 — Home Assistant
 
-- [ ] adapter WebSocket/REST po stronie serwera;
-- [ ] mapowanie encji do modelu domenowego;
-- [ ] reconnect, snapshot/patch i potwierdzenia komend;
-- [ ] ekran diagnostyczny integracji.
+- [x] konfiguracja URL, tokenu i dashboardu w `/admin`;
+- [x] szyfrowany, trwały zapis tokenu wyłącznie po stronie serwera;
+- [x] test połączenia, status, wersja i liczba wykrytych encji;
+- [x] adapter WebSocket/REST po stronie serwera;
+- [x] centralny magazyn znormalizowanych stanów encji;
+- [x] wyszukiwarka i wybór czujnika CO₂;
+- [x] wartość CO₂ w overlayu i aktualizacje `state_changed` bez odświeżania;
+- [x] osobny widok dashboardu pod `/ha`;
+- [x] reconnect, snapshot stanu i podstawowa diagnostyka;
+- [ ] skonfigurować kontrolowany reverse proxy lub nagłówki HA dla osadzania dashboardu (obecna instancja zwraca `X-Frame-Options: SAMEORIGIN`);
+- [ ] mapowanie kolejnych encji do modeli pomieszczeń i obsługa komend.
 
 ### Etap 4 — ramka zdjęć
 

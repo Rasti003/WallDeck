@@ -1,8 +1,20 @@
-import type { PhotoItem, ViewId, WallDeckSettings, WeatherNow } from "@walldeck/contracts";
+import type {
+  HomeAssistantConfigInput,
+  HomeAssistantEntity,
+  HomeAssistantSelectedState,
+  HomeAssistantStatus,
+  PhotoItem,
+  ViewId,
+  WallDeckSettings,
+  WeatherNow,
+} from "@walldeck/contracts";
 
 async function json<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, init);
-  if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
+  if (!response.ok) {
+    const body = await response.json().catch(() => null) as { error?: string } | null;
+    throw new Error(body?.error ?? `${response.status} ${response.statusText}`);
+  }
   return response.json() as Promise<T>;
 }
 
@@ -25,6 +37,21 @@ export const api = {
     if (response.status === 204) return null;
     if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
     return response.json() as Promise<WeatherNow>;
+  },
+  homeAssistant: {
+    config: () => json<HomeAssistantStatus>("/api/ha/config"),
+    test: (baseUrl: string, token: string) => json<{ ok: true; version: string | null; entityCount: number }>("/api/ha/test", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ baseUrl, token }),
+    }),
+    save: (config: HomeAssistantConfigInput) => json<HomeAssistantStatus>("/api/ha/config", {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(config),
+    }),
+    entities: (query = "") => json<HomeAssistantEntity[]>(`/api/ha/entities?q=${encodeURIComponent(query)}`),
+    state: () => json<HomeAssistantSelectedState | null>("/api/ha/state"),
   },
 };
 

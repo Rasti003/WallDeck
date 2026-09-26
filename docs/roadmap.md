@@ -18,6 +18,10 @@
 - [x] dyskretny overlay i osobny panel administratora;
 - [x] zdalne wywoływanie konkretnego widoku przez API i WebSocket;
 - [x] jasność tabletu konfigurowana osobno dla każdego widoku;
+- [x] centralny adapter Home Assistant REST/WebSocket z reconnectem;
+- [x] szyfrowana, trwała konfiguracja HA w panelu `/admin`;
+- [x] wybór czujnika CO₂ i aktualizacja overlayu w czasie rzeczywistym;
+- [x] osobny widok dashboardu Home Assistant pod `/ha`;
 
 ## Najbliższy etap
 
@@ -34,7 +38,7 @@
 
 ## Później
 
-- [ ] Home Assistant;
+- [ ] rozszerzyć Home Assistant o komendy, sceny i semantyczne modele pomieszczeń;
 - [ ] odtwarzacz YouTube wewnątrz panelu;
 - [ ] sterowanie Spotify;
 - [ ] routing audio tablet/Bluetooth;

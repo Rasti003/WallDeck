@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const viewIdSchema = z.enum(["photos"]);
+export const viewIdSchema = z.enum(["photos", "ha"]);
 export type ViewId = z.infer<typeof viewIdSchema>;
 
 export const overlayPositionSchema = z.enum([
@@ -11,8 +11,9 @@ export const settingsSchema = z.object({
   photoIntervalSeconds: z.number().int().min(10).max(3600),
   transitionSeconds: z.number().min(0.3).max(5),
   viewBrightness: z.object({
-    photos: z.number().min(0.05).max(1),
-  }).default({ photos: 0.75 }),
+    photos: z.number().min(0.05).max(1).default(0.75),
+    ha: z.number().min(0.05).max(1).default(0.85),
+  }).default({ photos: 0.75, ha: 0.85 }),
   overlay: z.object({
     position: overlayPositionSchema,
     showClock: z.boolean(),
@@ -32,7 +33,7 @@ export type WallDeckSettings = z.infer<typeof settingsSchema>;
 export const defaultSettings: WallDeckSettings = {
   photoIntervalSeconds: 30,
   transitionSeconds: 1.4,
-  viewBrightness: { photos: 0.75 },
+  viewBrightness: { photos: 0.75, ha: 0.85 },
   overlay: {
     position: "bottom-left",
     showClock: true,
@@ -58,4 +59,41 @@ export interface WeatherNow {
   isDay: boolean;
   label: string;
   observedAt: string;
+}
+
+export const homeAssistantConfigInputSchema = z.object({
+  baseUrl: z.string().trim().url().refine((value) => ["http:", "https:"].includes(new URL(value).protocol), "Dozwolony jest tylko adres HTTP lub HTTPS"),
+  token: z.string().max(8192).optional(),
+  dashboardUrl: z.string().trim().max(2048).refine((value) => value === "" || z.string().url().safeParse(value).success, "Nieprawidłowy adres dashboardu"),
+  co2EntityId: z.string().trim().max(255).nullable(),
+});
+
+export type HomeAssistantConfigInput = z.infer<typeof homeAssistantConfigInputSchema>;
+
+export interface HomeAssistantStatus {
+  configured: boolean;
+  connected: boolean;
+  baseUrl: string;
+  dashboardUrl: string;
+  co2EntityId: string | null;
+  version: string | null;
+  entityCount: number;
+  lastError: string | null;
+}
+
+export interface HomeAssistantEntity {
+  entityId: string;
+  state: string;
+  friendlyName: string;
+  unit: string | null;
+  deviceClass: string | null;
+  lastChanged: string | null;
+}
+
+export interface HomeAssistantSelectedState {
+  entityId: string;
+  state: string;
+  friendlyName: string;
+  unit: string | null;
+  updatedAt: string | null;
 }

@@ -7,6 +7,7 @@ import fastifyStatic from "@fastify/static";
 import websocket from "@fastify/websocket";
 import {
   defaultSettings,
+  homeAssistantConfigInputSchema,
   settingsSchema,
   viewIdSchema,
   type PhotoItem,
@@ -14,6 +15,7 @@ import {
   type WallDeckSettings,
   type WeatherNow,
 } from "@walldeck/contracts";
+import { HomeAssistantClient, HomeAssistantConfigStore } from "./home-assistant.js";
 
 interface ManifestItem {
   id: string;
@@ -68,6 +70,15 @@ function broadcast(message: unknown) {
   for (const socket of sockets) if (socket.readyState === 1) socket.send(data);
 }
 
+const haConfigStore = new HomeAssistantConfigStore(runtimeRoot);
+const homeAssistant = new HomeAssistantClient((event) => {
+  if (event.type === "status") broadcast({ type: "ha.statusChanged", status: homeAssistant.status() });
+  else broadcast({ type: "ha.stateChanged", entity: event.entity });
+});
+
+const storedHaConfig = await haConfigStore.load();
+if (storedHaConfig) void homeAssistant.configure(storedHaConfig);
+
 const app = Fastify({ logger: true });
 await app.register(websocket);
 
@@ -105,7 +116,10 @@ app.get<{ Params: { id: string } }>("/api/photos/:id/file", async (request, repl
   return reply.send(createReadStream(fullPath));
 });
 
-app.get("/api/views", async () => ({ current: currentView, available: [{ id: "photos", name: "Album zdjęć" }] }));
+app.get("/api/views", async () => ({ current: currentView, available: [
+  { id: "photos", name: "Album zdjęć" },
+  { id: "ha", name: "Home Assistant" },
+] }));
 app.post("/api/views/activate", async (request, reply) => {
   const parsed = viewIdSchema.safeParse((request.body as { viewId?: unknown } | null)?.viewId);
   if (!parsed.success) return reply.code(400).send({ error: "Nieznany widok" });
@@ -143,11 +157,50 @@ app.get("/api/weather", async (_request, reply) => {
   return value;
 });
 
+app.get("/api/ha/config", async () => homeAssistant.status());
+
+app.post("/api/ha/test", async (request, reply) => {
+  const parsed = homeAssistantConfigInputSchema.pick({ baseUrl: true, token: true }).safeParse(request.body);
+  if (!parsed.success) return reply.code(400).send({ error: "Nieprawidłowa konfiguracja Home Assistant", details: parsed.error.issues });
+  const token = parsed.data.token?.trim() || homeAssistant.token;
+  if (!token) return reply.code(400).send({ error: "Podaj token Home Assistant" });
+  try {
+    return await homeAssistant.test(parsed.data.baseUrl, token);
+  } catch (error) {
+    return reply.code(502).send({ error: error instanceof Error ? error.message : String(error) });
+  }
+});
+
+app.put("/api/ha/config", async (request, reply) => {
+  const parsed = homeAssistantConfigInputSchema.safeParse(request.body);
+  if (!parsed.success) return reply.code(400).send({ error: "Nieprawidłowa konfiguracja Home Assistant", details: parsed.error.issues });
+  const token = parsed.data.token?.trim() || homeAssistant.token;
+  if (!token) return reply.code(400).send({ error: "Podaj token Home Assistant" });
+  try {
+    await homeAssistant.test(parsed.data.baseUrl, token);
+    const stored = await haConfigStore.save(parsed.data, homeAssistant.token);
+    await homeAssistant.configure(stored);
+    return homeAssistant.status();
+  } catch (error) {
+    return reply.code(502).send({ error: error instanceof Error ? error.message : String(error) });
+  }
+});
+
+app.get<{ Querystring: { q?: string } }>("/api/ha/entities", async (request) => homeAssistant.searchEntities(request.query.q));
+app.get("/api/ha/state", async () => homeAssistant.selectedState());
+
 app.get("/api/events", { websocket: true }, (socket) => {
   sockets.add(socket);
-  socket.send(JSON.stringify({ type: "snapshot", viewId: currentView }));
+  socket.send(JSON.stringify({
+    type: "snapshot",
+    viewId: currentView,
+    homeAssistant: homeAssistant.status(),
+    homeAssistantState: homeAssistant.selectedState(),
+  }));
   socket.on("close", () => sockets.delete(socket));
 });
+
+app.addHook("onClose", async () => homeAssistant.stop());
 
 try {
   await app.register(fastifyStatic, { root: webRoot, wildcard: false });

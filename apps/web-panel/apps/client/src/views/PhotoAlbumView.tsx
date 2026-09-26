@@ -1,6 +1,6 @@
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { PhotoItem, WallDeckSettings, WeatherNow } from "@walldeck/contracts";
+import type { HomeAssistantSelectedState, PhotoItem, WallDeckSettings, WeatherNow } from "@walldeck/contracts";
 import { api } from "../api";
 import { useLandscape, useNow } from "../hooks";
 import { createPhotoLayout, type PhotoLayout } from "./photo-layout";
@@ -14,7 +14,7 @@ function weatherSymbol(code: number, isDay: boolean) {
   return "☂";
 }
 
-function Overlay({ settings, weather }: { settings: WallDeckSettings; weather: WeatherNow | null }) {
+function Overlay({ settings, weather, homeAssistant }: { settings: WallDeckSettings; weather: WeatherNow | null; homeAssistant: HomeAssistantSelectedState | null }) {
   const now = useNow();
   const { overlay } = settings;
   return (
@@ -28,7 +28,8 @@ function Overlay({ settings, weather }: { settings: WallDeckSettings; weather: W
           <small>{weather.label}</small>
         </div>
       )}
-      {overlay.showHomeAssistantPlaceholder && <div className="ambient-overlay__ha"><i /> Dom spokojny</div>}
+      {homeAssistant && <div className="ambient-overlay__ha"><i /> CO₂ {homeAssistant.state}{homeAssistant.unit ? ` ${homeAssistant.unit}` : ""}</div>}
+      {!homeAssistant && overlay.showHomeAssistantPlaceholder && <div className="ambient-overlay__ha"><i /> Dom spokojny</div>}
     </div>
   );
 }
@@ -38,6 +39,7 @@ export function PhotoAlbumView() {
   const [photos, setPhotos] = useState<PhotoItem[]>([]);
   const [settings, setSettings] = useState<WallDeckSettings | null>(null);
   const [weather, setWeather] = useState<WeatherNow | null>(null);
+  const [homeAssistant, setHomeAssistant] = useState<HomeAssistantSelectedState | null>(null);
   const [layout, setLayout] = useState<PhotoLayout | null>(null);
   const [error, setError] = useState<string | null>(null);
   const nextLayout = useRef<PhotoLayout | null>(null);
@@ -50,6 +52,8 @@ export function PhotoAlbumView() {
       })
       .catch((reason) => setError(reason instanceof Error ? reason.message : String(reason)));
   }, []);
+
+  useEffect(() => { api.homeAssistant.state().then(setHomeAssistant).catch(() => undefined); }, []);
 
   const refreshWeather = useCallback(() => {
     api.weather().then(setWeather).catch(() => setWeather(null));
@@ -89,8 +93,10 @@ export function PhotoAlbumView() {
     const protocol = location.protocol === "https:" ? "wss:" : "ws:";
     const socket = new WebSocket(`${protocol}//${location.host}/api/events`);
     socket.onmessage = (event) => {
-      const message = JSON.parse(event.data) as { type: string; settings?: WallDeckSettings };
+      const message = JSON.parse(event.data) as { type: string; settings?: WallDeckSettings; entity?: HomeAssistantSelectedState | null; homeAssistantState?: HomeAssistantSelectedState | null };
       if (message.type === "settings.changed" && message.settings) setSettings(message.settings);
+      if (message.type === "ha.stateChanged") setHomeAssistant(message.entity ?? null);
+      if (message.type === "snapshot") setHomeAssistant(message.homeAssistantState ?? null);
     };
     return () => socket.close();
   }, []);
@@ -115,7 +121,7 @@ export function PhotoAlbumView() {
         </motion.section>
       </AnimatePresence>
       <div className="photo-view__vignette" />
-      <Overlay settings={settings} weather={weather} />
+      <Overlay settings={settings} weather={weather} homeAssistant={homeAssistant} />
     </main>
   );
 }
