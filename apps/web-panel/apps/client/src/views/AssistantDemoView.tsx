@@ -1,11 +1,22 @@
-import { useEffect, useReducer, useState } from "react";
+import { useContext, useEffect, useReducer, useState } from "react";
+import { assistantStateSchema } from "@walldeck/contracts";
+import { PanelContext } from "../panel-context";
+import { nativeBridge } from "../native";
+import { assistantBrightness } from "../assistant/brightness";
 import { useIsPresent } from "motion/react";
 import { ExpressiveAssistantFace } from "../assistant/ExpressiveAssistantFace";
 import { assistantStates, assistantTransition, stateLabels, transientDelay } from "../assistant/assistant-state";
 
 export function AssistantDemoView() {
   const isPresent = useIsPresent();
-  const [state, dispatch] = useReducer(assistantTransition, "idle");
+  const { settings, activeView } = useContext(PanelContext);
+  const [state, dispatch] = useReducer(assistantTransition, "idle", () => assistantStateSchema.safeParse(new URLSearchParams(location.search).get("state")).data ?? "idle");
+  const brightness = assistantBrightness(settings, state);
+  useEffect(() => {
+    if (isPresent && activeView === "assistant-expressive" && nativeBridge.available) {
+      nativeBridge.call("brightness", { value: brightness }).catch(() => undefined);
+    }
+  }, [brightness, activeView, isPresent]);
   const [audio, setAudio] = useState(.35);
   const [simulate, setSimulate] = useState(false);
   const [simulatedAudio, setSimulatedAudio] = useState(0);

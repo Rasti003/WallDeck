@@ -191,3 +191,15 @@ button, input, select { font: inherit; }
   .view-list { grid-template-columns: 1fr; }
   .admin-sidebar nav button { font-size: .65rem; }
 }
+.assistant-admin { display: grid; gap: 20px; }
+.assistant-brightness-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(235px, 1fr)); gap: 16px; }
+.assistant-brightness-card { margin: 0; padding: 22px; }
+.assistant-brightness-card.is-custom { border-color: #376865; }
+.assistant-brightness-card header { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 18px; }
+.assistant-brightness-card h3 { margin: 0; font-size: 18px; }
+.assistant-brightness-card output { color: #315f44; font-variant-numeric: tabular-nums; }
+.assistant-brightness-card input[type=range] { width: 100%; margin: 16px 0; accent-color: #315f44; }
+.assistant-brightness-card footer { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; font-size: 12px; }
+.assistant-brightness-card small { color: #687268; }
+.assistant-settings-save { position: sticky; bottom: 12px; z-index: 2; display: flex; justify-content: space-between; align-items: center; gap: 16px; }
+.assistant-admin input:disabled { opacity: .35; cursor: not-allowed; }

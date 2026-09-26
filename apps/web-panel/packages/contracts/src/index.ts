@@ -1,5 +1,13 @@
 import { z } from "zod";
 
+export const assistantStates = ["idle", "attention", "listening", "thinking", "speaking", "success", "error", "sleep", "curious", "uncertain", "confirm", "surprised", "wink", "laughing"] as const;
+export const assistantStateSchema = z.enum(assistantStates);
+export type AssistantState = z.infer<typeof assistantStateSchema>;
+export const assistantBrightnessSchema = z.object({
+  globalEnabled: z.boolean().default(true),
+  overrides: z.partialRecord(assistantStateSchema, z.number().min(.05).max(1).nullable()).default({ sleep: .05 }),
+}).default({ globalEnabled: true, overrides: { sleep: .05 } });
+
 export const viewIdSchema = z.preprocess(value => value === "assistant-demo" ? "assistant-expressive" : value, z.enum(["photos", "ha", "assistant-expressive"]));
 export type ViewId = z.infer<typeof viewIdSchema>;
 
@@ -38,6 +46,7 @@ export const settingsSchema = z.object({
     "assistant-expressive": z.number().min(0.05).max(1).default(0.65),
   }).default({ photos: 0.75, ha: 0.85, "assistant-expressive": 0.65 }),
   viewRouter: viewRouterSettingsSchema,
+  assistantBrightness: assistantBrightnessSchema,
   overlay: z.object({
     position: overlayPositionSchema,
     showClock: z.boolean(),
@@ -58,6 +67,7 @@ export const defaultSettings: WallDeckSettings = {
   photoIntervalSeconds: 30,
   transitionSeconds: 1.4,
   viewBrightness: { photos: 0.75, ha: 0.85, "assistant-expressive": 0.65 },
+  assistantBrightness: { globalEnabled: true, overrides: { sleep: .05 } },
   viewRouter: {
     tapAction: { enabled: true, sourceView: "photos", targetView: "ha" },
     swipeDownAction: { enabled: true, sourceView: "photos", targetView: "ha" },

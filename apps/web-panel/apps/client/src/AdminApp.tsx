@@ -10,6 +10,7 @@ import {
 } from "@walldeck/contracts";
 import { api } from "./api";
 import { connectEvents } from "./events";
+import { AssistantAdmin } from "./assistant/AssistantAdmin";
 
 const positions: { value: WallDeckSettings["overlay"]["position"]; label: string }[] = [
   { value: "top-left", label: "Góra — lewo" }, { value: "top-center", label: "Góra — środek" },
@@ -29,7 +30,7 @@ export function AdminApp() {
   const [haSearch, setHaSearch] = useState("");
   const [entityDraft, setEntityDraft] = useState<{ entityId: string; label: string; position: WallDeckSettings["overlay"]["position"] }>({ entityId: "", label: "", position: "bottom-right" });
   const [haMessage, setHaMessage] = useState("Nie skonfigurowano");
-  const [section, setSection] = useState<"overview" | "views" | "photos" | "ha">("overview");
+  const [section, setSection] = useState<"overview" | "views" | "photos" | "ha" | "assistant">("overview");
 
   useEffect(() => {
     Promise.all([api.settings(), api.views(), api.photos(), api.homeAssistant.config()]).then(([nextSettings, nextViews, photos, homeAssistant]) => {
@@ -139,6 +140,7 @@ export function AdminApp() {
             ["views", "⌘", "Widoki i reguły"],
             ["photos", "▧", "Album zdjęć"],
             ["ha", "◉", "Home Assistant"],
+            ["assistant", "◌", "Asystent"],
           ] as const).map(([id, icon, label]) => (
             <button className={section === id ? "is-active" : ""} key={id} onClick={() => setSection(id)}><span>{icon}</span>{label}</button>
           ))}
@@ -148,7 +150,7 @@ export function AdminApp() {
 
       <div className="admin-workspace">
         <header className="admin-topbar">
-          <div><span className="admin-eyebrow">WALLDECK / ADMIN</span><h1>{section === "overview" ? "Pulpit" : section === "views" ? "Widoki i reguły" : section === "photos" ? "Album zdjęć" : "Home Assistant"}</h1></div>
+          <div><span className="admin-eyebrow">WALLDECK / ADMIN</span><h1>{section === "overview" ? "Pulpit" : section === "views" ? "Widoki i reguły" : section === "photos" ? "Album zdjęć" : section === "assistant" ? "Asystent" : "Home Assistant"}</h1></div>
           <span className="admin-save-state">{status}</span>
         </header>
 
@@ -164,6 +166,8 @@ export function AdminApp() {
           </article>
         </section>}
 
+        {section === "assistant" && <AssistantAdmin settings={settings} setSettings={setSettings} save={save} status={status} />}
+
         {section === "views" && <>
       <section className="admin-card">
         <div><span className="admin-kicker">Widoki</span><h2>Aktywny ekran</h2></div>
@@ -178,8 +182,6 @@ export function AdminApp() {
 
       <form className="admin-card admin-form" onSubmit={save}>
         <div><span className="admin-kicker">Manager widoków</span><h2>Reguły przełączania</h2></div>
-        <label className="brightness-control">Jasność asystenta ekspresyjnego: {Math.round(settings.viewBrightness["assistant-expressive"] * 100)}%<input aria-label="Jasność asystenta ekspresyjnego" type="range" min="5" max="100" value={Math.round(settings.viewBrightness["assistant-expressive"] * 100)} onChange={(event) => setSettings({ ...settings, viewBrightness: { ...settings.viewBrightness, "assistant-expressive": Number(event.target.value) / 100 } })} /></label>
-        <a href="/assistant-expressive" target="_blank" rel="noreferrer">Otwórz ekspresyjną wersję twarzy ↗</a>
         <p className="form-intro">Reguły reagują na zdarzenia panelu. Dotknięcia wewnątrz dashboardu HA są wykrywane przez aplikację tabletową.</p>
         <div className="rule-list">
           <article>

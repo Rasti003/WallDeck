@@ -1,6 +1,5 @@
-const baseStates = ["idle", "attention", "listening", "thinking", "speaking", "success", "error", "sleep"] as const;
-export const assistantStates = [...baseStates, "curious", "uncertain", "confirm", "surprised", "wink", "laughing"] as const;
-export type AssistantState = typeof assistantStates[number];
+import type { AssistantState } from "@walldeck/contracts";
+export { assistantStates, type AssistantState } from "@walldeck/contracts";
 export type AssistantEvent = { type: "select"; state: AssistantState } | { type: "timeout" };
 export const stateLabels: Record<AssistantState, string> = {
   idle: "Spokój", attention: "Pobudka", listening: "Słucham", thinking: "Myślę",

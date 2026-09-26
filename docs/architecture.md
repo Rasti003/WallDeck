@@ -32,6 +32,8 @@ WallDeck Server jest jedynym klientem Home Assistant. Konfigurację podaje się 
 
 ## Prototyp twarzy asystenta
 
+Identyfikatory mimiki i schemat `assistantBrightness` są współdzielone w contracts. Ustawienia zawierają `globalEnabled` i opcjonalne overrides 0.05–1 dla każdej miny (null/brak = dziedziczenie). Globalny poziom pozostaje w `viewBrightness[assistant-expressive]` dla zgodności wcześniejszych ustawień. Stare konfiguracje dostają domyślny sleep=0.05. `PanelContext` przekazuje ustawienia i docelowy widok; asystent steruje jasnością tylko podczas aktywnego wyświetlania. Wychodząca animacja nie nadpisuje jasności kolejnego widoku. Wyłączenie poziomu wspólnego przy braku override wysyła brightness=-1, oddając jasność Androidowi. Query `state` podglądu jest walidowane wspólnym enumem i nie aktywuje widoku na innych urządzeniach.
+
 Spokojny renderer usunięto. Jedyny widok to `assistant-expressive`; stary adres `/assistant-demo` przekierowuje do niego, a schemat kontraktu migruje stare identyfikatory w zapisanych regułach i żądaniach API. Nowy zapis ustawień usuwa nieużywane pole jasności spokojnej wersji. Historyczne wyniki testów pozostają w raporcie.
 
 

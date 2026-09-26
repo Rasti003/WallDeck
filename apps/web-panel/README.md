@@ -46,6 +46,8 @@ i ustawić w APK adres `http://127.0.0.1:8080/panel`.
 
 ### Asystent demo
 
+Sekcja **Asystent** w bocznym menu `/admin` zawiera wszystkie 14 min i konfigurację jasności okna tabletu. Priorytet: własna jasność miny → wspólny poziom asystenta → Android (gdy wspólny poziom wyłączony). Własne ustawienia działają także przy wyłączonej jasności wspólnej. Domyślnie tylko sleep ma własne 5%, pozostałe dziedziczą dotychczasową jasność widoku. Wyłączenie „Własnej jasności” przywraca dziedziczenie. Zapis działa natychmiast przez WebSocket; zmiana miny i wyjście do innego widoku ustawiają odpowiedni poziom. Podgląd otwiera wybraną minę w przeglądarce, która nie zmienia jasności monitora.
+
 Ekspresyjna wersja oferuje dodatkowo: ciekawość, niepewność („Powtórz?”), potwierdzenie skinieniem, zaskoczenie, oczko i śmiech. Śmiech jest animacją bez dźwięku: rytmiczne usta, przymrużone oczy i drobne podskoki; po 3,2 s wraca do idle. Krótkie potwierdzenie, zaskoczenie i oczko również wracają automatycznie. W reduced motion pozostaje statyczna ekspresja.
 
 Ekspresyjny asystent ma wejście (około 0,9 s: pojawienie, uniesienie, otwarcie oczu) i wyjście (około 0,85 s: przymknięcie oczu i wygaszenie). Router utrzymuje wychodzący ekran do zakończenia animacji i dopiero wtedy montuje ostatnio wybrany widok. Systemowe reduced motion wyłącza przejścia routera i animację wejścia.

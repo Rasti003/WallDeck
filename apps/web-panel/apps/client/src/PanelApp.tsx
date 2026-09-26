@@ -6,6 +6,7 @@ import { connectEvents } from "./events";
 import { nativeBridge } from "./native";
 import { inactivityTarget, viewAfterSwipeDown, viewAfterTap } from "./view-manager";
 import { viewRegistry } from "./views/registry";
+import { PanelContext } from "./panel-context";
 
 export function PanelApp({ forcedView }: { forcedView?: ViewId }) {
   const reducedMotion = useReducedMotion();
@@ -73,7 +74,7 @@ export function PanelApp({ forcedView }: { forcedView?: ViewId }) {
   }, [resetInactivity]);
 
   useEffect(() => {
-    if (nativeBridge.available) {
+    if (nativeBridge.available && activeView !== "assistant-expressive") {
       nativeBridge.call("brightness", { value: settings.viewBrightness[activeView] }).catch(() => undefined);
     }
   }, [settings.viewBrightness, activeView]);
@@ -110,6 +111,7 @@ export function PanelApp({ forcedView }: { forcedView?: ViewId }) {
         if (!forcedView && target) activate(target);
       }}
     >
+      <PanelContext.Provider value={{ settings, activeView }}>
       <AnimatePresence mode="wait">
         <motion.div
           key={activeView}
@@ -122,6 +124,7 @@ export function PanelApp({ forcedView }: { forcedView?: ViewId }) {
           <View />
         </motion.div>
       </AnimatePresence>
+      </PanelContext.Provider>
     </div>
   );
 }

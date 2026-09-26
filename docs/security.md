@@ -22,6 +22,8 @@ Udostępniony link Google Photos traktujemy jak sekret o ograniczonym zakresie. 
 
 ## Odpowiedzialność panelu WWW
 
+Jasność per mimika używa istniejącego zaufanego bridge i dotyczy wyłącznie okna WallDeck. Nie zapisuje globalnej jasności systemu ani nie wymaga nowych uprawnień. Backend waliduje nazwy min oraz zakres 5–100%; fallback -1 jest wyliczany w kliencie jako powrót do ustawień Androida.
+
 Widok asystenta jest demonstracją grafiki. Suwak i generator lokalny są jedynymi źródłami poziomu audio; nie korzysta z mikrofonu, kamery, zewnętrznego TTS ani nowych uprawnień Androida. Do API aktywacji dodano tylko walidowany identyfikator `assistant-demo`.
 
 Wszystkie skrypty uruchamiane przez zaufany origin mają dostęp do bridge. Backend i frontend muszą więc zapobiegać XSS, stosować restrykcyjny CSP, aktualizować zależności oraz wydawać krótkie sesje. Weryfikacja HMAC powinna być stałoczasowa, a każde wyzwanie jednorazowe i szybko wygasające.

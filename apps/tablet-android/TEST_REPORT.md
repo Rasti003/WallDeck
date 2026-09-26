@@ -35,6 +35,8 @@
 
 ## Asystent demo — 2026-09-26
 
+Jasność per mimika: Xiaomi 2603ARP14G / Android 16, test ADB/CDP z odczytem natywnej metody brightness: idle=0.65, sleep=0.05, powrót idle=0.65, wspólna jasność wyłączona i brak override=-1, sleep z wyłączoną wspólną=0.05, testowe error=0.23, wyjście do photos=0.22 (zapisany poziom zdjęć). Wszystkie asercje PASS; testowe ustawienia przywrócono w finally. Zapis ustawień z sekcji Asystent zweryfikowano też w przeglądarce.
+
 Po usunięciu spokojnego renderera ponownie wykonano `assistant-smoke.mjs` na Xiaomi 2603ARP14G / Android 16 dla `assistant-expressive`: osiem bazowych stanów, automatyczne przejścia i reakcja ust PASS, brak błędów JavaScript. Krótki pomiar: 599 klatek / około 10 s, mediana 16,7 ms, p95 16,8 ms.
 
 Dodatkowe reakcje, Xiaomi 2603ARP14G / Android 16: przez ADB/CDP wywołano curious, uncertain, confirm, surprised, wink i laughing. Wszystkie wyrenderowane poprawnie; śmiech zmienił ścieżkę ust w czterech kolejnych próbkach i automatycznie wrócił do idle po upływie czasu. PASS.

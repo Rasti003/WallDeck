@@ -28,6 +28,8 @@
 
 ## Najbliższy etap
 
+- [x] sekcja Asystent w adminie, 14 min z indywidualną jasnością, opcjonalna wspólna jasność i ciemny sen;
+
 - [x] usunąć spokojny wariant asystenta po wyborze ekspresyjnego; zachować migrację dawnych reguł i adresu demo;
 
 - [x] zachować spokojny wariant asystenta i dodać ekspresyjną kopię z mocniejszą mimiką i ruchem wirtualnej głowy;
