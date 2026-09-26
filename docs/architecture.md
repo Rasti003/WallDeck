@@ -110,3 +110,5 @@ Admin StateMachinesAdmin presents the current transition catalogue with settings
 Device Owner provisioning entry point added to the native app. It does not automatically start lock task or apply policies. Existing dock behavior remains active. Full kiosk lifecycle is pending successful provisioning and native exit controls.
 
 Native MainActivity controls managed kiosk lifecycle from dock configuration and physical power. No bridge/API changes. Native exit control is independent of WebView and HA. PowerService may launch through Device Owner privileges or overlay permission. Stopping the Activity leaves power monitoring active; it relaunches on a new power-connected event, not battery level updates.
+
+MainActivity disables resizing/PiP at manifest level. DeviceAdminReceiver now clears kiosk window restrictions on system lock-task exit.

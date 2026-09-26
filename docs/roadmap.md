@@ -91,3 +91,6 @@
 
 - [x] Managed dock kiosk with native tablet-mode button, unplug exit and hardware emergency escape.
 - [ ] Integrate native exit with future configurable radial menu.
+
+- [x] Add non-resizable activity and temporary kiosk window restriction.
+- [ ] Confirm Xiaomi top-edge floating-window toolbar no longer appears with user gesture.

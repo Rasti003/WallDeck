@@ -74,3 +74,5 @@ Provisioning update: after the user removed all accounts, Device Owner registrat
 Managed dock kiosk: when Device Owner, dock monitoring is enabled and power is connected, WallDeck uses LOCKED mode with system features disabled. Native bottom-right Tryb tabletu exits; manual relaunch or a new power connection re-enters. Unplug stops kiosk before finishing. Emergency: hold Volume Down for 2 seconds; also seven taps upper-left opens native configuration with exit button. No automatic kiosk on battery. Spotify is allowlisted for authorization screens.
 
 Deployment verified: final emergency-exit update installed successfully. On the physical tablet, an injected 2.5-second Volume Down hold changed LOCKED to NONE and returned to the launcher.
+
+Kiosk hardening: WallDeck declares non-resizable/no picture-in-picture. Managed kiosk temporarily applies DISALLOW_CREATE_WINDOWS; native exit and DeviceAdminReceiver lock-task-exit callback clear this restriction.

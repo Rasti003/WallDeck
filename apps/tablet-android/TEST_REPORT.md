@@ -158,3 +158,6 @@ Xiaomi 2603ARP14G / Android 16 via Wi-Fi. First build installed successfully. On
 
 ### Final emergency-exit retry
 Installation retried with kiosk NONE and launcher foreground: Success, no confirmation dialog required. Launched WallDeck and confirmed LOCKED. Injected KEYCODE_VOLUME_DOWN with duration 2500 ms: launcher foreground and lockTaskModeState NONE, PASS. Then relaunched WallDeck for normal dock use.
+
+## 2026-09-26: Floating-window hardening
+assembleDebug/testDebugUnitTest/lintDebug PASS; APK installed after exiting kiosk. Physical tablet reports RESIZE_MODE_UNRESIZEABLE, LOCKED and no_create_windows. Injected top-edge downward swipe left WallDeck foreground and LOCKED. Emergency exit produced NONE and no no_create_windows entries; relaunched WallDeck. Exact Xiaomi toolbar visibility remains for user confirmation.

@@ -257,8 +257,12 @@ class MainActivity : ComponentActivity() {
             runCatching {
                 policy.setLockTaskPackages(admin, arrayOf(packageName, "com.spotify.music"))
                 policy.setLockTaskFeatures(admin, android.app.admin.DevicePolicyManager.LOCK_TASK_FEATURE_NONE)
+                policy.addUserRestriction(admin, UserManager.DISALLOW_CREATE_WINDOWS)
                 if (!kioskActive()) startLockTask()
-            }.onFailure { toast("Nie udało się włączyć kiosku") }
+            }.onFailure {
+                policy.clearUserRestriction(admin, UserManager.DISALLOW_CREATE_WINDOWS)
+                toast("Nie udało się włączyć kiosku")
+            }
         } else if (kioskActive()) runCatching { stopLockTask() }
     }
 
@@ -269,6 +273,8 @@ class MainActivity : ComponentActivity() {
             toast("Nie udało się wyłączyć kiosku. Użyj konfiguratora lub ADB.")
             return
         }
+        val policy = getSystemService(android.app.admin.DevicePolicyManager::class.java)
+        if (policy.isDeviceOwnerApp(packageName)) policy.clearUserRestriction(ComponentName(this, WallDeckAdminReceiver::class.java), UserManager.DISALLOW_CREATE_WINDOWS)
         dialog?.dismiss()
         finishAndRemoveTask()
     }
