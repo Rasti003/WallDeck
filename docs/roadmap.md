@@ -17,6 +17,7 @@
 - [x] pierwszy widok albumu z układem zależnym od orientacji zdjęć;
 - [x] dyskretny overlay i osobny panel administratora;
 - [x] zdalne wywoływanie konkretnego widoku przez API i WebSocket;
+- [x] jasność tabletu konfigurowana osobno dla każdego widoku;
 
 ## Najbliższy etap
 

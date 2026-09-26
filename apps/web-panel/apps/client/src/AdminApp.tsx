@@ -59,6 +59,18 @@ export function AdminApp() {
 
       <form className="admin-card admin-form" onSubmit={save}>
         <div><span className="admin-kicker">Widok 01</span><h2>Album zdjęć</h2></div>
+        <label className="brightness-control">
+          <span><strong>Jasność tabletu dla tego widoku</strong><output>{Math.round(settings.viewBrightness.photos * 100)}%</output></span>
+          <input
+            type="range"
+            min="5"
+            max="100"
+            step="1"
+            value={Math.round(settings.viewBrightness.photos * 100)}
+            onChange={(event) => setSettings({ ...settings, viewBrightness: { ...settings.viewBrightness, photos: Number(event.target.value) / 100 } })}
+          />
+          <small>Po zapisaniu jasność zmieni się automatycznie, gdy widok Album zdjęć jest aktywny.</small>
+        </label>
         <div className="field-grid">
           <label>Zmiana zdjęć <span><input type="number" min="10" max="3600" value={settings.photoIntervalSeconds} onChange={(e) => setSettings({ ...settings, photoIntervalSeconds: Number(e.target.value) })} /> sekund</span></label>
           <label>Czas przejścia <span><input type="number" min="0.3" max="5" step="0.1" value={settings.transitionSeconds} onChange={(e) => setSettings({ ...settings, transitionSeconds: Number(e.target.value) })} /> sekund</span></label>

@@ -26,6 +26,8 @@ Ramka zdjęć korzysta z lokalnego magazynu serwera. Adapter `GooglePhotosShared
 
 Frontend ma rejestr niezależnych widoków. Serwer przechowuje identyfikator aktywnego widoku, udostępnia `POST /api/views/activate` i rozsyła zmianę do paneli przez WebSocket. Pierwszy widok `photos` wybiera układ na podstawie orientacji ekranu: poziomy ekran pokazuje jedno zdjęcie poziome albo dwa pionowe, a pionowy ekran stosuje regułę odwrotną. `/admin` konfiguruje slideshow i overlay bez umieszczania odnośnika na ekranie tabletu.
 
+Konfiguracja każdego widoku zawiera docelową jasność okna. Po zmianie aktywnego widoku frontend wywołuje metodę `brightness` Android Bridge; pozwala to przyciemniać przyszłe widoki nocne bez zmiany globalnej jasności systemu.
+
 ## Przepływ uwierzytelnienia urządzenia
 
 1. Backend wystawia krótko żyjące, jednorazowe wyzwanie.

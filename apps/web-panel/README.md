@@ -11,6 +11,8 @@ Na ekranie poziomym aplikacja losowo pokazuje jedno zdjęcie poziome albo parę 
 
 Panel administratora pozwala ustawić czas zmiany i przejścia, położenie overlayu, zegar, datę, pogodę oraz przyszły status Home Assistant. Ustawienia są wysyłane do działającego panelu przez WebSocket bez przeładowania strony.
 
+Każdy widok ma własne ustawienie jasności. Po aktywacji widoku klient wysyła jego poziom do Android Bridge, więc przyszłe ekrany nocne mogą automatycznie przyciemniać tablet, a dzienne przywracać wyższą jasność.
+
 ## Uruchomienie
 
 Wymagane są Node.js 22+ i pnpm 11.

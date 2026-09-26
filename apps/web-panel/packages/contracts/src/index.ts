@@ -10,6 +10,9 @@ export const overlayPositionSchema = z.enum([
 export const settingsSchema = z.object({
   photoIntervalSeconds: z.number().int().min(10).max(3600),
   transitionSeconds: z.number().min(0.3).max(5),
+  viewBrightness: z.object({
+    photos: z.number().min(0.05).max(1),
+  }).default({ photos: 0.75 }),
   overlay: z.object({
     position: overlayPositionSchema,
     showClock: z.boolean(),
@@ -29,6 +32,7 @@ export type WallDeckSettings = z.infer<typeof settingsSchema>;
 export const defaultSettings: WallDeckSettings = {
   photoIntervalSeconds: 30,
   transitionSeconds: 1.4,
+  viewBrightness: { photos: 0.75 },
   overlay: {
     position: "bottom-left",
     showClock: true,

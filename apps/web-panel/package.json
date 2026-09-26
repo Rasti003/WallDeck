@@ -6,8 +6,8 @@
     "dev": "concurrently -n server,client -c blue,magenta \"pnpm --filter @walldeck/server dev\" \"pnpm --filter @walldeck/client dev\"",
     "build": "pnpm --filter @walldeck/contracts build && pnpm --filter @walldeck/client build && pnpm --filter @walldeck/server build",
     "start": "pnpm --filter @walldeck/server start",
-    "test": "node --test tools/google-photos-shared-album.test.mjs && pnpm -r --if-present test",
-    "typecheck": "pnpm -r --if-present typecheck"
+    "test": "pnpm --filter @walldeck/contracts build && node --test tools/google-photos-shared-album.test.mjs && pnpm -r --if-present test",
+    "typecheck": "pnpm --filter @walldeck/contracts build && pnpm -r --if-present typecheck"
   },
   "devDependencies": {
     "concurrently": "^9.2.1"
