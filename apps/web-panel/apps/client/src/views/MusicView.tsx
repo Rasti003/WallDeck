@@ -5,6 +5,7 @@ import { PanelContext } from "../panel-context";
 import { api } from "../api";
 import { nativeBridge } from "../native";
 import { emptyMusicState, musicController as music, playbackPosition } from "../music/controller";
+import { musicErrorMessage } from "../music/errors";
 import "./music.css";
 
 const time = (ms: number) => `${Math.floor(ms / 60_000)}:${String(Math.floor(ms / 1000) % 60).padStart(2, "0")}`;
@@ -129,7 +130,7 @@ export function MusicView() {
             <button aria-label="Powtarzanie" aria-pressed={state.repeat !== 0} disabled={!ready || !state.capabilities.repeatContext} onClick={() => void run(() => music.setRepeat(state.repeat === 0 ? 1 : state.repeat === 1 && state.capabilities.repeatTrack ? 2 : 0))}>{state.repeat === 2 ? "↻¹" : "↻"}</button>
           </div>
           <button className="music-output" disabled={!available} onClick={() => setSheet("audio")}><span>◖))</span><div><strong>Wyjście audio</strong><small>{output?.bluetoothAvailable ? "Bluetooth dostępny · sprawdź wyjście w systemie" : "Głośność i urządzenia tabletu"}</small></div><span>›</span></button>
-          {(message || state.error) && <p className="music-error" role="status">{message || "Spotify nie potwierdziło połączenia. Sprawdź Client ID, rejestrację aplikacji i zgodę konta, następnie połącz ponownie."}</p>}
+          {(message || state.error) && <p className="music-error" role="status">{message || musicErrorMessage(state.error)}</p>}
         </section>
 
         <aside className="music-next">

@@ -91,3 +91,5 @@ Kontrakt domenowy może zostać użyty przez przyszły MCP/automatyzacje; transp
 Obecny prototyp ma wspólny aktywny widok dla podłączonych paneli. Komunikat WebSocket `panel.activity` synchronizuje reset licznika bezczynności, aby dodatkowa karta panelu nie przełączała aktywnie używanego tabletu. Reguły dotyku i bezczynności są wyłączone w wymuszonym podglądzie `/ha`. Docelowe profile wielu urządzeń powinny rozdzielać widoki i aktywność per Device ID.
 
 Android Activity działa w immersive fullscreen i ukrywa paski systemowe. Android zachowuje systemową kontrolę nad gestem rozpoczętym dokładnie na krawędzi; HyperOS może wtedy przejściowo pokazać status bar. Trwałe wyłączenie panelu powiadomień będzie wymagało zarządzanego trybu Device Owner/lock task.
+
+Diagnostyka Spotify: pole error w istniejącym kontrakcie stanu przechowuje kategorię wyjątku SDK, nie jego wiadomość. Music tłumaczy kategorię na instrukcję naprawy konfiguracji.

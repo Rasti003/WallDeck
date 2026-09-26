@@ -65,3 +65,5 @@
 - [ ] lokalny wake word, VAD i bufor audio;
 - [ ] STT → LLM → TTS na homelabie;
 - [ ] aktualizacja konfiguracji i modeli bez wydawania nowego APK.
+
+- [x] rozróżnienie błędów połączenia Spotify; potwierdzono na tablecie UserNotAuthorizedException, autoryzacja nadal wymaga dokończenia.

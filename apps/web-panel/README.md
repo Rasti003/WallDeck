@@ -108,3 +108,5 @@ node tools/sync-google-photos.mjs --config photo-sync.config.json
 Kolejne uruchomienia pomijają istniejące pliki. Element usunięty z albumu zostaje oznaczony jako nieaktywny, ale lokalny plik nie jest automatycznie kasowany. Mechanizm wykorzystuje nieudokumentowany format strony udostępnionego albumu, dlatego parser jest izolowany w adapterze.
 
 Wyniki pierwszej synchronizacji znajdują się w [raporcie testu](PHOTO_SYNC_TEST_REPORT.md).
+
+Music rozróżnia błędy autoryzacji, logowania, offline i timeout według bezpiecznej kategorii przekazanej przez bridge. Nie wyświetla surowych odpowiedzi Spotify.

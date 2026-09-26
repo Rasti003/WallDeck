@@ -60,3 +60,5 @@ Instrukcja konta i testu: [Music / Spotify](../../docs/music-spotify.md). Nowe m
 Na tablecie: przetestuj wszystkie przyciski strony, persist konfiguracji po ponownym uruchomieniu, błędny URL, obcy origin i iframe, błąd TLS oraz gest konfiguratora. Otwórz inną aplikację, podłącz zasilanie z/bez uprawnienia overlay, odłącz zasilanie i sprawdź powrót. Fizyczny test odłączenia wykonuj przez ADB Wi-Fi. `adb shell dumpsys battery unplug` / `reset` to wyłącznie symulacja (zawsze zakończ `reset`), nie zastępuje fizycznego testu kabla. Nie wysyłaj spreparowanych protected broadcastów przez `am broadcast`.
 
 Dokumentacja platformy: https://developer.android.com/reference/androidx/webkit/WebViewCompat ; https://developer.android.com/guide/components/activities/background-starts ; https://developer.android.com/develop/background-work/services/fgs/service-types
+
+Spotify: błąd połączenia zachowuje kategorię wyjątku SDK w polu error. Nazwa jest ograniczona do znaków alfanumerycznych/podkreślenia i 80 znaków; wiadomość wyjątku nie opuszcza APK. Frontend pokazuje odpowiednią instrukcję naprawy.

@@ -45,3 +45,5 @@ Reguła nocy oparta na Home Assistant pobiera z backendu wyłącznie publiczne m
 Fallback kamerowy wymaga jawnego uprawnienia Androida i można go wyłączyć w `/admin`. Surowe klatki pozostają w pamięci APK tylko podczas obliczania średniej luminancji: nie są zapisywane, przesyłane do WebView ani wysyłane na serwer. Bridge przekazuje jedynie liczbę `brightnessPercent`. Kamera jest zamykana po trzeciej klatce, po wyłączeniu ustawienia i po przejściu aplikacji w tło. Android może pokazywać systemowy wskaźnik prywatności podczas krótkiego pomiaru.
 
 Immersive fullscreen ogranicza przypadkowe wejście do interfejsu systemowego, ale nie stanowi zabezpieczenia kiosku. Android może przejściowo odsłonić paski gestem z krawędzi. Pełna blokada panelu powiadomień wymaga kontrolowanego wdrożenia Device Owner i lock task.
+
+Diagnostyka Spotify przekazuje wyłącznie ograniczoną nazwę klasy błędu SDK; nie przekazuje surowej treści wyjątku. Frontend mapuje ją na wskazówki autoryzacji i połączenia.

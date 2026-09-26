@@ -80,7 +80,7 @@ class SpotifyController(private val activity: Activity, private val changed: (JS
                     .setErrorCallback { /* Account-specific controls remain restricted. */ }
                 emit()
             }
-            override fun onFailure(throwable: Throwable) { if (attempt == generation) fail("SPOTIFY_AUTH_OR_CONNECTION_FAILED") }
+            override fun onFailure(throwable: Throwable) { if (attempt == generation) fail("SPOTIFY_" + throwable.javaClass.simpleName.replace(Regex("[^A-Za-z0-9_]"), "").take(80)) }
         })
         handler.postDelayed({ if (attempt == generation && connection == "connecting") { disconnect(); fail("SPOTIFY_CONNECT_TIMEOUT") } }, 60_000)
         return state()

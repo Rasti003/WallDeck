@@ -119,3 +119,8 @@ Xiaomi 2603ARP14G / Android 16: przed poprawką API aktywowało `assistant-demo`
 - Sprawdzono wygląd Music na tablecie oraz sekcję Music w przeglądarce /admin. Po testach przywrócono wcześniejszy widok zdjęć; nie zmieniono konfiguracji nocy ani głośności.
 - Android assembleDebug/testDebugUnitTest/lintDebug PASS (0 błędów lint, 23 ostrzeżenia). Web typecheck/build, 27 testów klienta, 4 testy serwera, 2 synchronizatora PASS.
 - NIE TESTOWANO: autoryzacji Spotify, rzeczywistych metadanych/okładki, komend playbacku, utrzymania odtwarzania po zmianie widoku, wyjścia BT ani długiego odsłuchu. Wymagane są Client ID i zgoda konta Spotify. Nie oznaczamy kompletnego MVP jako ukończonego.
+
+### Diagnostyka autoryzacji Spotify
+
+- 2026-09-26, Xiaomi 2603ARP14G / Android 16: zainstalowano APK rozróżniający wyjątki SDK. Próba połączenia z zapisanym Client ID i authorize=true zwróciła SPOTIFY_UserNotAuthorizedException. Aplikacja WallDeck była na pierwszym planie. Nie uzyskano autoryzacji; nie wykonano testu playbacku.
+- Android assembleDebug/testDebugUnitTest/lintDebug PASS; web typecheck/test/build PASS (27 klient, 4 serwer, 2 synchronizator). Surowe wiadomości wyjątków nie są przekazywane do UI ani logowane przez nasz adapter.

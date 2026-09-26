@@ -38,3 +38,7 @@ Automatyczne: Android assembleDebug/testDebugUnitTest/lintDebug, web typecheck/t
 Po autoryzacji należy wykonać: play/pause/seek/skip/shuffle/repeat, aktualizację artwork, Music → HA → photos → Music bez utraty playbacku, utratę/reconnect Spotify, odmowę zgody, przełączenie głośnika i powrót z ustawień, 60-minutowy odsłuch BT i pomiar płynności/pamięci. Na 2026-09-26 testów rzeczywistego playbacku nie wykonano — brak Client ID.
 
 Źródła: [Android SDK setup](https://developer.spotify.com/documentation/android/tutorials/getting-started), [PlayerApi](https://spotify.github.io/android-sdk/app-remote-lib/docs/com/spotify/android/appremote/api/PlayerApi.html), [oficjalny SDK i jego warunki](https://github.com/spotify/android-sdk).
+
+### Diagnostyka połączenia
+
+Błędy Spotify zachowują teraz kategorię wyjątku SDK (bez treści wyjątku, tokenów lub identyfikatorów konta). Music pokazuje osobne wskazówki dla braku zgody, braku logowania, błędu uwierzytelnienia, offline i timeout. UserNotAuthorizedException nie wskazuje jednoznacznie błędnego pola: sprawdź rejestrację Android/package/SHA-1, Redirect URI i dostęp konta, a następnie zgodę app-remote-control.
