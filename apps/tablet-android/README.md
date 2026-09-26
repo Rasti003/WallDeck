@@ -4,6 +4,8 @@ Cienka aplikacja Android: Kotlin 2.1, AndroidX WebKit, coroutines, DataStore i A
 
 ## Uruchomienie
 
+GitHub Actions pobiera SDK Spotify skryptem `scripts/setup-spotify.ps1` i weryfikuje jego SHA-256 przed budowaniem, testami jednostkowymi i lintem. Brak tego kroku powodował błąd `Missing Spotify SDK` na czystym runnerze, mimo poprawnych lokalnych buildów.
+
 Przed pierwszym buildem uruchom `./scripts/setup-spotify.ps1`. Skrypt pobiera oficjalny Spotify App Remote 0.8.0, sprawdza przypięty SHA-256 i zapisuje AAR w ignorowanym katalogu `app/libs`. Biblioteka podlega warunkom Spotify: [SDK i licencja](https://github.com/spotify/android-sdk). Pliku SDK nie commitujemy.
 
 1. Otwórz projekt w Android Studio lub ustaw `JAVA_HOME` i `sdk.dir` w lokalnym `local.properties`; wykonaj `./gradlew assembleDebug testDebugUnitTest lintDebug` (Windows: `gradlew.bat`).
