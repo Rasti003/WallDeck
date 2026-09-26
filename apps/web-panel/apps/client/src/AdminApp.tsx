@@ -206,7 +206,7 @@ export function AdminApp() {
                 <span><small>Ekran aplikacji</small><strong>{device.screen.width} × {device.screen.height}</strong><em>{device.screen.densityDpi} dpi</em></span>
                 <span><small>Bateria</small><strong>{device.battery.percent >= 0 ? `${device.battery.percent}%` : "—"}</strong><em>{device.battery.powerConnected ? (device.battery.charging ? "ładowanie" : "zasilanie podłączone") : "zasilanie odłączone"}</em></span>
                 <span><small>WallDeck</small><strong>{device.appVersion.name}</strong><em>build {device.appVersion.code}</em></span>
-                <span className="light-reading"><small>Sensor światła</small><strong>{lightSensor?.value == null ? "wykryty" : `${Math.round(lightSensor.value)} lx`}</strong><em>{lightSensor ? "camera_light_Sensor" : "brak"}</em></span>
+                <span className={`light-reading ${lightSensor && lightSensor.value == null ? "is-unavailable" : ""}`}><small>Sensor światła</small><strong>{!lightSensor ? "brak" : lightSensor.value == null ? "brak odczytu" : `${Math.round(lightSensor.value)} lx`}</strong><em>{!lightSensor ? "niewykryty" : lightSensor.value == null ? "wykryty · HyperOS blokuje pomiar" : lightSensor.name}</em></span>
                 <span><small>Ostatni raport</small><strong>{new Date(device.lastSeen).toLocaleTimeString("pl-PL")}</strong><em>{new Date(device.lastSeen).toLocaleDateString("pl-PL")}</em></span>
               </div>
             </article>
