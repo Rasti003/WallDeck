@@ -11,6 +11,7 @@ import {
 import { api } from "./api";
 import { connectEvents } from "./events";
 import { AssistantAdmin } from "./assistant/AssistantAdmin";
+import { createOverlayItemId } from "./overlay-item-id";
 
 const positions: { value: WallDeckSettings["overlay"]["position"]; label: string }[] = [
   { value: "top-left", label: "Góra — lewo" }, { value: "top-center", label: "Góra — środek" },
@@ -117,7 +118,7 @@ export function AdminApp() {
     setHaForm((current) => ({
       ...current,
       overlayEntities: [...current.overlayEntities, {
-        id: crypto.randomUUID(),
+        id: createOverlayItemId(),
         entityId: entityDraft.entityId,
         label: entityDraft.label.trim() || selected?.friendlyName || entityDraft.entityId,
         position: entityDraft.position,

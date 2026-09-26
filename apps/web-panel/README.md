@@ -75,6 +75,10 @@ Manager widoków w `/admin` przechowuje reguły zdarzenie → akcja. Domyślne r
 
 Po uruchomieniu wewnątrz APK klient wykrywa zaufany Android Bridge i włącza `keepAwake` na czas wyświetlania panelu. W zwykłej przeglądarce ten sam frontend działa bez bridge'a.
 
+## Home Assistant
+
+Wyszukiwarka w `/admin` pozwala dodać do albumu dowolną encję Home Assistant, ustawić jej etykietę i jedną z sześciu pozycji. Identyfikatory elementów overlayu są generowane również w przeglądarkach bez `crypto.randomUUID`, co obejmuje panel otwierany przez lokalny adres HTTP. Zapisana encja jest aktualizowana przez WebSocket bez przeładowania albumu.
+
 ## Pogoda
 
 Po wpisaniu współrzędnych w `/admin` serwer pobiera bieżącą pogodę z Open-Meteo i przechowuje wynik przez 10 minut. Klient nie łączy się bezpośrednio z zewnętrzną usługą.
