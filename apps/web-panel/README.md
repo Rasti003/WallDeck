@@ -46,6 +46,8 @@ i ustawić w APK adres `http://127.0.0.1:8080/panel`.
 
 ### Asystent demo
 
+Ekspresyjna wersja oferuje dodatkowo: ciekawość, niepewność („Powtórz?”), potwierdzenie skinieniem, zaskoczenie, oczko i śmiech. Śmiech jest animacją bez dźwięku: rytmiczne usta, przymrużone oczy i drobne podskoki; po 3,2 s wraca do idle. Krótkie potwierdzenie, zaskoczenie i oczko również wracają automatycznie. W reduced motion pozostaje statyczna ekspresja. Spokojny wariant zachowuje osiem pierwotnych stanów.
+
 Ekspresyjny asystent ma wejście (około 0,9 s: pojawienie, uniesienie, otwarcie oczu) i wyjście (około 0,85 s: przymknięcie oczu i wygaszenie). Router utrzymuje wychodzący ekran do zakończenia animacji i dopiero wtedy montuje ostatnio wybrany widok. Systemowe reduced motion wyłącza przejścia routera i animację wejścia.
 
 Zachowany wariant spokojny: `/assistant-demo`, oryginalny renderer `AssistantFace.tsx`. Osobna kopia `/assistant-expressive` / „Asystent — ekspresyjny” używa `ExpressiveAssistantFace.tsx`: mocniejsze usta i brwi, spojrzenia poprzedzające ruch twarzy, przesunięcie i przechył całej twarzy oraz paralaksa oczu, nosa i ust sugerująca niewidoczną głowę. Bez rysowania obrysu. Oba warianty mają niezależne identyfikatory, ustawienie jasności i można przypisać je do reguł. Ograniczenie ruchu zatrzymuje autonomiczne rozglądanie; stany attention/listening/speaking skupiają twarz centralnie.

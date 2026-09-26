@@ -13,6 +13,12 @@ const poses: Record<AssistantState, { eye: number; pupil: number; x: number; y: 
   success: { eye: .55, pupil: 1.07, x: 0, y: -5, brow: -19, smile: 66 },
   error: { eye: .75, pupil: .9, x: -20, y: 8, brow: 18, smile: -33 },
   sleep: { eye: .045, pupil: .7, x: 0, y: 0, brow: 2, smile: 7 },
+  curious: { eye: 1.12, pupil: 1.12, x: 8, y: -5, brow: -22, smile: 22 },
+  uncertain: { eye: .8, pupil: .9, x: -12, y: 5, brow: 10, smile: -18 },
+  confirm: { eye: .85, pupil: 1, x: 0, y: 0, brow: -8, smile: 38 },
+  surprised: { eye: 1.28, pupil: .8, x: 0, y: 0, brow: -28, smile: 0 },
+  wink: { eye: .95, pupil: 1, x: 8, y: 0, brow: -12, smile: 46 },
+  laughing: { eye: .33, pupil: 1.1, x: 0, y: -8, brow: -20, smile: 75 },
 };
 
 function useMicroMotion(enabled: boolean) {
@@ -40,11 +46,11 @@ function useMicroMotion(enabled: boolean) {
 function Eye({ x, side, state, blink, gaze, reduced }: { x: number; side: number; state: AssistantState; blink: boolean; gaze: { x: number; y: number }; reduced: boolean }) {
   const clip = useId();
   const pose = poses[state];
-  const asymmetry = state === "thinking" || state === "error";
+  const asymmetry = ["thinking", "error", "curious", "uncertain", "wink"].includes(state);
   return <g transform={`translate(${x} 273)`}>
     <motion.path fill="none" stroke="currentColor" strokeWidth="11" strokeLinecap="round"
       animate={{ d: `M -116 ${-104 + side * (asymmetry ? 15 : 3)} Q 0 ${state === "success" ? -170 : state === "error" ? -95 : -145 - gaze.y * 12} 116 ${-104 - side * (asymmetry ? 15 : 3)}`, y: pose.brow + (asymmetry ? side * 18 : gaze.y * -9 + side * gaze.x * 9), rotate: asymmetry ? side * 12 : side * 3 + gaze.x * 5, opacity: state === "sleep" ? .24 : .85 }} transition={{ duration: reduced ? 0 : .65 }} />
-    <motion.g initial={{ scaleY: reduced ? pose.eye : .035 }} animate={{ scaleY: blink ? .035 : pose.eye * (asymmetry && side === -1 ? .89 : 1) }} style={{ transformOrigin: "0px 0px" }} transition={{ duration: reduced ? 0 : blink ? .09 : .38 }}>
+    <motion.g initial={{ scaleY: reduced ? pose.eye : .035 }} animate={{ scaleY: blink || (state === "wink" && side === -1) ? .035 : pose.eye * (asymmetry && side === -1 ? .89 : 1) }} style={{ transformOrigin: "0px 0px" }} transition={{ duration: reduced ? 0 : blink ? .09 : .38 }}>
       <defs><clipPath id={clip}><rect x="-125" y="-76" width="250" height="152" rx="60" /></clipPath></defs>
       <rect x="-125" y="-76" width="250" height="152" rx="60" fill="currentColor" fillOpacity=".08" stroke="currentColor" strokeWidth="5" />
       <g clipPath={`url(#${clip})`}>
@@ -61,12 +67,18 @@ function Eye({ x, side, state, blink, gaze, reduced }: { x: number; side: number
 function Mouth({ state, audioLevel, reduced }: { state: AssistantState; audioLevel: number; reduced: boolean }) {
   const audio = useSpring(0, { stiffness: 170, damping: 25, mass: .65 });
   const smile = useSpring(poses[state].smile, { stiffness: 90, damping: 20 });
-  useEffect(() => { audio.set(state === "speaking" ? clampAudio(audioLevel) : 0); smile.set(poses[state].smile); }, [audio, smile, audioLevel, state]);
+  useEffect(() => { audio.set(state === "speaking" ? clampAudio(audioLevel) : state === "laughing" ? .72 : state === "surprised" ? .8 : 0); smile.set(poses[state].smile); }, [audio, smile, audioLevel, state]);
+  useEffect(() => {
+    if (state !== "laughing" || reduced) return;
+    let beat = 0;
+    const timer = setInterval(() => audio.set([.8, .3, .65, .15, .8, .5, .18][beat++ % 7]), 190);
+    return () => clearInterval(timer);
+  }, [audio, state, reduced]);
   const path = useTransform(() => {
     const opening = mouthOpening(audio.get()) * 1.55;
     const curve = smile.get();
-    const width = 102 - opening * .27 + Math.max(0, curve) * .25;
-    const skew = state === "thinking" ? 16 : state === "error" ? -12 : 0;
+    const width = state === "surprised" ? 40 : 102 - opening * .27 + Math.max(0, curve) * .25;
+    const skew = state === "thinking" || state === "wink" ? 16 : state === "error" || state === "uncertain" ? -12 : 0;
     return `M ${-width} ${skew} Q 0 ${curve - opening * .7} ${width} ${-skew} Q 0 ${curve + opening * 1.5} ${-width} ${skew} Z`;
   });
   return <g transform="translate(600 455)">
@@ -85,7 +97,7 @@ export function ExpressiveAssistantFace({ state, audioLevel = 0, accentColor = "
     <svg viewBox="0 0 1200 650" role="img" aria-label={`Asystent: ${stateLabels[state]}`}>
       <motion.g style={{ transformOrigin: "600px 325px" }} initial={{ opacity: reduced ? 1 : 0, scale: reduced ? 1 : .82, y: reduced ? 0 : 45 }} animate={{ opacity: 1, scale: 1, y: 0 }} transition={{ duration: reduced ? 0 : .9, ease: [.16, 1, .3, 1] }}>
       <motion.g animate={{ opacity: state === "sleep" ? .32 : 1 }} transition={{ duration: reduced ? 0 : 1 }}>
-        <g className="assistant-breath">
+        <g className="assistant-breath"><g className="assistant-reaction">
         <motion.g className="assistant-virtual-head" style={{ transformOrigin: "600px 325px" }} animate={{ x: head.x * 125, y: head.y * 55, rotate: head.x * 5, scaleX: 1 - Math.abs(head.x) * .07, scaleY: 1 - Math.abs(head.y) * .025 }} transition={{ duration: reduced ? 0 : 1.15, ease: [.22, 1, .36, 1] }}>
           <motion.g animate={{ x: head.x * 22, scale: 1 + head.x * .06 }} style={{ transformOrigin: "370px 273px" }} transition={{ duration: reduced ? 0 : .85 }}><Eye x={370} side={-1} {...{ state, blink, reduced }} gaze={head} /></motion.g>
           <motion.g animate={{ x: head.x * 22, scale: 1 - head.x * .06 }} style={{ transformOrigin: "830px 273px" }} transition={{ duration: reduced ? 0 : .85 }}><Eye x={830} side={1} {...{ state, blink, reduced }} gaze={head} /></motion.g>
@@ -99,7 +111,7 @@ export function ExpressiveAssistantFace({ state, audioLevel = 0, accentColor = "
             <path d="M 212 355 h 20 M 212 367 h 11 M 968 355 h 20 M 977 367 h 11" />
           </g>
         </motion.g>
-        </g>
+        </g></g>
       </motion.g>
       </motion.g>
     </svg>

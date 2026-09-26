@@ -28,3 +28,12 @@
 .assistant-demo button:focus-visible, .assistant-demo input:focus-visible { outline: 2px solid #b2f4ef; outline-offset: 4px; }
 @media (max-width: 700px) { .assistant-console { bottom: 12px; padding: 14px; } .assistant-states { grid-template-columns: repeat(4, 1fr); } .assistant-console header small { display: none; } .assistant-options { gap: 12px; } }
 @media (prefers-reduced-motion: reduce) { .assistant-face * { animation: none !important; } }
+.assistant-face[data-state="laughing"] .assistant-reaction { transform-origin: 600px 325px; animation: assistant-laugh .38s ease-in-out infinite; }
+.assistant-face[data-state="confirm"] .assistant-reaction { transform-origin: 600px 325px; animation: assistant-nod .65s ease-in-out 2; }
+.assistant-reaction { transform-origin: 600px 325px; transition: transform .6s; }
+.assistant-face[data-state="curious"] .assistant-reaction { transform: rotate(-7deg); }
+.assistant-face[data-state="uncertain"] .assistant-reaction { animation: assistant-question 1.8s ease-in-out infinite; }
+@keyframes assistant-laugh { 0%,100% { transform: translateY(0) rotate(-1deg); } 50% { transform: translateY(-9px) rotate(1deg); } }
+@keyframes assistant-nod { 0%,100% { transform: translateY(0) scaleY(1); } 50% { transform: translateY(13px) scaleY(.96); } }
+@keyframes assistant-question { 0%,100% { transform: rotate(-3deg); } 50% { transform: rotate(3deg); } }
+@media (prefers-reduced-motion: reduce) { .assistant-reaction { animation: none !important; transition: none !important; } }

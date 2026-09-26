@@ -32,6 +32,8 @@ WallDeck Server jest jedynym klientem Home Assistant. Konfigurację podaje się 
 
 ## Prototyp twarzy asystenta
 
+Kontrakt ekspresyjnej mimiki obejmuje dodatkowe stany curious, uncertain, confirm, surprised, wink i laughing. Wspólna maszyna obsługuje ich zakończenie, a spokojny renderer ma zawężony kontrakt ośmiu oryginalnych stanów. Generator ruchu ust śmiechu działa lokalnie i sprząta interwał po zmianie stanu; nie generuje dźwięku.
+
 Router renderuje kluczowane widoki w Motion AnimatePresence (mode wait). Wychodzący ekspresyjny asystent rozpoznaje fazę exit przez useIsPresent i przechodzi wizualnie w sleep; router wygasza go przed montażem następnego ekranu. Stan docelowy pozostaje kontrolowany przez istniejące API i reguły. Szybkie komendy zastępują oczekujący widok najnowszym wyborem.
 
 Wariant ekspresyjny jest osobnym widokiem `assistant-expressive` i kopią renderera SVG. Oryginalny `AssistantFace.tsx` pozostaje niezmieniony. Wspólne są kontrolki demo i kontrakt stanów; geometria oraz animacja ekspresyjna są niezależne, co umożliwia porównanie obu wersji. Wrażenie obrotu głowy powstaje przez transformacje grup SVG, względną skalę oczu i paralaksę nosa/ust, bez silnika 3D i dostępu do kamery.

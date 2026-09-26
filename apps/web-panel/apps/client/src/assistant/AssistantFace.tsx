@@ -1,6 +1,7 @@
 import { motion, useReducedMotion, useSpring, useTransform } from "motion/react";
 import { useEffect, useId, useState, type CSSProperties } from "react";
-import { clampAudio, mouthOpening, stateLabels, type AssistantState } from "./assistant-state";
+import { clampAudio, mouthOpening, stateLabels, type calmStates } from "./assistant-state";
+type AssistantState = typeof calmStates[number];
 import "./assistant.css";
 
 type Props = { state: AssistantState; audioLevel?: number; accentColor?: string; reducedMotion?: boolean };
