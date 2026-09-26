@@ -18,6 +18,7 @@ const poses: Record<AssistantState, { eye: number; pupil: number; x: number; y: 
   confirm: { eye: .85, pupil: 1, x: 0, y: 0, brow: -8, smile: 38 },
   surprised: { eye: 1.28, pupil: .8, x: 0, y: 0, brow: -28, smile: 0 },
   wink: { eye: .95, pupil: 1, x: 8, y: 0, brow: -12, smile: 46 },
+  dancing: { eye: .7, pupil: 1.05, x: 0, y: -3, brow: -18, smile: 62 },
   laughing: { eye: .33, pupil: 1.1, x: 0, y: -8, brow: -20, smile: 75 },
 };
 
@@ -95,6 +96,16 @@ export function ExpressiveAssistantFace({ state, audioLevel = 0, accentColor = "
   const head = reduced || state === "sleep" ? { x: 0, y: 0 } : looking;
   return <div className={`assistant-face ${reduced ? "is-reduced" : ""}`} data-variant="expressive" data-state={state} style={{ "--assistant-accent": accentColor } as CSSProperties}>
     <svg viewBox="0 0 1200 650" role="img" aria-label={`Asystent: ${stateLabels[state]}`}>
+      <motion.g className="assistant-dance-hands" initial={false} animate={{ opacity: state === "dancing" ? 1 : 0, y: state === "dancing" ? 0 : 150 }} transition={{ duration: reduced ? 0 : .45 }} aria-hidden="true">
+        {[-1, 1].map(side => <g key={side} transform={`translate(${side === -1 ? 130 : 1070} 455)`}>
+          <g className={side === -1 ? "assistant-hand-left" : "assistant-hand-right"}>
+            <g transform={`scale(${side === -1 ? 1 : -1} 1)`} fill="currentColor" fillOpacity=".12" stroke="currentColor" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M -35 56 C -55 33 -65 6 -52 -3 Q -43 -10 -31 11 L -31 -67 Q -31 -83 -19 -83 Q -7 -83 -7 -67 L -7 -23 L 0 -88 Q 2 -102 14 -100 Q 26 -98 24 -84 L 18 -22 L 30 -65 Q 34 -78 46 -74 Q 56 -70 52 -56 L 40 -9 Q 59 -27 69 -16 Q 78 -7 67 7 L 38 53 Q 12 78 -35 56 Z" />
+              <path d="M -13 20 Q 12 8 32 24 M -22 89 Q 4 99 30 88" fill="none" opacity=".5" />
+            </g>
+          </g>
+        </g>)}
+      </motion.g>
       <motion.g style={{ transformOrigin: "600px 325px" }} initial={{ opacity: reduced ? 1 : 0, scale: reduced ? 1 : .82, y: reduced ? 0 : 45 }} animate={{ opacity: 1, scale: 1, y: 0 }} transition={{ duration: reduced ? 0 : .9, ease: [.16, 1, .3, 1] }}>
       <motion.g animate={{ opacity: state === "sleep" ? .32 : 1 }} transition={{ duration: reduced ? 0 : 1 }}>
         <g className="assistant-breath"><g className="assistant-reaction">

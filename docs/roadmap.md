@@ -69,3 +69,5 @@
 - [x] rozróżnienie błędów połączenia Spotify; potwierdzono na tablecie UserNotAuthorizedException, autoryzacja nadal wymaga dokończenia.
 
 - [x] poprawka blokady okna zgody Spotify na Androidzie 14+ (BIND_ALLOW_ACTIVITY_STARTS dla jawnej autoryzacji).
+
+- [x] Dancing expression with hands, idle return and per-expression brightness.

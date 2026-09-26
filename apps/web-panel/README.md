@@ -110,3 +110,5 @@ Kolejne uruchomienia pomijają istniejące pliki. Element usunięty z albumu zos
 Wyniki pierwszej synchronizacji znajdują się w [raporcie testu](PHOTO_SYNC_TEST_REPORT.md).
 
 Music rozróżnia błędy autoryzacji, logowania, offline i timeout według bezpiecznej kategorii przekazanej przez bridge. Nie wyświetla surowych odpowiedzi Spotify.
+
+Dance (dancing): an eight-second smile, head sway and alternating raised hands, then idle. Available in the studio and per-expression brightness settings. Reduced motion disables rhythmic movement. No audio playback.

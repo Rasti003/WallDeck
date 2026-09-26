@@ -1,7 +1,7 @@
 import { z } from "zod";
 export type { MusicState, AudioOutputState, MusicController } from "./music.js";
 
-export const assistantStates = ["idle", "attention", "listening", "thinking", "speaking", "success", "error", "sleep", "curious", "uncertain", "confirm", "surprised", "wink", "laughing"] as const;
+export const assistantStates = ["idle", "attention", "listening", "thinking", "speaking", "success", "error", "sleep", "curious", "uncertain", "confirm", "surprised", "wink", "laughing", "dancing"] as const;
 export const assistantStateSchema = z.enum(assistantStates);
 export type AssistantState = z.infer<typeof assistantStateSchema>;
 export const assistantBrightnessSchema = z.object({

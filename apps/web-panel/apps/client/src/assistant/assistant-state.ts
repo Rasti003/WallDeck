@@ -2,6 +2,7 @@ import type { AssistantState } from "@walldeck/contracts";
 export { assistantStates, type AssistantState } from "@walldeck/contracts";
 export type AssistantEvent = { type: "select"; state: AssistantState } | { type: "timeout" };
 export const stateLabels: Record<AssistantState, string> = {
+  dancing: "Taniec",
   idle: "Spokój", attention: "Pobudka", listening: "Słucham", thinking: "Myślę",
   speaking: "Mówię", success: "Gotowe", error: "Ups…", sleep: "Sen",
   curious: "Ciekawość", uncertain: "Powtórz?", confirm: "Rozumiem", surprised: "O!", wink: "Oczko", laughing: "Śmiech",
@@ -10,10 +11,10 @@ export const stateLabels: Record<AssistantState, string> = {
 export function assistantTransition(state: AssistantState, event: AssistantEvent): AssistantState {
   if (event.type === "select") return event.state;
   if (state === "attention") return "listening";
-  if (["success", "confirm", "surprised", "wink", "laughing"].includes(state)) return "idle";
+  if (["success", "confirm", "surprised", "wink", "laughing", "dancing"].includes(state)) return "idle";
   return state;
 }
-export const transientDelay: Partial<Record<AssistantState, number>> = { attention: 750, success: 2200, confirm: 1400, surprised: 1800, wink: 1100, laughing: 3200 };
+export const transientDelay: Partial<Record<AssistantState, number>> = { attention: 750, success: 2200, confirm: 1400, surprised: 1800, wink: 1100, laughing: 3200, dancing: 8000 };
 export function assistantEntryState(requested: AssistantState | null, fallback: AssistantState = "idle"): AssistantState {
   return requested === "sleep" ? "idle" : requested ?? fallback;
 }
