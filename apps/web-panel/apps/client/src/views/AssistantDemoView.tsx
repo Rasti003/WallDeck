@@ -5,7 +5,7 @@ import { nativeBridge } from "../native";
 import { assistantBrightness } from "../assistant/brightness";
 import { useIsPresent } from "motion/react";
 import { ExpressiveAssistantFace } from "../assistant/ExpressiveAssistantFace";
-import { assistantEntryState, assistantStates, assistantTransition, automaticSleepEntryDelay, stateLabels, transientDelay } from "../assistant/assistant-state";
+import { assistantEntryState, assistantStates, assistantTransition, stateLabels, transientDelay } from "../assistant/assistant-state";
 
 export function AssistantDemoView() {
   const studio = location.pathname.startsWith("/assistant-expressive");
@@ -40,7 +40,7 @@ export function AssistantDemoView() {
       return;
     }
     dispatch({ type: "select", state: "idle" });
-    const timer = setTimeout(() => dispatch({ type: "select", state: "sleep" }), automaticSleepEntryDelay);
+    const timer = setTimeout(() => dispatch({ type: "select", state: "sleep" }), settings.ambientSleep.sleepEntryDelaySeconds * 1_000);
     return () => clearTimeout(timer);
   }, [requestedAssistantState]);
   useEffect(() => {

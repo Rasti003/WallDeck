@@ -14,7 +14,6 @@ export function assistantTransition(state: AssistantState, event: AssistantEvent
   return state;
 }
 export const transientDelay: Partial<Record<AssistantState, number>> = { attention: 750, success: 2200, confirm: 1400, surprised: 1800, wink: 1100, laughing: 3200 };
-export const automaticSleepEntryDelay = 1600;
 export function assistantEntryState(requested: AssistantState | null, fallback: AssistantState = "idle"): AssistantState {
   return requested === "sleep" ? "idle" : requested ?? fallback;
 }

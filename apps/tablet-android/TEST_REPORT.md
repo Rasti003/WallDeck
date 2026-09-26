@@ -108,3 +108,4 @@ Xiaomi 2603ARP14G / Android 16: przed poprawką API aktywowało `assistant-demo`
 - Testowa encja HA uruchomiła sekwencję `photos → assistant-expressive/idle → sleep`. Pierwsza próbka `idle` pojawiła się po 347 ms, pierwsza próbka `sleep` po 1987 ms; stan spokojny trwał w pomiarze 1640 ms.
 - Po teście przywrócono wybraną przez użytkownika encję `sensor.esphome_sensors_box1_oswietlenie`, źródło HA, wyłączoną kamerę i widok `photos`.
 - Powtarzalny test znajduje się w `scripts/sleep-entry-smoke.mjs`. Web: typecheck i build PASS; 24 testy klienta, 4 testy serwera i 2 testy synchronizatora PASS. APK nie został zmieniony.
+- Po dodaniu konfiguracji czasu powtórzono test z wartością 2,4 s: pierwsze `idle` po 342 ms, `sleep` po 2735 ms, zmierzony odstęp 2393 ms. PASS. Panel admina pokazuje pole „Spokojna twarz przed zaśnięciem” z wartością 1,6 s i zakresem 0,3–10 s. Po teście przywrócono 1,6 s, encję użytkownika i widok zdjęć.

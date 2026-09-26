@@ -9,7 +9,7 @@ describe("view manager", () => {
     expect(settings.viewRouter.tapAction).toEqual({ enabled: true, sourceView: "photos", targetView: "ha" });
     expect(settings.viewRouter.swipeDownAction).toEqual({ enabled: true, sourceView: "photos", targetView: "ha" });
     expect(settings.viewRouter.inactivityAction).toEqual({ enabled: true, sourceView: "ha", seconds: 30, targetView: "photos", showAssistantIdleBeforePhotos: true, assistantIdleSeconds: 10 });
-    expect(settings.ambientSleep).toEqual({ enabled: true, source: "home-assistant", homeAssistantEntityId: null, homeAssistantSleepBelow: 5, homeAssistantResetAbove: 15, sleepBelowLux: 5, resetAboveLux: 15, cameraEnabled: false, cameraSleepBelowPercent: 5, cameraResetAbovePercent: 15, cameraSampleSeconds: 30 });
+    expect(settings.ambientSleep).toEqual({ enabled: true, source: "home-assistant", homeAssistantEntityId: null, homeAssistantSleepBelow: 5, homeAssistantResetAbove: 15, sleepEntryDelaySeconds: 1.6, sleepBelowLux: 5, resetAboveLux: 15, cameraEnabled: false, cameraSleepBelowPercent: 5, cameraResetAbovePercent: 15, cameraSampleSeconds: 30 });
   });
 
   it("opens HA from photos and schedules the assistant idle transition from HA", () => {

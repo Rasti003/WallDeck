@@ -61,6 +61,7 @@ export function AssistantAdmin({ settings, setSettings, save, status }: {
           <option value="android-sensor">Sensor światła tabletu</option>
           <option value="camera">Przednia kamera (eksperymentalnie)</option>
         </select></label>
+        <label>Spokojna twarz przed zaśnięciem<input type="number" min="0.3" max="10" step="0.1" value={settings.ambientSleep.sleepEntryDelaySeconds} onChange={e => setSettings(current => ({ ...current, ambientSleep: { ...current.ambientSleep, sleepEntryDelaySeconds: Number(e.target.value) } }))} /><span>sekundy · zakres 0,3–10</span></label>
         {settings.ambientSleep.source === "home-assistant" && <>
           <label>Wyszukaj encję<input value={entityQuery} onChange={e => setEntityQuery(e.target.value)} placeholder="np. oświetlenie, lux, salon" /></label>
           <label>Encja<select value={selectedEntityId ?? ""} onChange={e => setSettings(current => ({ ...current, ambientSleep: { ...current.ambientSleep, homeAssistantEntityId: e.target.value || null } }))}>

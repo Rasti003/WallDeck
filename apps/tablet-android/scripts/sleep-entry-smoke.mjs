@@ -49,6 +49,7 @@ try {
     homeAssistantEntityId: co2.entityId,
     homeAssistantSleepBelow: value + 1,
     homeAssistantResetAbove: value + 100,
+    sleepEntryDelaySeconds: 2.4,
     cameraEnabled: false,
   });
   await request("/api/settings", { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify(testSettings) });
@@ -64,8 +65,8 @@ try {
   const sleep = samples.find((sample) => sample.state === "sleep");
   assert.ok(idle, "Automatic sleep must first render idle");
   assert.ok(sleep, "Automatic sleep must finish in sleep");
-  assert.ok(sleep.at - idle.at >= 1_300, `Idle was visible for only ${sleep.at - idle.at} ms`);
-  console.log(JSON.stringify({ result: "PASS", entity: co2.entityId, value, idleAtMs: idle.at, sleepAtMs: sleep.at, idleDurationMs: sleep.at - idle.at }, null, 2));
+  assert.ok(sleep.at - idle.at >= 2_100, `Idle was visible for only ${sleep.at - idle.at} ms`);
+  console.log(JSON.stringify({ result: "PASS", entity: co2.entityId, value, configuredDelaySeconds: testSettings.ambientSleep.sleepEntryDelaySeconds, idleAtMs: idle.at, sleepAtMs: sleep.at, idleDurationMs: sleep.at - idle.at }, null, 2));
 } finally {
   await request("/api/settings", { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify(originalSettings) });
   await request("/api/views/activate", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ viewId: "photos" }) });
