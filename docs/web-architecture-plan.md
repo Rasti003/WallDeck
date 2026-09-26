@@ -1,6 +1,6 @@
 # Plan architektury WallDeck Web
 
-Status: decyzja architektoniczna do implementacji  
+Status: implementacja rozpoczęta — pierwszy widok działa
 Data: 2026-09-26
 
 ## 1. Cel
@@ -238,18 +238,19 @@ Po ponownym połączeniu klient wysyła ostatni numer rewizji. Serwer zwraca bra
 
 ### Etap 1 — fundament
 
-- [ ] przenieść obecną stronę diagnostyczną do `apps/client`;
-- [ ] utworzyć Fastify server i współdzielony pakiet kontraktów;
+- [x] utworzyć React/Vite client dla `/panel` i `/admin`;
+- [x] utworzyć Fastify server i współdzielony pakiet kontraktów;
 - [ ] dodać Docker Compose, Caddy i konfigurację środowiskową;
 - [ ] zaimplementować challenge/session dla urządzenia;
 - [ ] połączyć Android Bridge z warstwą adaptera frontendowego.
 
 ### Etap 2 — panel bazowy
 
-- [ ] utworzyć design tokens i shell 1280 × 2048;
+- [x] utworzyć responsywny pełnoekranowy shell panelu;
 - [ ] wdrożyć XState dla `BOOT`, `IDLE`, `ACTIVE`, `OFFLINE`;
-- [ ] zbudować zegar, pogodę, status domu i szybkie akcje;
-- [ ] dodać podstawowe przejścia Motion oraz profil reduced motion.
+- [x] zbudować zegar, datę, pogodę i placeholder statusu domu;
+- [x] dodać podstawowe przejścia Motion;
+- [ ] dodać profil reduced motion.
 
 ### Etap 3 — Home Assistant
 
@@ -262,10 +263,14 @@ Po ponownym połączeniu klient wysyła ostatni numer rewizji. Serwer zwraca bra
 
 - [x] prototyp `GooglePhotosSharedAlbumSource` i manifest lokalnego katalogu;
 - [x] pierwsza synchronizacja rzeczywistego albumu do tymczasowego storage;
-- [ ] integracja adaptera z WallDeck Server;
+- [x] integracja lokalnego manifestu z WallDeck Server;
 - [ ] `/admin` z konfiguracją linku i przyciskiem „Synchronizuj teraz”;
 - [ ] dobowy harmonogram oraz bezpieczne usuwanie po okresie ochronnym;
-- [ ] animowane przejścia zdjęć i harmonogram dzień/noc;
+- [x] animowane przejścia zdjęć i preloading kolejnego układu;
+- [x] układ jedno zdjęcie poziome / dwa pionowe zależny od orientacji ekranu;
+- [x] osobny `/admin` z ustawieniami slideshow i overlayu;
+- [x] rejestr widoków oraz zdalna aktywacja przez REST/WebSocket;
+- [ ] harmonogram dzień/noc;
 - [ ] polityka prywatności i ekran zarządzania danymi.
 
 ### Etap 5 — presence i dopracowanie

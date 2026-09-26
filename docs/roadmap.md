@@ -13,17 +13,21 @@
 - [x] test na Xiaomi z Androidem 16 przez ADB Wi-Fi.
 - [x] plan architektury i technologii WallDeck Web;
 - [x] prototyp synchronizacji shared albumu Google Photos i pierwsze lokalne lustro 119 zdjęć;
+- [x] React/Vite client, Fastify server i współdzielone kontrakty Zod;
+- [x] pierwszy widok albumu z układem zależnym od orientacji zdjęć;
+- [x] dyskretny overlay i osobny panel administratora;
+- [x] zdalne wywoływanie konkretnego widoku przez API i WebSocket;
 
 ## Najbliższy etap
 
 - [x] wybrać stack właściwego panelu WWW;
-- [ ] utworzyć React/Vite client, Fastify server i wspólne kontrakty Zod;
+- [x] utworzyć React/Vite client, Fastify server i wspólne kontrakty Zod;
 - [ ] przygotować maszynę trybów UI w XState;
 - [ ] włączyć dobowy harmonogram i „Synchronizuj teraz” dla shared albumu Google Photos;
-- [ ] włączyć lokalny katalog zdjęć do API WallDeck Server i slideshow;
+- [x] włączyć lokalny katalog zdjęć do API WallDeck Server i slideshow;
 - [ ] przygotować HTTPS i DNS w homelabie;
 - [ ] zaimplementować backend rejestracji urządzeń i sesji;
-- [ ] zaprojektować główny interfejs panelu;
+- [x] zaprojektować pierwszy pełnoekranowy widok panelu;
 - [ ] wykonać fizyczny test ładowarki, autostartu i polityk HyperOS;
 - [ ] zaprojektować uchwyt pod dokładne wymiary tabletu i wtyku USB-C.
 
