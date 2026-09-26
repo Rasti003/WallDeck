@@ -86,7 +86,7 @@ export function MusicView() {
       <header className="music-header">
         <button className="music-home" onClick={() => void run(home)}>⌂ <span>Home</span></button>
         <div className="music-brand"><span>WALLDECK</span><strong>Music</strong></div>
-        <span className={`music-connection ${connected ? "is-connected" : ""}`}><i />Spotify · {available ? connectionLabels[state.connection] : "Podgląd w przeglądarce"}</span>
+        <div className="music-header-tools"><span className={`music-connection ${connected ? "is-connected" : ""}`}><i />Spotify · {available ? connectionLabels[state.connection] : "Podgląd w przeglądarce"}</span><MusicVolume available={available} /></div>
       </header>
 
       <div className="music-layout">
@@ -130,7 +130,6 @@ export function MusicView() {
             <button aria-label="Następny utwór" disabled={!ready || !state.capabilities.next} onClick={() => void run(music.next)}>⏭</button>
             <button aria-label="Powtarzanie" aria-pressed={state.repeat !== 0} disabled={!ready || !state.capabilities.repeatContext} onClick={() => void run(() => music.setRepeat(state.repeat === 0 ? 1 : state.repeat === 1 && state.capabilities.repeatTrack ? 2 : 0))}>{state.repeat === 2 ? "↻¹" : "↻"}</button>
           </div>
-          <MusicVolume available={available} />
           <button className="music-output" disabled={!available} onClick={() => setSheet("audio")}><span>◖))</span><div><strong>Wyjście audio</strong><small>{output?.bluetoothAvailable ? "Bluetooth dostępny · sprawdź wyjście w systemie" : "Głośność i urządzenia tabletu"}</small></div><span>›</span></button>
           {(message || state.error) && <p className="music-error" role="status">{message || musicErrorMessage(state.error)}</p>}
         </section>

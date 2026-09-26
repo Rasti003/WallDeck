@@ -131,3 +131,5 @@ Tablet menu: downward swipe in upper 40% or top handle opens a glass-style view 
 Menu footer now contains a discreet 17px tablet icon (40px touch area) for exitToTablet, shown only when native capabilities advertise it. Desktop preview and older APKs omit it.
 
 Music includes a glass volume popover: live slider, ±5%, mute/restore, displayed native volume and auto-dismiss after 6 seconds without interaction. Controls tablet media audio, not remote Spotify Connect devices. Accessible without an active Spotify connection when native bridge exists.
+
+Music volume opens from an icon-only button in the top-right header beside Spotify connection status.
