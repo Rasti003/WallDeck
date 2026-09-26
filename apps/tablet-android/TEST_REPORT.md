@@ -101,3 +101,10 @@ Xiaomi 2603ARP14G / Android 16: przed poprawką API aktywowało `assistant-demo`
 - Panel `/admin` sprawdzono w przeglądarce: źródło HA, wyszukiwarka, selektor z bieżącym stanem i jednostką oraz dwa progi są widoczne; wyszukiwanie „oświetlenie” zawęża listę do encji światła.
 - Wykryta encja `sensor.esphome_sensors_box1_oswietlenie` ma jednostkę lx, ale podczas testu zwracała `unknown`, dlatego nie została automatycznie zapisana jako źródło.
 - Web: build, 23 testy klienta, 4 testy serwera i 2 testy synchronizatora: PASS. APK nie został zmieniony.
+
+### Animowane zasypianie
+
+- Xiaomi `2603ARP14G`, Android 16 / API 36, fizyczny WebView przez ADB/CDP: PASS.
+- Testowa encja HA uruchomiła sekwencję `photos → assistant-expressive/idle → sleep`. Pierwsza próbka `idle` pojawiła się po 347 ms, pierwsza próbka `sleep` po 1987 ms; stan spokojny trwał w pomiarze 1640 ms.
+- Po teście przywrócono wybraną przez użytkownika encję `sensor.esphome_sensors_box1_oswietlenie`, źródło HA, wyłączoną kamerę i widok `photos`.
+- Powtarzalny test znajduje się w `scripts/sleep-entry-smoke.mjs`. Web: typecheck i build PASS; 24 testy klienta, 4 testy serwera i 2 testy synchronizatora PASS. APK nie został zmieniony.

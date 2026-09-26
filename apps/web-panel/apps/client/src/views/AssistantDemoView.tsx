@@ -5,13 +5,13 @@ import { nativeBridge } from "../native";
 import { assistantBrightness } from "../assistant/brightness";
 import { useIsPresent } from "motion/react";
 import { ExpressiveAssistantFace } from "../assistant/ExpressiveAssistantFace";
-import { assistantStates, assistantTransition, stateLabels, transientDelay } from "../assistant/assistant-state";
+import { assistantEntryState, assistantStates, assistantTransition, automaticSleepEntryDelay, stateLabels, transientDelay } from "../assistant/assistant-state";
 
 export function AssistantDemoView() {
   const studio = location.pathname.startsWith("/assistant-expressive");
   const isPresent = useIsPresent();
   const { settings, activeView, requestedAssistantState } = useContext(PanelContext);
-  const [state, dispatch] = useReducer(assistantTransition, "idle", () => requestedAssistantState ?? assistantStateSchema.safeParse(new URLSearchParams(location.search).get("state")).data ?? "idle");
+  const [state, dispatch] = useReducer(assistantTransition, "idle", () => assistantEntryState(requestedAssistantState, assistantStateSchema.safeParse(new URLSearchParams(location.search).get("state")).data ?? "idle"));
   const brightness = assistantBrightness(settings, state);
   useEffect(() => {
     if (isPresent && activeView === "assistant-expressive" && nativeBridge.available) {
@@ -34,7 +34,14 @@ export function AssistantDemoView() {
     window.dispatchEvent(new CustomEvent("walldeck:assistantStateChanged", { detail: { state } }));
   }, [state]);
   useEffect(() => {
-    if (requestedAssistantState) dispatch({ type: "select", state: requestedAssistantState });
+    if (!requestedAssistantState) return;
+    if (requestedAssistantState !== "sleep") {
+      dispatch({ type: "select", state: requestedAssistantState });
+      return;
+    }
+    dispatch({ type: "select", state: "idle" });
+    const timer = setTimeout(() => dispatch({ type: "select", state: "sleep" }), automaticSleepEntryDelay);
+    return () => clearTimeout(timer);
   }, [requestedAssistantState]);
   useEffect(() => {
     if (!simulate || state !== "speaking") return;
