@@ -106,3 +106,5 @@ The global player observer reconnects disconnected, installed Spotify with confi
 Music inactivity uses a 30-second rule independent of the HA inactivity source. Playback boolean changes restart/cancel the timer; repeated player snapshots do not reset it. The idle transition records Music as its interaction return target and always completes in photos.
 
 Admin StateMachinesAdmin presents the current transition catalogue with settings-derived timers and thresholds. Assistant states, delays and timeout destinations are read from the existing reducer. The catalogue is read-only and does not change runtime routing.
+
+Device Owner provisioning entry point added to the native app. It does not automatically start lock task or apply policies. Existing dock behavior remains active. Full kiosk lifecycle is pending successful provisioning and native exit controls.

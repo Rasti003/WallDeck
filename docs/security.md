@@ -49,3 +49,5 @@ Immersive fullscreen ogranicza przypadkowe wejście do interfejsu systemowego, a
 Diagnostyka Spotify przekazuje wyłącznie ograniczoną nazwę klasy błędu SDK; nie przekazuje surowej treści wyjątku. Frontend mapuje ją na wskazówki autoryzacji i połączenia.
 
 Autoryzacja Spotify na API 34+ używa BIND_ALLOW_ACTIVITY_STARTS wyłącznie przy authorize=true i bindzie do com.spotify.music z akcją App Remote. To jawne udostępnienie systemowej możliwości otwarcia okna zgody przez powiązaną usługę, gdy WallDeck jest widoczny. Nie dotyczy innych usług, nie nadaje uprawnień konta ani nie zatwierdza zgody za użytkownika.
+
+WallDeckAdminReceiver is exported only behind android.permission.BIND_DEVICE_ADMIN; its policy list is empty. Device Owner is a broad management role and requires deliberate provisioning. The attempted registration was refused by Android due to existing accounts; no owner or active admin remained. Do not remove accounts or reset the device as an automatic workaround.

@@ -82,3 +82,6 @@
 - [x] Paused Music: 30 seconds inactivity -> assistant idle -> photos; activity resets timer and playback prevents exit.
 
 - [x] Admin: catalogue of state machines and transitions with current settings and assistant reducer metadata.
+
+- [x] Prepare native Device Owner receiver and attempt no-reset provisioning.
+- [ ] Resolve provisioning blocker: existing tablet accounts. Full kiosk, native emergency exit and power-disconnect exit remain pending.

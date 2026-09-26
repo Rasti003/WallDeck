@@ -146,3 +146,6 @@ Physical Xiaomi 2603ARP14G, Android 16: initial App Remote state disconnected, p
 
 ## 2026-09-26: Paused Music inactivity
 Xiaomi 2603ARP14G / Android 16 over Wi-Fi: real Spotify connected and paused. music-idle-smoke.mjs PASS: interaction after 20 seconds resets timer; Music still visible 15 seconds later; after 30 seconds inactivity assistant idle appears, then photos. Test idle duration 3 seconds; original settings and view restored. Web typecheck, 35 tests and build PASS.
+
+## 2026-09-26: No-reset Device Owner attempt
+Xiaomi 2603ARP14G, Android 16, Wi-Fi ADB. assembleDebug/testDebugUnitTest/lintDebug PASS; update installation Success. dpm set-device-owner pl.home.wallpanel/.WallDeckAdminReceiver rejected: Not allowed to set the device owner because there are already some accounts on the device. Verified no owners, no enabled device admins, lock task NONE. WallDeck restarted in foreground. No accounts/settings removed and no reset performed.
