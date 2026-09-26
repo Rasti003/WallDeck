@@ -61,3 +61,11 @@ Xiaomi 2603ARP14G / Android 16: przed poprawką API aktywowało `assistant-demo`
 - Po uruchomieniu Activity `statusBars` i `navigationBars` miały `visible=false` w diagnostyce systemu.
 - Fizyczny gest przesunięcia w dół rozpoczęty poniżej krawędzi: PASS — aktywny widok zmienił się z `photos` na `ha` przez `wallpanel:swipeDown`.
 - Gest rozpoczęty dokładnie na górnej krawędzi: ograniczenie platformy potwierdzone — HyperOS chwilowo ustawił systemowe paski jako widoczne i oznaczył je jako transient. Aplikacja zachowała fokus i ponownie ukrywa paski po odzyskaniu kontroli; pełna blokada wymaga Device Owner/lock task.
+
+## Przejście HA → asystent idle → galeria — 2026-09-26
+
+- Test skróconej sekwencji na Xiaomi `2603ARP14G`: `HA → 5 s → assistant-expressive/idle → 3 s → photos` — PASS. Po teście przywrócono konfigurację 30 s + 10 s.
+- Przerwanie dotykiem podczas `idle`: PASS — timer galerii anulowany, aktywny widok natychmiast wrócił do HA.
+- Widok przejściowy na `/panel` pokazuje samą twarz `idle`, bez kontrolek studia developerskiego.
+- Jasność okna w pełnej sekwencji: HA `0.85` → assistant idle `0.65` → photos `0.22` — PASS.
+- Typecheck, build, synchronizator oraz 21 testów klienta i 4 testy serwera: PASS.

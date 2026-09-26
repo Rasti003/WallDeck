@@ -8,6 +8,7 @@ import { ExpressiveAssistantFace } from "../assistant/ExpressiveAssistantFace";
 import { assistantStates, assistantTransition, stateLabels, transientDelay } from "../assistant/assistant-state";
 
 export function AssistantDemoView() {
+  const studio = location.pathname.startsWith("/assistant-expressive");
   const isPresent = useIsPresent();
   const { settings, activeView } = useContext(PanelContext);
   const [state, dispatch] = useReducer(assistantTransition, "idle", () => assistantStateSchema.safeParse(new URLSearchParams(location.search).get("state")).data ?? "idle");
@@ -20,7 +21,7 @@ export function AssistantDemoView() {
   const [audio, setAudio] = useState(.35);
   const [simulate, setSimulate] = useState(false);
   const [simulatedAudio, setSimulatedAudio] = useState(0);
-  const [controls, setControls] = useState(true);
+  const [controls, setControls] = useState(studio);
   const [reduced, setReduced] = useState(false);
   const [accent, setAccent] = useState("#37f3f3");
   useEffect(() => {
@@ -28,6 +29,9 @@ export function AssistantDemoView() {
     if (!delay) return;
     const timer = setTimeout(() => dispatch({ type: "timeout" }), delay);
     return () => clearTimeout(timer);
+  }, [state]);
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent("walldeck:assistantStateChanged", { detail: { state } }));
   }, [state]);
   useEffect(() => {
     if (!simulate || state !== "speaking") return;
@@ -40,8 +44,8 @@ export function AssistantDemoView() {
   }, [simulate, state]);
   return <section className="assistant-demo" aria-label="Asystent demo">
     <ExpressiveAssistantFace state={!isPresent ? "sleep" : state} audioLevel={simulate ? simulatedAudio : audio} accentColor={accent} reducedMotion={reduced} />
-    <button className="assistant-controls-toggle" aria-expanded={controls} onClick={() => setControls(!controls)}>{controls ? "Ukryj sterowanie ↘" : "Mimika ↗"}</button>
-    {controls && <aside className="assistant-console" aria-label="Sterowanie demonstracją">
+    {studio && <button className="assistant-controls-toggle" aria-expanded={controls} onClick={() => setControls(!controls)}>{controls ? "Ukryj sterowanie ↘" : "Mimika ↗"}</button>}
+    {studio && controls && <aside className="assistant-console" aria-label="Sterowanie demonstracją">
       <header><span>WALLDECK / ASYSTENT</span><strong>{stateLabels[state]}</strong><small>Demo · bez mikrofonu</small></header>
       <div className="assistant-states">{assistantStates.map((value) => <button key={value} aria-pressed={state === value} onClick={() => dispatch({ type: "select", state: value })}>{stateLabels[value]}</button>)}</div>
       <div className="assistant-options">

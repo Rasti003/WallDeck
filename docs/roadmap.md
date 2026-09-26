@@ -23,7 +23,7 @@
 - [x] uniwersalny wybór wielu encji HA, etykiety, sześć stref overlayu i aktualizacja w czasie rzeczywistym;
 - [x] osobny widok dashboardu Home Assistant pod `/ha`;
 - [x] skalowalny panel administratora z nawigacją sekcyjną;
-- [x] manager widoków: dotknięcie albumu otwiera HA, a 30 s bezczynności przywraca album;
+- [x] manager widoków: album otwiera HA, a bezczynność prowadzi przez 10 s asystenta idle do albumu; dotyk przerywa sekwencję i wraca do HA;
 - [x] immersive fullscreen w APK i konfigurowalna reguła własnego gestu przesunięcia w dół;
 
 ## Najbliższy etap

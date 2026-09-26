@@ -24,13 +24,16 @@ export const viewRouterSettingsSchema = z.object({
   }).default({ enabled: true, sourceView: "photos", targetView: "ha" }),
   inactivityAction: z.object({
     enabled: z.boolean(),
+    sourceView: viewIdSchema.default("ha"),
     seconds: z.number().int().min(5).max(3600),
     targetView: viewIdSchema,
+    showAssistantIdleBeforePhotos: z.boolean().default(true),
+    assistantIdleSeconds: z.number().int().min(3).max(300).default(10),
   }),
 }).default({
   tapAction: { enabled: true, sourceView: "photos", targetView: "ha" },
   swipeDownAction: { enabled: true, sourceView: "photos", targetView: "ha" },
-  inactivityAction: { enabled: true, seconds: 30, targetView: "photos" },
+  inactivityAction: { enabled: true, sourceView: "ha", seconds: 30, targetView: "photos", showAssistantIdleBeforePhotos: true, assistantIdleSeconds: 10 },
 });
 
 export const overlayPositionSchema = z.enum([
@@ -71,7 +74,7 @@ export const defaultSettings: WallDeckSettings = {
   viewRouter: {
     tapAction: { enabled: true, sourceView: "photos", targetView: "ha" },
     swipeDownAction: { enabled: true, sourceView: "photos", targetView: "ha" },
-    inactivityAction: { enabled: true, seconds: 30, targetView: "photos" },
+    inactivityAction: { enabled: true, sourceView: "ha", seconds: 30, targetView: "photos", showAssistantIdleBeforePhotos: true, assistantIdleSeconds: 10 },
   },
   overlay: {
     position: "bottom-left",

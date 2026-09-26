@@ -71,7 +71,7 @@ Content-Type: application/json
 
 Każdy podłączony panel dostaje zmianę przez WebSocket. Z poziomu klienta dostępny jest także kontrakt `window.WallDeckViews.activate("photos")`. Rejestr widoków pozwala dodawać kolejne ekrany bez przebudowy logiki aktywacji.
 
-Manager widoków w `/admin` przechowuje reguły zdarzenie → akcja. Domyślne reguły otwierają Home Assistant po pojedynczym dotknięciu albumu lub własnym przesunięciu w dół, a po 30 sekundach bezczynności wracają do albumu. Każdą regułę można włączyć, wyłączyć i przypisać jej widok źródłowy oraz docelowy. Zwykła przeglądarka wykrywa gest i aktywność dokumentu, a APK dodatkowo emituje `wallpanel:swipeDown` i `wallpanel:userInteraction`, dlatego gest działa także na tablecie, a dotknięcia osadzonego dashboardu HA zerują licznik.
+Manager widoków w `/admin` przechowuje reguły zdarzenie → akcja. Domyślne reguły otwierają Home Assistant po pojedynczym dotknięciu albumu lub własnym przesunięciu w dół. Po 30 sekundach bezczynności w HA panel pokazuje ekspresyjnego asystenta w spokojnym `idle`, a po kolejnych 10 sekundach przechodzi do albumu. Dotknięcie podczas `idle` anuluje powrót i natychmiast otwiera HA; aktywna mimika asystenta również zatrzymuje timer galerii. Widok źródłowy, docelowy, oba czasy i użycie pośredniego asystenta można zmienić w panelu administratora. Zwykła przeglądarka wykrywa gest i aktywność dokumentu, a APK dodatkowo emituje `wallpanel:swipeDown` i `wallpanel:userInteraction`, dlatego gest działa także na tablecie, a dotknięcia osadzonego dashboardu HA zerują licznik.
 
 Po uruchomieniu wewnątrz APK klient wykrywa zaufany Android Bridge i włącza `keepAwake` na czas wyświetlania panelu. W zwykłej przeglądarce ten sam frontend działa bez bridge'a.
 
