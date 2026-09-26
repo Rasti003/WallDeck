@@ -3,3 +3,5 @@
 .music-header-tools{display:flex;align-items:center;gap:16px;margin-left:auto}.music-header-tools .music-connection{margin:0;width:auto}.music-header-tools .music-volume{flex-shrink:0}@media(max-width:650px){.music-header-tools{margin-left:auto;gap:10px}.music-header-tools .music-connection{font-size:10px}}
 
 .music-volume-trigger svg{flex-shrink:0}
+
+.music-secondary-controls{display:flex;align-items:center;gap:4px}.music-view .music-secondary-controls button{font-size:20px;padding:8px;min-width:40px;opacity:.7}.music-controls>.music-volume{display:flex;align-items:center}.music-controls .music-volume-trigger svg{width:20px;height:20px}
