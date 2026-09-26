@@ -1,0 +1,37 @@
+# WallDeck
+
+WallDeck to domowy panel ścienny oparty na tablecie. Repozytorium łączy trzy części jednego produktu:
+
+| Część | Katalog | Stan |
+|---|---|---|
+| Uchwyt ścienny i zasilanie | [`hardware/wall-mount`](hardware/wall-mount) | specyfikacja i lista elementów |
+| Cienka aplikacja na tablet | [`apps/tablet-android`](apps/tablet-android) | działający prototyp 0.1 przetestowany na Xiaomi/Android 16 |
+| Panel WWW z homelabu | [`apps/web-panel`](apps/web-panel) | strona diagnostyczna bridge; właściwy interfejs przed implementacją |
+
+## Założenie
+
+```text
+tablet Android
+├── WallDeck APK: dostęp do sprzętu, cykl dock/undock i bezpieczny bridge
+└── WebView
+    └── WallDeck Web: interfejs, automatyka i przyszłe moduły usług
+
+homelab
+└── serwer WWW/API, sesje urządzeń i logika integracji
+```
+
+APK pozostaje cienką warstwą sprzętową. Interfejs rozwijamy jako aplikację WWW hostowaną w homelabie. Dzięki temu wygląd i logikę panelu można aktualizować bez publikowania nowej wersji APK.
+
+## Dokumentacja
+
+- [Architektura systemu](docs/architecture.md)
+- [Bezpieczeństwo](docs/security.md)
+- [Plan rozwoju](docs/roadmap.md)
+- [Zasady pracy z repozytorium](CONTRIBUTING.md)
+- [Raport testów aplikacji Android](apps/tablet-android/TEST_REPORT.md)
+
+## Aktualny prototyp
+
+Aplikacja Android obsługuje konfigurowalny URL, Device ID i Device Key, szyfrowany storage, bridge ograniczony do zaufanego originu, informacje o urządzeniu, baterię, jasność okna, głośność, keep-awake, haptics, przeładowanie oraz zdarzenia zasilania. Po podłączeniu zasilania może wejść na pierwszy plan, a po odłączeniu zamyka Activity i odsłania poprzednią aplikację, na ile pozwala Android/HyperOS.
+
+Wake word, Spotify, YouTube i Home Assistant mają obecnie wyłącznie kontrakty rozszerzeń. Nie są jeszcze zaimplementowane.

@@ -1,0 +1,7 @@
+<!doctype html><meta charset="utf-8"><script>
+if(location.search.includes('same')){
+ let answered=false;
+ if(window.WallPanelNative){WallPanelNative.onmessage=()=>{answered=true;parent.postMessage('unexpected-native-response','*')};WallPanelNative.postMessage(JSON.stringify({id:'iframe',method:'battery'}))}
+ setTimeout(()=>{if(!answered)parent.postMessage('no-native-response','*')},500);
+}else{parent.postMessage(typeof window.WallPanelNative,'*')}
+</script>

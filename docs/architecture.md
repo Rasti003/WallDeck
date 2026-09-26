@@ -1,0 +1,43 @@
+# Architektura WallDeck
+
+## Podział odpowiedzialności
+
+### Uchwyt ścienny
+
+Zapewnia stabilne mocowanie, łatwe zdjęcie tabletu, doprowadzenie USB-C i bezpieczne chłodzenie. Projekt powinien umożliwiać serwis przewodu oraz wymianę tabletu bez niszczenia ściany.
+
+### Aplikacja Android
+
+Odpowiada wyłącznie za funkcje, których zwykła strona WWW nie może wykonać bezpiecznie i niezawodnie:
+
+- WebView i kontrolę nawigacji;
+- przechowywanie konfiguracji urządzenia;
+- Android Keystore i podpisywanie wyzwań;
+- baterię oraz stan zasilania;
+- jasność okna, głośność, keep-awake i haptics;
+- cykl zadokowanie/odłączenie;
+- przyszłe moduły mikrofonu, wake word i multimediów.
+
+### System WWW
+
+Odpowiada za cały interfejs użytkownika, sceny domu, prezentację danych, komunikację z backendem i przyszłe integracje. Panel wywołuje Android Bridge przez asynchroniczne wiadomości JSON.
+
+## Przepływ uwierzytelnienia urządzenia
+
+1. Backend wystawia krótko żyjące, jednorazowe wyzwanie.
+2. Panel przekazuje wyzwanie do `signChallenge` w Android Bridge.
+3. APK podpisuje wersję protokołu, origin, Device ID i wyzwanie kluczem przechowywanym lokalnie.
+4. Backend weryfikuje HMAC, czas ważności i jednokrotne użycie.
+5. Backend wydaje sesję w `Secure`, `HttpOnly` cookie.
+
+Device Key nie jest umieszczany w URL ani zwracany do JavaScriptu.
+
+## Zasilanie
+
+Foreground service obserwuje `POWER_CONNECTED`, `POWER_DISCONNECTED` i zmiany baterii. Po podłączeniu próbuje pokazać panel, jeżeli użytkownik przyznał uprawnienie do wyświetlania nad innymi aplikacjami; zawsze aktualizuje też powiadomienie. Po odłączeniu aktywne Activity kończy się przez `finishAndRemoveTask()`.
+
+Android może ograniczyć start Activity z tła. Xiaomi/HyperOS może dodatkowo wymagać wyłączenia optymalizacji baterii lub zgody na autostart. System nie omija blokady ekranu.
+
+## Przyszłe moduły
+
+Interfejsy `WakeWordModule`, `MediaModule` i `HomeAutomationModule` oddzielają rdzeń APK od przyszłych silników. Docelowy wake word ma działać lokalnie, a STT/LLM/TTS na homelabie. Spotify, YouTube i Home Assistant nie są częścią prototypu 0.1.

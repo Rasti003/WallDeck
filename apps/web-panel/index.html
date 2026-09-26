@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="pl"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WallDeck • diagnostyka</title>
+<style>
+body{background:#101722;color:#eef3fb;font:18px system-ui;margin:0;padding:48px;max-width:1000px}h1{font-size:42px;margin-bottom:8px}p{color:#aab8cf}button{background:#293950;color:#fff;border:1px solid #465b78;border-radius:12px;padding:16px;margin:6px;font:inherit}pre{white-space:pre-wrap;background:#182435;border-radius:16px;padding:24px;min-height:180px}label{display:block;margin:24px 0}input{width:260px}small{color:#9fb3cb}
+</style>
+<small>WALLPANEL / PROTOTYP 0.1</small><h1>Panel jest gotowy.</h1>
+<p>Strona diagnostyczna działa na komputerze. Sprzętem steruje cienka aplikacja Android.</p>
+<div id="buttons"></div>
+<label>Jasność okna <input id="brightness" type="range" min="0.05" max="1" step="0.05" value="0.5"></label>
+<label>Głośność multimediów <input id="volume" type="range" min="0" max="1" step="0.05" value="0.3"></label>
+<pre id="output">Łączenie…</pre><p>Ustawienia: dotknij 7 razy szybko lewego górnego rogu ekranu.</p>
+<script src="wallpanel.js"></script><script>
+const output=document.querySelector('#output');
+async function call(method,args={}){try{output.textContent=method+'\n'+JSON.stringify(await WallPanel.call(method,args),null,2)}catch(e){output.textContent=e.message}}
+for(const [label,method,args] of [['Możliwości','capabilities'],['Urządzenie','deviceInfo'],['Bateria','battery'],['Uprawnienia','permissions'],['Wersja','appVersion'],['Wibracja','haptics'],['Nie usypiaj','keepAwake',{enabled:true}],['Usypianie normalne','keepAwake',{enabled:false}],['Odśwież','reload']]){const b=document.createElement('button');b.textContent=label;b.onclick=()=>call(method,args);document.querySelector('#buttons').append(b)}
+document.querySelector('#brightness').onchange=e=>call('brightness',{value:Number(e.target.value)});
+document.querySelector('#volume').onchange=e=>call('mediaVolume',{value:Number(e.target.value)});
+for(const name of ['powerConnected','powerDisconnected','batteryChanged'])window.addEventListener('wallpanel:'+name,e=>{output.textContent=name+'\n'+JSON.stringify(e.detail,null,2)});
+call('capabilities');
+</script></html>

@@ -1,0 +1,30 @@
+# IDE and operating system
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Android / Gradle
+**/.gradle/
+**/.kotlin/
+**/build/
+**/local.properties
+*.jks
+*.keystore
+
+# JavaScript
+**/node_modules/
+**/dist/
+**/.env
+**/.env.*
+!**/.env.example
+
+# CAD exports and temporary files
+**/*.bak
+**/*.autosave
+**/~$*
+
+# Secrets
+**/secrets.*
+**/*.pem
+**/*.p12
