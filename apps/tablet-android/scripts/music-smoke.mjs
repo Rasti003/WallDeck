@@ -88,7 +88,7 @@ try {
   await request("/api/views/activate", { viewId: "music" });
   await pause(900);
   assert.equal(await evaluate("document.querySelectorAll('[data-rendered-view]').length"), 1);
-  console.log(JSON.stringify({ status: "PASS", ...result, homeNavigation: true, audioSheet: true, reentry: true, playbackTest: "NOT RUN: Spotify Client ID/authentication required" }, null, 2));
+  console.log(JSON.stringify({ status: "PASS", ...result, homeNavigation: true, audioSheet: true, reentry: true, playbackTest: "NOT RUN: this smoke test does not start playback" }, null, 2));
 } finally {
   await request("/api/views/activate", { viewId: original.current });
   ws.close();
