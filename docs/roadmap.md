@@ -28,6 +28,9 @@
 
 ## Najbliższy etap
 
+- [x] prototyp SVG + Motion twarzy asystenta: osiem stanów, nieregularne mikroanimacje, usta sterowane audio, studio `/assistant-demo` i integracja z managerem widoków;
+- [ ] wielogodzinny test pamięci i płynności animacji asystenta na docelowym WebView;
+
 - [x] wybrać stack właściwego panelu WWW;
 - [x] utworzyć React/Vite client, Fastify server i wspólne kontrakty Zod;
 - [ ] przygotować maszynę trybów UI w XState;

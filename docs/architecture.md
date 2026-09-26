@@ -30,7 +30,13 @@ Konfiguracja każdego widoku zawiera docelową jasność okna. Po zmianie aktywn
 
 WallDeck Server jest jedynym klientem Home Assistant. Konfigurację podaje się w `/admin`; token Long-Lived Access Token jest szyfrowany AES-256-GCM, a klucz znajduje się w osobnym pliku danych runtime. Publiczne API zwraca tylko stan `configured` i diagnostykę, nigdy token. Adapter pobiera początkowy snapshot encji, subskrybuje `state_changed` przez WebSocket i automatycznie ponawia połączenie. Dowolne encje można dodać do overlayu, opisać własną etykietą i rozmieścić w sześciu strefach ekranu. Widok `ha` osadza skonfigurowany dashboard. Na obecnej instancji HA osadzanie jest włączone przez `http.use_x_frame_options: false`; po zmianie konfiguracja została zweryfikowana, HA uruchomiony ponownie, a `/ha` sprawdzony z ekranem logowania dashboardu.
 
-## Przepływ uwierzytelnienia urządzenia
+## Prototyp twarzy asystenta
+
+Specyfikacja: [Notion, sekcja 15](https://www.notion.so/3e7827a850e3816ab406dabf341c372a). Widok `assistant-demo` dołącza do wspólnego rejestru widoków, walidacji API, reguł i jasności per widok. Trasa `/assistant-demo` wymusza lokalny podgląd; aktywacja przez API pokazuje go na zwykłym `/panel`.
+
+Podział odpowiedzialności: `assistant-state.ts` zawiera jawną maszynę stanów i mapowanie audio, `AssistantFace` renderuje osobne oczy, brwi, nos, usta i akcenty przez SVG + Motion, a `AssistantDemoView` dostarcza kontrolki oraz testowy poziom audio. To samodzielny prototyp bez powiązania z voice pipeline. Timer losowych mikroanimacji i timer audio są zwalniane przy odmontowaniu; nie powstaje historia próbek audio. Tryb sleep obniża intensywność grafiki, natomiast jasność okna pochodzi ze wspólnego mechanizmu per widok.
+
+## Przepływ uwierzytelnienia urządzenia (docelowy)
 
 1. Backend wystawia krótko żyjące, jednorazowe wyzwanie.
 2. Panel przekazuje wyzwanie do `signChallenge` w Android Bridge.

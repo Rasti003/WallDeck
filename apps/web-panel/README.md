@@ -40,6 +40,14 @@ i ustawić w APK adres `http://127.0.0.1:8080/panel`.
 
 ## Wywołanie widoku
 
+### Asystent demo
+
+Widok `assistant-demo` jest dostępny w `/admin` → Widoki i reguły, przez API aktywacji oraz jako niezależne studio `/assistant-demo`. Osobna trasa wymusza podgląd i nie podlega regułom przełączania; widok wywołany na `/panel` respektuje normalne reguły, w tym powrót po bezczynności. Ma własną jasność ustawianą w adminie.
+
+Twarz w SVG + Motion zajmuje czarny ekran, ma jeden zmienny kolor akcentu i osiem stanów: idle, attention, listening, thinking, speaking, success, error, sleep. Sterowanie można schować. Studio oferuje suwak audio, symulację mowy i ograniczenie ruchu; respektuje też systemowe `prefers-reduced-motion`. Ustawienia mimiki w demo są lokalne i resetują się po ponownym otwarciu widoku.
+
+`AssistantFace` przyjmuje `state`, `audioLevel` (0–1), `accentColor` oraz opcjonalne `reducedMotion`. Jawna maszyna przejść w `assistant-state.ts` jest niezależna od SVG: attention po 750 ms przechodzi do listening, success po 2200 ms do idle. Usta płynnie interpolują pięć zakresów otwarcia z wygładzonym audio. Zmiana stanu i demontaż sprzątają timery. Nie ma dostępu do mikrofonu, nagrywania, STT/LLM/TTS ani zewnętrznych assetów twarzy.
+
 Backend udostępnia niezależny od UI punkt sterowania:
 
 ```http

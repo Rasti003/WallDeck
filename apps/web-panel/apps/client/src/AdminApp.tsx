@@ -142,7 +142,7 @@ export function AdminApp() {
             <button className={section === id ? "is-active" : ""} key={id} onClick={() => setSection(id)}><span>{icon}</span>{label}</button>
           ))}
         </nav>
-        <div className="admin-sidebar__status"><i className={haStatus?.connected ? "is-online" : ""} /><span><strong>{haStatus?.connected ? "System online" : "Połączenie częściowe"}</strong><small>{photoCount} zdjęć · {views.current === "photos" ? "Album" : "Home Assistant"}</small></span></div>
+        <div className="admin-sidebar__status"><i className={haStatus?.connected ? "is-online" : ""} /><span><strong>{haStatus?.connected ? "System online" : "Połączenie częściowe"}</strong><small>{photoCount} zdjęć · {views.available.find((view) => view.id === views.current)?.name ?? views.current}</small></span></div>
       </aside>
 
       <div className="admin-workspace">
@@ -153,7 +153,7 @@ export function AdminApp() {
 
         {section === "overview" && <section className="admin-dashboard">
           <div className="summary-grid">
-            <button onClick={() => setSection("views")}><small>Aktywny ekran</small><strong>{views.current === "photos" ? "Album zdjęć" : "Home Assistant"}</strong><span>Zmień lub ustaw reguły →</span></button>
+            <button onClick={() => setSection("views")}><small>Aktywny ekran</small><strong>{views.available.find((view) => view.id === views.current)?.name ?? views.current}</strong><span>Zmień lub ustaw reguły →</span></button>
             <button onClick={() => setSection("photos")}><small>Biblioteka</small><strong>{photoCount} zdjęć</strong><span>Ustaw wygląd albumu →</span></button>
             <button onClick={() => setSection("ha")}><small>Home Assistant</small><strong>{haStatus?.connected ? "Połączono" : "Rozłączono"}</strong><span>{haStatus?.entityCount ?? 0} dostępnych encji →</span></button>
           </div>
@@ -177,6 +177,8 @@ export function AdminApp() {
 
       <form className="admin-card admin-form" onSubmit={save}>
         <div><span className="admin-kicker">Manager widoków</span><h2>Reguły przełączania</h2></div>
+        <label className="brightness-control">Jasność widoku Asystent demo: {Math.round(settings.viewBrightness["assistant-demo"] * 100)}%<input aria-label="Jasność asystenta" type="range" min="5" max="100" value={Math.round(settings.viewBrightness["assistant-demo"] * 100)} onChange={(event) => setSettings({ ...settings, viewBrightness: { ...settings.viewBrightness, "assistant-demo": Number(event.target.value) / 100 } })} /></label>
+        <a href="/assistant-demo" target="_blank" rel="noreferrer">Otwórz studio mimiki asystenta ↗</a>
         <p className="form-intro">Reguły reagują na zdarzenia panelu. Dotknięcia wewnątrz dashboardu HA są wykrywane przez aplikację tabletową.</p>
         <div className="rule-list">
           <article>

@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const viewIdSchema = z.enum(["photos", "ha"]);
+export const viewIdSchema = z.enum(["photos", "ha", "assistant-demo"]);
 export type ViewId = z.infer<typeof viewIdSchema>;
 
 export const viewRouterSettingsSchema = z.object({
@@ -35,7 +35,8 @@ export const settingsSchema = z.object({
   viewBrightness: z.object({
     photos: z.number().min(0.05).max(1).default(0.75),
     ha: z.number().min(0.05).max(1).default(0.85),
-  }).default({ photos: 0.75, ha: 0.85 }),
+    "assistant-demo": z.number().min(0.05).max(1).default(0.65),
+  }).default({ photos: 0.75, ha: 0.85, "assistant-demo": 0.65 }),
   viewRouter: viewRouterSettingsSchema,
   overlay: z.object({
     position: overlayPositionSchema,
@@ -56,7 +57,7 @@ export type WallDeckSettings = z.infer<typeof settingsSchema>;
 export const defaultSettings: WallDeckSettings = {
   photoIntervalSeconds: 30,
   transitionSeconds: 1.4,
-  viewBrightness: { photos: 0.75, ha: 0.85 },
+  viewBrightness: { photos: 0.75, ha: 0.85, "assistant-demo": 0.65 },
   viewRouter: {
     tapAction: { enabled: true, sourceView: "photos", targetView: "ha" },
     swipeDownAction: { enabled: true, sourceView: "photos", targetView: "ha" },

@@ -33,6 +33,14 @@
 - Drugie dotknięcie wewnątrz HA zeruje licznik: po kolejnych 20 s nadal `ha`, po 32 s `photos`. Zarejestrowano dwa natywne zdarzenia `userInteraction`.
 - Diagnostyka została wykonana przez debug WebView; zrzuty aplikacji są czarne zgodnie z `FLAG_SECURE`.
 
+## Asystent demo — 2026-09-26
+
+- Xiaomi `2603ARP14G`, Android 16, fizyczny WebView przez ADB/CDP: PASS. Skrypt powtarzalny: `scripts/assistant-smoke.mjs` (wymaga forward portu 9222 do socketu debug WebView i otwartego `/panel`).
+- Nowy frontend załadowany bez zmiany APK; aktywacja `assistant-demo` przez API i WebSocket: PASS.
+- Osiem stanów, attention → listening po 750 ms, success → idle po 2200 ms: PASS.
+- Symulacja audio zmienia geometrię ust: 5 różnych ścieżek w 5 próbkach; brak wyjątków JavaScript.
+- Widoczny dokument landscape 1170 × 731 CSS px. Próba rAF podczas speaking: 598 klatek w około 10 s, mediana 16,7 ms, p95 16,8 ms, maksimum 33,4 ms. Jest to krótki pomiar harmonogramu klatek, nie certyfikacja wydajności GPU ani wielogodzinnej stabilności pamięci.
+
 ## Immersive fullscreen i gest — 2026-09-26
 
 - `assembleDebug`, `testDebugUnitTest`, `lintDebug`: PASS (JDK 21); aktualizacja APK przez USB: PASS.
