@@ -18,8 +18,8 @@
 - [x] wybrać stack właściwego panelu WWW;
 - [ ] utworzyć React/Vite client, Fastify server i wspólne kontrakty Zod;
 - [ ] przygotować maszynę trybów UI w XState;
-- [ ] zgłosić WallDeck do Google Photos Partner Program dla Ambient API;
-- [ ] przygotować Ambient API oraz awaryjne źródła Picker/Google Drive;
+- [ ] zgłosić WallDeck do Google Photos Partner Program dla Ambient API — warunek wydania ramki zdjęć;
+- [ ] przygotować synchronizację wskazanego albumu Google Photos oraz lokalne lustro/cache na NAS;
 - [ ] przygotować HTTPS i DNS w homelabie;
 - [ ] zaimplementować backend rejestracji urządzeń i sesji;
 - [ ] zaprojektować główny interfejs panelu;

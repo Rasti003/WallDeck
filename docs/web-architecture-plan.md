@@ -133,6 +133,8 @@ Pierwszy budżet wydajnościowy: brak długich zadań powyżej 50 ms podczas nor
 
 Google udostępnia Ambient API przeznaczone dokładnie dla inteligentnych ekranów i ramek. Użytkownik łączy WallDeck ze swoim kontem, wskazuje w aplikacji Google Photos źródło, na przykład istniejący album, a backend okresowo pobiera aktualną listę elementów dla urządzenia. Dodanie zdjęcia do wybranego albumu nie wymaga ponownego wybierania go w WallDeck.
 
+**Synchronizacja istniejącego albumu Google Photos jest wymaganiem obowiązkowym i warunkiem wydania ramki zdjęć.** Źródła zastępcze nie spełniają tego wymagania produkcyjnego.
+
 Przepływ docelowy:
 
 1. WallDeck tworzy urządzenie Ambient i pokazuje kod lub QR do autoryzacji.
@@ -144,19 +146,19 @@ Przepływ docelowy:
 
 Limit wynosi 240 wywołań listy na urządzenie na dobę, więc interwał 15 minut daje bezpieczny zapas. API potrafi listować konkretne źródło i stronicować wyniki.
 
-Istotne ograniczenie: dostęp do Ambient API wymaga przyjęcia projektu do Google Photos Partner Program oraz późniejszej weryfikacji OAuth i integracji. Składamy wniosek o dostęp, ale implementacja musi mieć działający wariant rezerwowy na wypadek odmowy lub długiego oczekiwania.
+Istotne ograniczenie: dostęp do Ambient API wymaga przyjęcia projektu do Google Photos Partner Program oraz późniejszej weryfikacji OAuth i integracji. Uzyskanie dostępu jest zależnością zewnętrzną i warunkiem wydania tej funkcji. Integrację projektujemy od razu, ale nie deklarujemy jej jako gotowej przed potwierdzeniem dostępu przez Google.
 
-### Wariant rezerwowy: Picker i Google Drive
+### Picker tylko do developmentu
 
-Picker API daje dostęp tylko do materiałów wybranych w konkretnej sesji. Pozwala pobrać zdjęcia lokalnie po świadomym wyborze, ale nie nadaje stałego dostępu do albumu i nie wykryje później dodanych elementów. Nadaje się więc do ręcznego importu i odświeżania kolekcji.
-
-Jeżeli Ambient API nie będzie dostępne, automatyczną synchronizację zapewni folder `WallDeck Photos` w Google Drive albo katalog synchronizowany bezpośrednio z telefonu do homelabu. Drive API udostępnia dziennik zmian i powiadomienia, dlatego dodany plik może pojawić się automatycznie na panelu. W tym wariancie zdjęcie trzeba dodać do folderu Drive zamiast wyłącznie do albumu Google Photos.
+Picker API daje dostęp tylko do materiałów wybranych w konkretnej sesji. Może zasilić testowy katalog podczas developmentu, ale nie stanowi zamiennika integracji albumu i nie będzie przedstawiany jako finalne rozwiązanie.
 
 ### Lokalne przechowywanie
 
-Serwer może pobierać bajty zdjęć potrzebne do wyświetlenia. Dla Ambient API domyślnie utrzymujemy rotacyjny cache bieżących i kolejnych slajdów, a nie bezterminowe archiwum całej biblioteki. Pełne lokalne kopie wykorzystujemy tylko w jawnym trybie importu Picker, z informacją o retencji i przyciskiem usunięcia kolekcji. Przed implementacją potwierdzamy zasady retencji dla przyznanego zakresu Ambient API.
+Serwer może pobierać bajty zdjęć potrzebne do wyświetlenia. Synchronizator stronicuje konkretne `mediaSourceId`, deduplikuje trwałe identyfikatory i buduje na NAS lokalne lustro wszystkich elementów albumu udostępnionych przez Ambient API. Kolejne przebiegi dopisują nowe elementy i usuwają z aktywnego katalogu te, których API już nie zwraca.
 
-Adapter zdjęć od początku ma wspólny interfejs `PhotoSource`, z implementacjami `GooglePhotosAmbientSource`, `GooglePhotosPickerSource`, `GoogleDriveSource` i później opcjonalnie `ImmichSource`.
+Ambient API stosuje filtrowanie treści przeznaczonej dla wspólnego ekranu, więc „cały album” oznacza wszystkie pozycje udostępnione WallDeckowi przez API, a nie gwarantowany archiwalny eksport każdego pliku z Google Photos. Przed włączeniem trwałego lustra potwierdzamy z Google dozwolony czas retencji. Jeśli partner review dopuści tylko cache, NAS przechowuje rotacyjny cache, a identyfikatory i metadane pozostają indeksem synchronizacji.
+
+Adapter zdjęć ma interfejs `PhotoSource`, ale produkcyjnym źródłem tej funkcji jest `GooglePhotosAmbientSource`. `GooglePhotosPickerSource` służy wyłącznie do developmentu przed uzyskaniem dostępu.
 
 ## 8. Home Assistant
 
@@ -263,7 +265,7 @@ Po ponownym połączeniu klient wysyła ostatni numer rewizji. Serwer zwraca bra
 - [ ] interfejs `PhotoSource` i lokalny katalog;
 - [ ] wniosek do Google Photos Partner Program i integracja Ambient API;
 - [ ] `/admin` z konfiguracją źródła Google Photos;
-- [ ] awaryjny import Picker oraz adapter folderu Google Drive;
+- [ ] testowy import Picker używany tylko przed uzyskaniem Ambient API;
 - [ ] cache, generowanie wariantów, kolejka i usuwanie;
 - [ ] animowane przejścia zdjęć i harmonogram dzień/noc;
 - [ ] polityka prywatności i ekran zarządzania danymi.
@@ -286,7 +288,7 @@ Po ponownym połączeniu klient wysyła ostatni numer rewizji. Serwer zwraca bra
 
 1. Jaka domena HTTPS i mechanizm certyfikatu będą używane w LAN?
 2. Czy panel administracyjny będzie dostępny tylko w LAN, czy także przez VPN?
-3. Jakie zasady cache i retencji zatwierdzi Google dla integracji Ambient API?
+3. Czy Google zatwierdzi trwałe lustro albumu na NAS, czy wyłącznie rotacyjny cache?
 4. Czy ramka ma obsługiwać wideo i Motion Photos w pierwszej wersji?
 5. Które encje HA tworzą pierwszy ekran i szybkie akcje?
 6. Czy obecność będzie od początku pochodzić z mmWave przez HA, czy pierwsza wersja użyje czasu bezczynności i dotyku?
