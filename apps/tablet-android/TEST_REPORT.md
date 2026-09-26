@@ -32,3 +32,10 @@
 - Test na fizycznym WebView przez ADB: tapnięcie ramki aktywuje `ha`.
 - Drugie dotknięcie wewnątrz HA zeruje licznik: po kolejnych 20 s nadal `ha`, po 32 s `photos`. Zarejestrowano dwa natywne zdarzenia `userInteraction`.
 - Diagnostyka została wykonana przez debug WebView; zrzuty aplikacji są czarne zgodnie z `FLAG_SECURE`.
+
+## Immersive fullscreen i gest — 2026-09-26
+
+- `assembleDebug`, `testDebugUnitTest`, `lintDebug`: PASS (JDK 21); aktualizacja APK przez USB: PASS.
+- Po uruchomieniu Activity `statusBars` i `navigationBars` miały `visible=false` w diagnostyce systemu.
+- Fizyczny gest przesunięcia w dół rozpoczęty poniżej krawędzi: PASS — aktywny widok zmienił się z `photos` na `ha` przez `wallpanel:swipeDown`.
+- Gest rozpoczęty dokładnie na górnej krawędzi: ograniczenie platformy potwierdzone — HyperOS chwilowo ustawił systemowe paski jako widoczne i oznaczył je jako transient. Aplikacja zachowała fokus i ponownie ukrywa paski po odzyskaniu kontroli; pełna blokada wymaga Device Owner/lock task.

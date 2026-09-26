@@ -14,6 +14,9 @@ import android.view.*
 import android.webkit.*
 import android.widget.*
 import androidx.activity.ComponentActivity
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.lifecycleScope
 import androidx.webkit.*
 import kotlinx.coroutines.launch
@@ -30,6 +33,9 @@ class MainActivity : ComponentActivity() {
     private var trusted = ""
     private var cornerTaps = 0
     private var lastTap = 0L
+    private var swipeStartX = 0f
+    private var swipeStartY = 0f
+    private var swipeStartedAt = 0L
     private val store by lazy { ConfigStore(applicationContext) }
     private val audio by lazy { getSystemService(AudioManager::class.java) }
     private val batteryReceiver = object : BroadcastReceiver() {
@@ -38,6 +44,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
+        enterImmersiveMode()
         root = FrameLayout(this).apply { setBackgroundColor(Color.rgb(16, 23, 34)) }
         setContentView(root)
         val filter = IntentFilter(Intent.ACTION_BATTERY_CHANGED)
@@ -65,7 +72,22 @@ class MainActivity : ComponentActivity() {
     }
     override fun dispatchTouchEvent(ev: MotionEvent): Boolean {
         if (ev.actionMasked == MotionEvent.ACTION_DOWN) {
+            swipeStartX = ev.x
+            swipeStartY = ev.y
+            swipeStartedAt = SystemClock.elapsedRealtime()
             event("userInteraction", JSONObject().put("kind", "touch"))
+        }
+        if (ev.actionMasked == MotionEvent.ACTION_UP) {
+            val deltaX = ev.x - swipeStartX
+            val deltaY = ev.y - swipeStartY
+            val elapsed = SystemClock.elapsedRealtime() - swipeStartedAt
+            val density = resources.displayMetrics.density
+            val startsInUpperArea = swipeStartY <= root.height * 0.4f
+            if (startsInUpperArea && deltaY >= 96 * density && kotlin.math.abs(deltaX) <= deltaY * 0.65f && elapsed <= 900) {
+                event("swipeDown", JSONObject().put("kind", "swipeDown"))
+                enterImmersiveMode()
+                return true
+            }
         }
         if (ev.actionMasked == MotionEvent.ACTION_UP && ev.x < 72 * resources.displayMetrics.density && ev.y < 120 * resources.displayMetrics.density) {
             val now = SystemClock.elapsedRealtime()
@@ -74,6 +96,26 @@ class MainActivity : ComponentActivity() {
             if (cornerTaps == 7) { cornerTaps = 0; showConfig(); return true }
         }
         return super.dispatchTouchEvent(ev)
+    }
+    private fun enterImmersiveMode() {
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+        WindowInsetsControllerCompat(window, window.decorView).apply {
+            hide(WindowInsetsCompat.Type.systemBars())
+            systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+        }
+        @Suppress("DEPRECATION")
+        window.decorView.systemUiVisibility = (
+            View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY or
+                View.SYSTEM_UI_FLAG_FULLSCREEN or
+                View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or
+                View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN or
+                View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION or
+                View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+            )
+    }
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus && dialog?.isShowing != true) enterImmersiveMode()
     }
     private fun showConfig() {
         if (dialog?.isShowing == true) return

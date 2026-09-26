@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { defaultSettings, type ViewId, type WallDeckSettings } from "@walldeck/contracts";
 import { api } from "./api";
 import { nativeBridge } from "./native";
-import { inactivityTarget, viewAfterTap } from "./view-manager";
+import { inactivityTarget, viewAfterSwipeDown, viewAfterTap } from "./view-manager";
 import { viewRegistry } from "./views/registry";
 
 export function PanelApp({ forcedView }: { forcedView?: ViewId }) {
@@ -78,6 +78,16 @@ export function PanelApp({ forcedView }: { forcedView?: ViewId }) {
   }, [settings.viewBrightness, activeView]);
 
   const View = viewRegistry[activeView];
+  const activateSwipeDown = useCallback(() => {
+    const target = viewAfterSwipeDown(activeView, settings.viewRouter);
+    if (!forcedView && target) activate(target);
+  }, [activeView, activate, forcedView, settings.viewRouter]);
+
+  useEffect(() => {
+    window.addEventListener("wallpanel:swipeDown", activateSwipeDown);
+    return () => window.removeEventListener("wallpanel:swipeDown", activateSwipeDown);
+  }, [activateSwipeDown]);
+
   return (
     <div
       className="panel-router"
@@ -87,7 +97,14 @@ export function PanelApp({ forcedView }: { forcedView?: ViewId }) {
       onPointerUp={(event) => {
         const start = touchStart.current;
         touchStart.current = null;
-        if (!start || Date.now() - start.time > 500 || Math.hypot(event.clientX - start.x, event.clientY - start.y) > 16) return;
+        if (!start) return;
+        const deltaX = event.clientX - start.x;
+        const deltaY = event.clientY - start.y;
+        if (start.y <= innerHeight * 0.4 && deltaY >= 96 && Math.abs(deltaX) <= deltaY * 0.65 && Date.now() - start.time <= 900) {
+          activateSwipeDown();
+          return;
+        }
+        if (Date.now() - start.time > 500 || Math.hypot(deltaX, deltaY) > 16) return;
         const target = viewAfterTap(activeView, settings.viewRouter);
         if (!forcedView && target) activate(target);
       }}

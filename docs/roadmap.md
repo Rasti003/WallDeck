@@ -24,6 +24,7 @@
 - [x] osobny widok dashboardu Home Assistant pod `/ha`;
 - [x] skalowalny panel administratora z nawigacją sekcyjną;
 - [x] manager widoków: dotknięcie albumu otwiera HA, a 30 s bezczynności przywraca album;
+- [x] immersive fullscreen w APK i konfigurowalna reguła własnego gestu przesunięcia w dół;
 
 ## Najbliższy etap
 
@@ -36,6 +37,7 @@
 - [ ] zaimplementować backend rejestracji urządzeń i sesji;
 - [x] zaprojektować pierwszy pełnoekranowy widok panelu;
 - [ ] wykonać fizyczny test ładowarki, autostartu i polityk HyperOS;
+- [ ] wdrożyć Device Owner/lock task, jeżeli panel powiadomień ma być całkowicie niedostępny;
 - [ ] zaprojektować uchwyt pod dokładne wymiary tabletu i wtyku USB-C.
 
 ## Później

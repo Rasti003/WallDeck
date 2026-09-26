@@ -9,6 +9,11 @@ export const viewRouterSettingsSchema = z.object({
     sourceView: viewIdSchema,
     targetView: viewIdSchema,
   }),
+  swipeDownAction: z.object({
+    enabled: z.boolean(),
+    sourceView: viewIdSchema,
+    targetView: viewIdSchema,
+  }).default({ enabled: true, sourceView: "photos", targetView: "ha" }),
   inactivityAction: z.object({
     enabled: z.boolean(),
     seconds: z.number().int().min(5).max(3600),
@@ -16,6 +21,7 @@ export const viewRouterSettingsSchema = z.object({
   }),
 }).default({
   tapAction: { enabled: true, sourceView: "photos", targetView: "ha" },
+  swipeDownAction: { enabled: true, sourceView: "photos", targetView: "ha" },
   inactivityAction: { enabled: true, seconds: 30, targetView: "photos" },
 });
 
@@ -53,6 +59,7 @@ export const defaultSettings: WallDeckSettings = {
   viewBrightness: { photos: 0.75, ha: 0.85 },
   viewRouter: {
     tapAction: { enabled: true, sourceView: "photos", targetView: "ha" },
+    swipeDownAction: { enabled: true, sourceView: "photos", targetView: "ha" },
     inactivityAction: { enabled: true, seconds: 30, targetView: "photos" },
   },
   overlay: {
