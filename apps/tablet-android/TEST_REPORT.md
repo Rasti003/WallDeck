@@ -166,3 +166,5 @@ assembleDebug/testDebugUnitTest/lintDebug PASS; APK installed after exiting kios
 User confirmed window sizing blocked but OEM toolbar X still closes WallDeck. Added task-removed recovery with deliberate-exit suppression. assembleDebug/testDebugUnitTest/lintDebug PASS; APK installed successfully over Wi-Fi and WallDeck launched. Actual OEM X recovery awaits user reproduction; toolbar itself is not hidden.
 
 Follow-up: user X test failed for task-removed recovery. ADB confirmed MainActivity still present but hidden, launcher foreground, LOCKED retained and monitor running. Added API-32+ hidden-task recovery. assembleDebug/testDebugUnitTest/lintDebug PASS after API guards. APK update installed successfully and launched; exact OEM X result pending user test.
+
+User confirmed HyperOS X now restores WallDeck. Regression test: Volume Down 2.5 s followed by 3 s wait leaves launcher foreground and lock-task NONE; deliberate exit is not overridden. Relaunched panel afterwards.

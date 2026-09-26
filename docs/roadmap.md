@@ -95,4 +95,4 @@
 - [x] Add non-resizable activity and temporary kiosk window restriction.
 - [ ] Confirm Xiaomi top-edge floating-window toolbar no longer appears with user gesture.
 
-- [ ] Verify HyperOS X invokes task-removed recovery on the physical tablet; OEM toolbar hiding remains unresolved.
+- [x] User confirmed recovery from HyperOS X via hidden-task handling (task-removed alone was insufficient). OEM toolbar hiding remains unresolved.
