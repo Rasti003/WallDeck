@@ -164,3 +164,5 @@ assembleDebug/testDebugUnitTest/lintDebug PASS; APK installed after exiting kios
 
 ## 2026-09-26: HyperOS close-button mitigation
 User confirmed window sizing blocked but OEM toolbar X still closes WallDeck. Added task-removed recovery with deliberate-exit suppression. assembleDebug/testDebugUnitTest/lintDebug PASS; APK installed successfully over Wi-Fi and WallDeck launched. Actual OEM X recovery awaits user reproduction; toolbar itself is not hidden.
+
+Follow-up: user X test failed for task-removed recovery. ADB confirmed MainActivity still present but hidden, launcher foreground, LOCKED retained and monitor running. Added API-32+ hidden-task recovery. assembleDebug/testDebugUnitTest/lintDebug PASS after API guards. APK update installed successfully and launched; exact OEM X result pending user test.

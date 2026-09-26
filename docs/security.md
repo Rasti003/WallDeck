@@ -59,3 +59,5 @@ Managed kiosk allowlists WallDeck and Spotify only and sets LOCK_TASK_FEATURE_NO
 During managed kiosk, DISALLOW_CREATE_WINDOWS blocks additional non-application windows. The restriction is cleared on explicit exit and lock-task-exit callback. This is distinct from manufacturer task windowing; Xiaomi gesture behavior still requires physical confirmation.
 
 OEM toolbar closure recovery intentionally excludes manual tablet mode and hardware emergency exits. No system packages or HyperOS features were disabled globally.
+
+REORDER_TASKS added for recovery of the existing WallDeck task after OEM hide. Recovery is limited to an active docked lock-task session; no polling of other app content.

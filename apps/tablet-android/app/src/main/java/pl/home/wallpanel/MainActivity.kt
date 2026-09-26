@@ -153,6 +153,20 @@ class MainActivity : ComponentActivity() {
             sensorManager.registerListener(lightListener, it, SensorManager.SENSOR_DELAY_NORMAL)
         }
     }
+    override fun onStop() {
+        super.onStop()
+        emergencyHandler.postDelayed({
+            val unlocked = !getSystemService(android.app.KeyguardManager::class.java).isKeyguardLocked
+            val interactive = getSystemService(PowerManager::class.java).isInteractive
+            if (Build.VERSION.SDK_INT >= 32 && !isDestroyed && !isFinishing && !leavingKiosk && kioskActive() && config?.dock == true &&
+                battery().optBoolean("powerConnected") && unlocked && interactive &&
+                music.state().optString("connection") != "connecting") {
+                getSystemService(android.app.ActivityManager::class.java).appTasks
+                    .firstOrNull { it.taskInfo.taskId == taskId && !it.taskInfo.isVisible }
+                    ?.let { runCatching { it.moveToFront() } }
+            }
+        }, 1000)
+    }
     override fun onPause() {
         emergencyHandler.removeCallbacks(emergencyExit)
         cameraLightSampler.onPause()

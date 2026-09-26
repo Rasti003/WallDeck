@@ -114,3 +114,5 @@ Native MainActivity controls managed kiosk lifecycle from dock configuration and
 MainActivity disables resizing/PiP at manifest level. DeviceAdminReceiver now clears kiosk window restrictions on system lock-task exit.
 
 PowerService handles onTaskRemoved for WallDeck only, checks physical power, Device Owner and a persistent manual-exit flag before attempting restart after 700 ms. Activity launch clears suppression, explicit exits set it. Monitoring must remain running; this does not recover Android force-stop.
+
+OEM hidden-task recovery uses MainActivity.onStop and appTasks visibility on API 32+, plus REORDER_TASKS to move its own task forward. It avoids destroyed/finishing Activities, deliberate exits, disconnected power, keyguard/screen-off and Spotify connecting state. It does not hide the OEM toolbar.
