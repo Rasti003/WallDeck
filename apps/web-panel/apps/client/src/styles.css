@@ -221,6 +221,10 @@ button, input, select { font: inherit; }
   .admin-sidebar nav button { font-size: .65rem; }
 }
 .assistant-admin { display: grid; gap: 20px; }
+.ambient-sleep-fields { grid-template-columns: repeat(2, minmax(0, 260px)); margin: 20px 0; }
+.ambient-sleep-fields label { grid-template-columns: 1fr auto; align-items: center; }
+.ambient-sleep-fields label > input { grid-column: 1 / -1; }
+.ambient-sleep-note { margin: 12px 0 0; font-size: .82rem; }
 .assistant-brightness-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(235px, 1fr)); gap: 16px; }
 .assistant-brightness-card { margin: 0; padding: 22px; }
 .assistant-brightness-card.is-custom { border-color: #376865; }

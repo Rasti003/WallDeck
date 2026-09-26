@@ -10,8 +10,8 @@ import { assistantStates, assistantTransition, stateLabels, transientDelay } fro
 export function AssistantDemoView() {
   const studio = location.pathname.startsWith("/assistant-expressive");
   const isPresent = useIsPresent();
-  const { settings, activeView } = useContext(PanelContext);
-  const [state, dispatch] = useReducer(assistantTransition, "idle", () => assistantStateSchema.safeParse(new URLSearchParams(location.search).get("state")).data ?? "idle");
+  const { settings, activeView, requestedAssistantState } = useContext(PanelContext);
+  const [state, dispatch] = useReducer(assistantTransition, "idle", () => requestedAssistantState ?? assistantStateSchema.safeParse(new URLSearchParams(location.search).get("state")).data ?? "idle");
   const brightness = assistantBrightness(settings, state);
   useEffect(() => {
     if (isPresent && activeView === "assistant-expressive" && nativeBridge.available) {
@@ -33,6 +33,9 @@ export function AssistantDemoView() {
   useEffect(() => {
     window.dispatchEvent(new CustomEvent("walldeck:assistantStateChanged", { detail: { state } }));
   }, [state]);
+  useEffect(() => {
+    if (requestedAssistantState) dispatch({ type: "select", state: requestedAssistantState });
+  }, [requestedAssistantState]);
   useEffect(() => {
     if (!simulate || state !== "speaking") return;
     const started = performance.now();

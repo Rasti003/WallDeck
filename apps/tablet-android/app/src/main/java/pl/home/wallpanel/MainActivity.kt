@@ -47,8 +47,9 @@ class MainActivity : ComponentActivity() {
     private val lightSensor by lazy { sensorManager.getSensorList(Sensor.TYPE_ALL).firstOrNull { it.type == Sensor.TYPE_LIGHT } }
     @Volatile private var ambientLightLux: Float? = null
     private val lightListener = object : SensorEventListener {
-        override fun onSensorChanged(event: SensorEvent) {
-            ambientLightLux = event.values.firstOrNull()
+        override fun onSensorChanged(sensorEvent: SensorEvent) {
+            ambientLightLux = sensorEvent.values.firstOrNull()
+            ambientLightLux?.let { event("ambientLightChanged", JSONObject().put("lux", it.toDouble())) }
         }
         override fun onAccuracyChanged(sensor: Sensor, accuracy: Int) = Unit
     }

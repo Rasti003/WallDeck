@@ -32,4 +32,6 @@ Zgodne wstecz rozszerzenia bridge v1 przekazują do zaufanej głównej ramki jed
 
 Raport diagnostyczny urządzenia zawiera identyfikator panelu, model, wersje, stan baterii, status uprawnień i publiczne metadane sensorów. Nie zawiera Device Key, tokenów, danych konta ani treści z Home Assistant. Raport jest walidowany wspólnym schematem, ma limit 64 KiB i pozostaje tylko w pamięci procesu serwera. Dostęp do `/api/devices` podlega tym samym ograniczeniom sieciowym co obecny prototyp panelu admina.
 
+Zdarzenie `ambientLightChanged` zawiera wyłącznie liczbę lux. Nie uruchamia kamery, nie zapisuje historii pomiarów i jest dostępne tylko zaufanej głównej ramce na zasadach pozostałych eventów bridge.
+
 Immersive fullscreen ogranicza przypadkowe wejście do interfejsu systemowego, ale nie stanowi zabezpieczenia kiosku. Android może przejściowo odsłonić paski gestem z krawędzi. Pełna blokada panelu powiadomień wymaga kontrolowanego wdrożenia Device Owner i lock task.

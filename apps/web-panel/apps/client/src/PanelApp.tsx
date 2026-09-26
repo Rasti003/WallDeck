@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { defaultSettings, type DeviceReport, type ViewId, type WallDeckSettings } from "@walldeck/contracts";
+import { defaultSettings, type AssistantState, type DeviceReport, type ViewId, type WallDeckSettings } from "@walldeck/contracts";
 import { api } from "./api";
 import { connectEvents } from "./events";
 import { nativeBridge } from "./native";
-import { inactivityTransition, viewAfterActivity, viewAfterSwipeDown, viewAfterTap } from "./view-manager";
+import { ambientSleepAction, inactivityTransition, viewAfterActivity, viewAfterSwipeDown, viewAfterTap } from "./view-manager";
 import { viewRegistry } from "./views/registry";
 import { PanelContext } from "./panel-context";
 
@@ -13,10 +13,13 @@ export function PanelApp({ forcedView }: { forcedView?: ViewId }) {
   const [viewId, setViewId] = useState<ViewId>("photos");
   const [settings, setSettings] = useState<WallDeckSettings>(defaultSettings);
   const [assistantIdleTransition, setAssistantIdleTransition] = useState(false);
+  const [assistantState, setAssistantState] = useState<AssistantState>("idle");
+  const [requestedAssistantState, setRequestedAssistantState] = useState<AssistantState | null>(null);
   const connection = useRef<ReturnType<typeof connectEvents> | null>(null);
   const touchStart = useRef<{ x: number; y: number; time: number } | null>(null);
   const idleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const interruptionPending = useRef(false);
+  const darkEpisodeActive = useRef(false);
 
   useEffect(() => {
     if (nativeBridge.available) {
@@ -39,6 +42,8 @@ export function PanelApp({ forcedView }: { forcedView?: ViewId }) {
           permissions: permissions as DeviceReport["permissions"],
           sensors: (sensorData.items ?? []) as DeviceReport["sensors"],
         };
+        const lux = sensorData.ambientLightLux;
+        if (typeof lux === "number" && Number.isFinite(lux)) window.dispatchEvent(new CustomEvent("walldeck:ambientLight", { detail: { lux } }));
         socket.send(JSON.stringify({ type: "device.report", report }));
       } catch { /* A regular browser preview has no native device bridge. */ }
     };
@@ -73,6 +78,34 @@ export function PanelApp({ forcedView }: { forcedView?: ViewId }) {
     setViewId(nextView);
     api.activateView(nextView).catch(() => undefined);
   }, [forcedView]);
+
+  useEffect(() => {
+    if (!settings.ambientSleep.enabled) {
+      darkEpisodeActive.current = false;
+      setRequestedAssistantState(null);
+      return;
+    }
+    const onLight = (event: Event) => {
+      const lux = Number((event as CustomEvent<{ lux?: number }>).detail?.lux);
+      const action = ambientSleepAction(lux, settings.ambientSleep, darkEpisodeActive.current);
+      if (action === "sleep") {
+        darkEpisodeActive.current = true;
+        setAssistantIdleTransition(false);
+        setRequestedAssistantState("sleep");
+        activate("assistant-expressive");
+      } else if (action === "reset") {
+        darkEpisodeActive.current = false;
+        setRequestedAssistantState(null);
+        if (activeView === "assistant-expressive" && assistantState === "sleep") activate("photos");
+      }
+    };
+    window.addEventListener("walldeck:ambientLight", onLight);
+    window.addEventListener("wallpanel:ambientLightChanged", onLight);
+    return () => {
+      window.removeEventListener("walldeck:ambientLight", onLight);
+      window.removeEventListener("wallpanel:ambientLightChanged", onLight);
+    };
+  }, [activeView, activate, assistantState, settings.ambientSleep]);
 
   const resetInactivity = useCallback(() => {
     if (idleTimer.current) clearTimeout(idleTimer.current);
@@ -131,6 +164,7 @@ export function PanelApp({ forcedView }: { forcedView?: ViewId }) {
   useEffect(() => {
     const assistantStateChanged = (event: Event) => {
       const state = (event as CustomEvent<{ state?: string }>).detail?.state;
+      if (state) setAssistantState(state as AssistantState);
       if (!assistantIdleTransition || state === "idle") return;
       if (idleTimer.current) clearTimeout(idleTimer.current);
       setAssistantIdleTransition(false);
@@ -173,11 +207,14 @@ export function PanelApp({ forcedView }: { forcedView?: ViewId }) {
           return;
         }
         if (Date.now() - start.time > 500 || Math.hypot(deltaX, deltaY) > 16) return;
-        const target = viewAfterTap(activeView, settings.viewRouter);
-        if (!forcedView && target) activate(target);
+        const target = viewAfterTap(activeView, settings.viewRouter, assistantState);
+        if (!forcedView && target) {
+          if (activeView === "assistant-expressive" && assistantState === "sleep") setRequestedAssistantState(null);
+          activate(target);
+        }
       }}
     >
-      <PanelContext.Provider value={{ settings, activeView }}>
+      <PanelContext.Provider value={{ settings, activeView, requestedAssistantState }}>
       <AnimatePresence mode="wait">
         <motion.div
           key={activeView}

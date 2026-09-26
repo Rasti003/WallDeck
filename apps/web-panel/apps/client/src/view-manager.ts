@@ -1,8 +1,17 @@
-import type { ViewId, WallDeckSettings } from "@walldeck/contracts";
+import type { AssistantState, ViewId, WallDeckSettings } from "@walldeck/contracts";
 
 type RouterSettings = WallDeckSettings["viewRouter"];
+type AmbientSleepSettings = WallDeckSettings["ambientSleep"];
 
-export function viewAfterTap(current: ViewId, router: RouterSettings): ViewId | null {
+export function ambientSleepAction(lux: number, settings: AmbientSleepSettings, darkEpisodeActive: boolean): "sleep" | "reset" | null {
+  if (!settings.enabled || !Number.isFinite(lux)) return null;
+  if (!darkEpisodeActive && lux <= settings.sleepBelowLux) return "sleep";
+  if (darkEpisodeActive && lux >= settings.resetAboveLux) return "reset";
+  return null;
+}
+
+export function viewAfterTap(current: ViewId, router: RouterSettings, assistantState?: AssistantState): ViewId | null {
+  if (current === "assistant-expressive" && assistantState === "sleep") return "ha";
   const rule = router.tapAction;
   return rule.enabled && current === rule.sourceView && rule.targetView !== current ? rule.targetView : null;
 }

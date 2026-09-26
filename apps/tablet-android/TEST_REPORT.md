@@ -76,3 +76,10 @@ Xiaomi 2603ARP14G / Android 16: przed poprawką API aktywowało `assistant-demo`
 - Xiaomi `2603ARP14G`, Android 16 / API 36: raport WebSocket dotarł do `/api/devices`, tablet online, ekran 1280 × 2048 przy 280 dpi, bateria 26%, ładowanie: PASS.
 - `SensorManager` zwrócił 22 pozycje: akcelerometr, significant motion, kroki, tilt, orientacja, stationary/motion detect, SAR, pickup, OEM AMD i `camera_light_Sensor`. Zakładkę `/admin` → Urządzenie sprawdzono w przeglądarce: podsumowanie, uprawnienia i wszystkie 22 karty są widoczne.
 - Sensor światła istnieje i usługa systemowa raportowała przez ADB około 38,2 lx. Firmware nie utworzył połączenia sensora dla procesu WallDeck, dlatego publiczny Android `SensorManager` zwrócił metadane, ale nie przekazał wartości do APK; admin poprawnie pokazuje „wykryty” bez zmyślonego pomiaru.
+
+## 2026-09-26 — światło → Sen → Home Assistant
+
+- `assembleDebug`, `testDebugUnitTest`, `lintDebug`: PASS (JDK 21); APK z eventem `ambientLightChanged` zainstalowany przez ADB USB.
+- Typecheck i build web: PASS; 22 testy klienta, 4 testy serwera i 2 testy synchronizatora: PASS.
+- Xiaomi `2603ARP14G`, Android 16: przez CDP w fizycznym WebView zasymulowano 2 lx. Panel przeszedł `photos → assistant-expressive/sleep`; pojedyncze tapnięcie przeszło do `ha`; kolejny odczyt 2 lx nie przerwał HA. Poziom 20 lx ponownie uzbroił regułę. Wszystkie asercje PASS.
+- Automatyczne wywołanie z realnego światła pozostaje zależne od firmware: system mierzy lux, ale w tym teście HyperOS nadal nie przekazał wartości procesowi WallDeck.

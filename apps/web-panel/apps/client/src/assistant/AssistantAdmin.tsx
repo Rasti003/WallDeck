@@ -20,6 +20,16 @@ export function AssistantAdmin({ settings, setSettings, save, status }: {
       <p className="form-intro">Własna jasność miny ma pierwszeństwo. „Sen” domyślnie używa 5%. Zakres 5–100% pozwala zachować widoczność sterowania.</p>
       <a href="/assistant-expressive" target="_blank" rel="noreferrer">Otwórz studio mimiki ↗</a>
     </section>
+    <section className="admin-card">
+      <span className="admin-kicker">Automatyzacja światła</span><h2>Sen po zmroku</h2>
+      <p className="form-intro">Gdy tablet zgłosi niski poziom światła, WallDeck pokaże asystenta w stanie Sen. Dotknięcie śpiącej twarzy zawsze otwiera Home Assistant.</p>
+      <label className="switch-row"><input type="checkbox" checked={settings.ambientSleep.enabled} onChange={e => setSettings(current => ({ ...current, ambientSleep: { ...current.ambientSleep, enabled: e.target.checked } }))} /><span><strong>Włącz sen zależny od światła</strong><small>Drugi, wyższy próg zapobiega ciągłemu przełączaniu przy granicznej wartości.</small></span></label>
+      <div className="field-grid ambient-sleep-fields">
+        <label>Włącz Sen poniżej<input type="number" min="0" max="10000" step="1" value={settings.ambientSleep.sleepBelowLux} onChange={e => setSettings(current => ({ ...current, ambientSleep: { ...current.ambientSleep, sleepBelowLux: Number(e.target.value) } }))} /><span>lux</span></label>
+        <label>Uzbrój ponownie powyżej<input type="number" min="1" max="10000" step="1" value={settings.ambientSleep.resetAboveLux} onChange={e => setSettings(current => ({ ...current, ambientSleep: { ...current.ambientSleep, resetAboveLux: Number(e.target.value) } }))} /><span>lux</span></label>
+      </div>
+      <p className="form-intro ambient-sleep-note">Na obecnym HyperOS sensor jest wykrywany, ale firmware może nie przekazać aplikacji bieżącej wartości lux. Reguła zacznie działać automatycznie, gdy odczyt będzie dostępny.</p>
+    </section>
     <section className="assistant-brightness-grid" aria-label="Jasność poszczególnych min">
       {assistantStates.map(state => {
         const override = settings.assistantBrightness.overrides[state];

@@ -8,6 +8,15 @@ export const assistantBrightnessSchema = z.object({
   overrides: z.partialRecord(assistantStateSchema, z.number().min(.05).max(1).nullable()).default({ sleep: .05 }),
 }).default({ globalEnabled: true, overrides: { sleep: .05 } });
 
+export const ambientSleepSchema = z.object({
+  enabled: z.boolean(),
+  sleepBelowLux: z.number().min(0).max(10_000),
+  resetAboveLux: z.number().min(0).max(10_000),
+}).refine((value) => value.resetAboveLux > value.sleepBelowLux, {
+  message: "Próg wybudzenia musi być wyższy od progu snu",
+  path: ["resetAboveLux"],
+}).default({ enabled: true, sleepBelowLux: 5, resetAboveLux: 15 });
+
 export const viewIdSchema = z.preprocess(value => value === "assistant-demo" ? "assistant-expressive" : value, z.enum(["photos", "ha", "assistant-expressive"]));
 export type ViewId = z.infer<typeof viewIdSchema>;
 
@@ -50,6 +59,7 @@ export const settingsSchema = z.object({
   }).default({ photos: 0.75, ha: 0.85, "assistant-expressive": 0.65 }),
   viewRouter: viewRouterSettingsSchema,
   assistantBrightness: assistantBrightnessSchema,
+  ambientSleep: ambientSleepSchema,
   overlay: z.object({
     position: overlayPositionSchema,
     showClock: z.boolean(),
@@ -71,6 +81,7 @@ export const defaultSettings: WallDeckSettings = {
   transitionSeconds: 1.4,
   viewBrightness: { photos: 0.75, ha: 0.85, "assistant-expressive": 0.65 },
   assistantBrightness: { globalEnabled: true, overrides: { sleep: .05 } },
+  ambientSleep: { enabled: true, sleepBelowLux: 5, resetAboveLux: 15 },
   viewRouter: {
     tapAction: { enabled: true, sourceView: "photos", targetView: "ha" },
     swipeDownAction: { enabled: true, sourceView: "photos", targetView: "ha" },
