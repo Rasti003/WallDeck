@@ -65,13 +65,45 @@ export function PanelApp({ forcedView }: { forcedView?: ViewId }) {
       } catch { /* A regular browser preview has no native device bridge. */ }
     };
     socket = connectEvents((event) => {
-      const message = JSON.parse(event.data) as { type: string; viewId?: ViewId; settings?: WallDeckSettings };
+      const message = JSON.parse(event.data) as { type: string; viewId?: ViewId; settings?: WallDeckSettings; id?: string; command?: string; args?: Record<string, unknown> };
       if (!forcedView && (message.type === "snapshot" || message.type === "view.activated") && message.viewId) {
         setViewId(message.viewId);
         if (message.viewId !== "assistant-expressive") setAssistantIdleTransition(false);
       }
       if (message.type === "panel.activity") window.dispatchEvent(new Event("walldeck:remoteActivity"));
       if (message.type === "settings.changed" && message.settings) setSettings(message.settings);
+      if (message.type === "mcp.command" && message.id && message.command) {
+        void (async () => {
+          const args = message.args ?? {};
+          if (message.command === "assistant.mood") {
+            const mood = args.mood as AssistantState;
+            setAssistantIdleTransition(false);
+            setDanceTransition(mood === "dancing");
+            setRequestedAssistantState(mood);
+            setViewId("assistant-expressive");
+            await api.activateView("assistant-expressive");
+            return { ok: true, mood };
+          }
+          if (message.command === "music.control") {
+            const action = String(args.action ?? "");
+            if (action === "play") await musicController.play();
+            else if (action === "pause") await musicController.pause();
+            else if (action === "next") await musicController.next();
+            else if (action === "previous") await musicController.previous();
+            else if (action === "seek") await musicController.seekTo(Number(args.positionMs));
+            else if (action === "shuffle") await musicController.setShuffle(Boolean(args.enabled));
+            else if (action === "repeat") await musicController.setRepeat(Number(args.mode));
+            else throw new Error("Nieznana komenda muzyki");
+            return await musicController.getPlaybackState();
+          }
+          if (message.command === "tablet.volume") {
+            await musicController.setVolume(Number(args.value));
+            return await musicController.getAudioOutputState();
+          }
+          throw new Error("Nieznana komenda panelu");
+        })().then(result => socket.send(JSON.stringify({ type: "mcp.commandResult", id: message.id, result })))
+          .catch(error => socket.send(JSON.stringify({ type: "mcp.commandResult", id: message.id, error: error instanceof Error ? error.message : String(error) })));
+      }
     }, () => {
       api.settings().then(setSettings).catch(() => undefined);
       void reportDevice();

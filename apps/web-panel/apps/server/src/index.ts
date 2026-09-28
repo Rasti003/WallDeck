@@ -2,6 +2,7 @@ import { registerPhotos } from "./photos.js";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { randomUUID } from "node:crypto";
 import Fastify from "fastify";
 import { registerClient } from "./client.js";
 import websocket from "@fastify/websocket";
@@ -19,6 +20,7 @@ import {
   type DeviceStatus,
 } from "@walldeck/contracts";
 import { HomeAssistantClient, HomeAssistantConfigStore } from "./home-assistant.js";
+import { registerMcpEndpoint } from "./mcp.js";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const webRoot = path.resolve(here, "../../client/dist");
@@ -37,8 +39,18 @@ async function readSettings(): Promise<WallDeckSettings> {
   }
 }
 
+async function writeSettingsValue(settings: WallDeckSettings): Promise<WallDeckSettings> {
+  const parsed = settingsSchema.parse(settings);
+  await writeFile(settingsPath, `${JSON.stringify(parsed, null, 2)}\n`, "utf8");
+  broadcast({ type: "settings.changed", settings: parsed });
+  return parsed;
+}
+
 let currentView: ViewId = "photos";
-const sockets = new Set<{ send(data: string): void; readyState: number }>();
+type PanelSocket = { send(data: string): void; readyState: number };
+const sockets = new Set<PanelSocket>();
+const panelSockets = new Set<PanelSocket>();
+const pendingPanelCommands = new Map<string, { resolve(value: unknown): void; reject(reason: Error): void; timer: ReturnType<typeof setTimeout> }>();
 const devices = new Map<string, DeviceReport & { lastSeen: string }>();
 let weatherCache: { key: string; expiresAt: number; value: WeatherNow } | null = null;
 
@@ -52,6 +64,22 @@ function deviceStatuses(): DeviceStatus[] {
 function broadcast(message: unknown) {
   const data = JSON.stringify(message);
   for (const socket of sockets) if (socket.readyState === 1) socket.send(data);
+}
+
+function activateView(viewId: ViewId) {
+  currentView = viewId;
+  broadcast({ type: "view.activated", viewId });
+}
+
+function panelCommand(name: string, args: Record<string, unknown>) {
+  const socket = [...panelSockets].find(candidate => candidate.readyState === 1);
+  if (!socket) return Promise.reject(new Error("Tablet WallDeck jest offline"));
+  const id = randomUUID();
+  return new Promise<unknown>((resolve, reject) => {
+    const timer = setTimeout(() => { pendingPanelCommands.delete(id); reject(new Error("Tablet nie odpowiedział na komendę")); }, 8_000);
+    pendingPanelCommands.set(id, { resolve, reject, timer });
+    socket.send(JSON.stringify({ type: "mcp.command", id, command: name, args }));
+  });
 }
 
 const haConfigStore = new HomeAssistantConfigStore(runtimeRoot);
@@ -80,9 +108,7 @@ app.get("/api/settings", async () => readSettings());
 app.put("/api/settings", async (request, reply) => {
   const parsed = settingsSchema.safeParse(request.body);
   if (!parsed.success) return reply.code(400).send({ error: "Nieprawidłowe ustawienia", details: parsed.error.issues });
-  await writeFile(settingsPath, `${JSON.stringify(parsed.data, null, 2)}\n`, "utf8");
-  broadcast({ type: "settings.changed", settings: parsed.data });
-  return parsed.data;
+  return writeSettingsValue(parsed.data);
 });
 
 await registerPhotos(app, photoRoot, runtimeRoot, broadcast, readSettings);
@@ -96,8 +122,7 @@ app.get("/api/views", async () => ({ current: currentView, available: [
 app.post("/api/views/activate", async (request, reply) => {
   const parsed = viewIdSchema.safeParse((request.body as { viewId?: unknown } | null)?.viewId);
   if (!parsed.success) return reply.code(400).send({ error: "Nieznany widok" });
-  currentView = parsed.data;
-  broadcast({ type: "view.activated", viewId: currentView });
+  activateView(parsed.data);
   return { current: currentView };
 });
 
@@ -167,6 +192,19 @@ app.get<{ Params: { entityId: string } }>("/api/ha/entities/:entityId", async (r
 });
 app.get("/api/ha/overlay", async () => homeAssistant.selectedStates());
 
+registerMcpEndpoint(app, {
+  readSettings,
+  writeSettings: writeSettingsValue,
+  currentView: () => currentView,
+  devices: deviceStatuses,
+  homeAssistantStatus: () => homeAssistant.status(),
+  searchHomeEntities: query => homeAssistant.searchEntities(query),
+  homeEntity: entityId => homeAssistant.entity(entityId),
+  activateView,
+  notify: notification => broadcast({ type: "notification", notification }),
+  panelCommand,
+}, process.env.WALLDECK_MCP_TOKEN);
+
 app.get("/api/events", { websocket: true }, (socket) => {
   sockets.add(socket);
   socket.send(JSON.stringify({
@@ -180,7 +218,7 @@ app.get("/api/events", { websocket: true }, (socket) => {
   socket.on("message", (raw: Buffer) => {
     if (raw.toString().length > 65_536) return;
     try {
-      const message = JSON.parse(raw.toString()) as { type?: unknown; report?: unknown };
+      const message = JSON.parse(raw.toString()) as { type?: unknown; report?: unknown; id?: unknown; result?: unknown; error?: unknown };
       if (message.type === "panel.activity" && Date.now() - lastActivity > 400) {
         lastActivity = Date.now();
         broadcast({ type: "panel.activity" });
@@ -189,11 +227,19 @@ app.get("/api/events", { websocket: true }, (socket) => {
         if (!parsed.success) return;
         const device = { ...parsed.data, lastSeen: new Date().toISOString() };
         devices.set(device.deviceId, device);
+        panelSockets.add(socket);
         broadcast({ type: "device.updated", device: { ...device, online: true } satisfies DeviceStatus });
+      } else if (message.type === "mcp.commandResult" && typeof message.id === "string") {
+        const pending = pendingPanelCommands.get(message.id);
+        if (!pending) return;
+        clearTimeout(pending.timer);
+        pendingPanelCommands.delete(message.id);
+        if (typeof message.error === "string") pending.reject(new Error(message.error));
+        else pending.resolve(message.result);
       }
     } catch { /* Ignore malformed activity messages. */ }
   });
-  socket.on("close", () => sockets.delete(socket));
+  socket.on("close", () => { sockets.delete(socket); panelSockets.delete(socket); });
 });
 
 app.addHook("onClose", async () => homeAssistant.stop());

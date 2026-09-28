@@ -1,0 +1,53 @@
+# Serwer MCP WallDeck
+
+WallDeck udostępnia kontrolowany interfejs Model Context Protocol pod adresem `/mcp`. To warstwa wykonawcza przyszłego asystenta: model może odczytać stan panelu i wywołać wyłącznie jawnie zdefiniowane funkcje. Generowanie wypowiedzi, pamięć rozmowy, mikrofon, wake word i TTS pozostają osobnymi modułami.
+
+## Dostępne narzędzia
+
+| Narzędzie | Typ | Zakres |
+|---|---|---|
+| `get_status` | odczyt | aktywny widok, tablet, HA i aktywne narzędzia |
+| `show_view` | akcja | zdjęcia, Dom, Music lub twarz asystenta |
+| `show_assistant_mood` | akcja | jedna z walidowanych animacji/nastrojów twarzy |
+| `control_music` | akcja | play, pauza, następny, poprzedni, seek, shuffle, repeat |
+| `set_tablet_volume` | akcja | głośność multimediów 0–100% |
+| `send_notification` | akcja | komunikat zwykły lub alarm z opcjonalnym dźwiękiem |
+| `set_view_brightness` | akcja | zapisana jasność konkretnego widoku |
+| `search_home_entities` | odczyt | wyszukanie encji Home Assistant |
+| `get_home_entity` | odczyt | stan wskazanej encji Home Assistant |
+
+W `/admin` sekcja **MCP · AI** zawiera wyłącznik całego serwera i osobny wyłącznik każdego narzędzia. Wyłączona funkcja nie pojawia się w `tools/list`, więc klient MCP nie może jej wywołać.
+
+## Bezpieczeństwo
+
+- endpoint wymaga `Authorization: Bearer <WALLDECK_MCP_TOKEN>`;
+- token jest zmienną środowiskową serwera, nie jest zwracany przez API ani zapisywany w repozytorium;
+- serwer jest domyślnie wyłączony w ustawieniach;
+- parametry narzędzi mają ścisłe schematy i ograniczone zakresy;
+- MCP nie może opuścić kiosku, odczytać sekretów, edytować całych ustawień ani wykonać dowolnej usługi HA;
+- obecny endpoint LAN używa HTTP i nie powinien być publicznie wystawiany.
+
+Połączenie z OpenAI API wymaga bezpiecznego transportu do prywatnego homelabu. Docelowym wariantem jest Secure MCP Tunnel lub publiczny endpoint HTTPS z właściwym uwierzytelnieniem. Po stronie wywołania modelu dodatkowo ograniczamy `allowed_tools` i ustawiamy politykę zatwierdzania operacji.
+
+## Przepływ komendy
+
+```text
+OpenAI / klient MCP
+        │  Streamable HTTP + Bearer
+        ▼
+WallDeck Server /mcp
+        │  walidacja + lista aktywnych tools
+        ├────────► ustawienia / Home Assistant / powiadomienia
+        │
+        └────────► WebSocket command bus ─────► aktywny tablet/WebView ─────► Android Bridge / Spotify
+```
+
+Serwer kieruje komendę sprzętową do aktywnego panelu i czeka maksymalnie 8 sekund na odpowiedź. Brak połączonego tabletu lub błąd bridge'a wraca do klienta MCP jako błąd narzędzia.
+
+## Następny etap asystenta
+
+1. Połączyć prywatny endpoint MCP z OpenAI Responses API.
+2. Dodać orkiestrator rozmowy oraz jasną politykę zatwierdzania akcji.
+3. Dodać wejście mikrofonowe, wake word, STT i TTS jako niezależne moduły z osobnymi przełącznikami.
+4. Dodać koordynator audio focus, który ścisza muzykę na czas rozmowy i bezpiecznie przywraca odtwarzanie.
+5. Rozbudować narzędzia dopiero po przygotowaniu konkretnych, ograniczonych przypadków użycia.

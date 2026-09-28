@@ -29,6 +29,7 @@ APK pozostaje cienką warstwą sprzętową. Interfejs rozwijamy jako aplikację 
 - [Bezpieczeństwo](docs/security.md)
 - [Plan rozwoju](docs/roadmap.md)
 - [Wdrożenie na serwerze](docs/deployment.md)
+- [Serwer MCP dla asystenta](docs/mcp.md)
 - [Zasady pracy z repozytorium](CONTRIBUTING.md)
 - [Raport testów aplikacji Android](apps/tablet-android/TEST_REPORT.md)
 
@@ -37,5 +38,7 @@ APK pozostaje cienką warstwą sprzętową. Interfejs rozwijamy jako aplikację 
 Aplikacja Android obsługuje konfigurowalny URL, Device ID i Device Key, szyfrowany storage, bridge ograniczony do zaufanego originu, informacje o urządzeniu, baterię, jasność okna, głośność, keep-awake, haptics, przeładowanie oraz zdarzenia zasilania. Po podłączeniu zasilania może wejść na pierwszy plan, a po odłączeniu zamyka Activity i odsłania poprzednią aplikację, na ile pozwala Android/HyperOS.
 
 Panel WWW obsługuje obecnie album zdjęć, pogodę, jasność per widok oraz centralną integrację Home Assistant. Konfiguracja HA odbywa się w `/admin`; token jest szyfrowany na serwerze i nie wraca do klienta. Administrator może dodać do overlayu dowolne encje HA, nadać im etykiety i przypisać do sześciu stref ekranu. Ich wartości aktualizują się w czasie rzeczywistym, a pełny dashboard jest dostępny jako widok `/ha`.
+
+Serwer WWW udostępnia chroniony tokenem endpoint MCP z małym zestawem funkcji panelu. Każde narzędzie można osobno wyłączyć w sekcji **MCP · AI** panelu administratora. Połączenie z modelem OpenAI i moduły głosowe są kolejnym etapem.
 
 Music ma pierwszy adapter Spotify App Remote, widok odtwarzania i konfigurację w adminie. Wymaga Client ID i autoryzacji na tablecie; test rzeczywistego playbacku/BT pozostaje do wykonania. Wake word i YouTube mają wyłącznie kontrakty rozszerzeń.

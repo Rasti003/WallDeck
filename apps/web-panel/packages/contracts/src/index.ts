@@ -4,6 +4,34 @@ export type { MusicState, AudioOutputState, MusicController } from "./music.js";
 export const assistantStates = ["idle", "attention", "listening", "thinking", "speaking", "success", "error", "sleep", "curious", "uncertain", "confirm", "surprised", "wink", "laughing", "dancing"] as const;
 export const assistantStateSchema = z.enum(assistantStates);
 export type AssistantState = z.infer<typeof assistantStateSchema>;
+export const mcpToolIds = ["get_status", "show_view", "show_assistant_mood", "control_music", "set_tablet_volume", "send_notification", "set_view_brightness", "search_home_entities", "get_home_entity"] as const;
+export const mcpToolIdSchema = z.enum(mcpToolIds);
+export type McpToolId = z.infer<typeof mcpToolIdSchema>;
+export const mcpSettingsSchema = z.object({
+  enabled: z.boolean().default(false),
+  tools: z.object({
+    get_status: z.boolean().default(true),
+    show_view: z.boolean().default(true),
+    show_assistant_mood: z.boolean().default(true),
+    control_music: z.boolean().default(true),
+    set_tablet_volume: z.boolean().default(true),
+    send_notification: z.boolean().default(true),
+    set_view_brightness: z.boolean().default(true),
+    search_home_entities: z.boolean().default(true),
+    get_home_entity: z.boolean().default(true),
+  }).default({
+    get_status: true, show_view: true, show_assistant_mood: true, control_music: true,
+    set_tablet_volume: true, send_notification: true, set_view_brightness: true,
+    search_home_entities: true, get_home_entity: true,
+  }),
+}).default({
+  enabled: false,
+  tools: {
+    get_status: true, show_view: true, show_assistant_mood: true, control_music: true,
+    set_tablet_volume: true, send_notification: true, set_view_brightness: true,
+    search_home_entities: true, get_home_entity: true,
+  },
+});
 export const assistantBrightnessSchema = z.object({
   globalEnabled: z.boolean().default(true),
   overrides: z.partialRecord(assistantStateSchema, z.number().min(.05).max(1).nullable()).default({ sleep: .05 }),
@@ -73,6 +101,7 @@ export const settingsSchema = z.object({
     volume: z.number().min(0.05).max(1),
     ttsEnabled: z.literal(false).default(false),
   }).default({ normal: { durationSeconds: 5, sound: "none" }, alarm: { persistent: true, durationSeconds: 30, sound: "alarm" }, volume: .35, ttsEnabled: false }),
+  mcp: mcpSettingsSchema,
   tabletMenu: z.object({ enabled: z.boolean().default(true), views: z.array(z.enum(["photos", "ha", "music", "assistant-expressive"])).min(1).max(4).refine(v => new Set(v).size === v.length).default(["photos", "ha", "music", "assistant-expressive"]) }).default({ enabled: true, views: ["photos", "ha", "music", "assistant-expressive"] }),
   music: z.object({ clientId: z.string().trim().regex(/^([a-fA-F0-9]{32})?$/).default("") }).default({ clientId: "" }),
   photoIntervalSeconds: z.number().int().min(10).max(3600),
@@ -105,6 +134,7 @@ export type WallDeckSettings = z.infer<typeof settingsSchema>;
 export const defaultSettings: WallDeckSettings = {
   gallery: { holdMilliseconds: 600, notifyNewPhotos: true },
   notifications: { normal: { durationSeconds: 5, sound: "none" }, alarm: { persistent: true, durationSeconds: 30, sound: "alarm" }, volume: .35, ttsEnabled: false },
+  mcp: { enabled: false, tools: { get_status: true, show_view: true, show_assistant_mood: true, control_music: true, set_tablet_volume: true, send_notification: true, set_view_brightness: true, search_home_entities: true, get_home_entity: true } },
   tabletMenu: { enabled: true, views: ["photos", "ha", "music", "assistant-expressive"] },
   music: { clientId: "" },
   photoIntervalSeconds: 30,

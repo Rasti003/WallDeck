@@ -86,7 +86,11 @@ Wspólny kontrakt znajduje się w `packages/contracts/src/music.ts`. Stan obejmu
 
 Odczyt rzeczywistej kolejki wymaga dodatkowej integracji, ponieważ App Remote ma tylko operację dodawania do kolejki. Diagnostyka Androida pokazuje dostępne wyjścia, nie deklaruje aktywnej trasy innej aplikacji. Fallback otwiera ustawienia Bluetooth. Sterowanie audio focus i rozróżnianie pauzy użytkownika od przerwania przez asystenta pozostają osobnym etapem; obecny adapter nie przejmuje fokusu ani mikrofonu.
 
-Kontrakt domenowy może zostać użyty przez przyszły MCP/automatyzacje; transport z serwera do konkretnego urządzenia i jego autoryzacja nie są jeszcze wdrożone. Client ID jest obecnie wspólnym ustawieniem aplikacji, a każda instalacja tabletu autoryzuje lokalne Spotify.
+Kontrakt domenowy jest dostępny przez serwer MCP. Endpoint `/mcp` wymaga tokenu z konfiguracji procesu, a każde narzędzie można osobno ukryć w ustawieniach. Akcje sprzętowe i muzyczne trafiają z serwera do aktywnego panelu przez dwukierunkowy command bus WebSocket, który zwraca wynik lub błąd. Client ID jest wspólnym ustawieniem aplikacji, a każda instalacja tabletu autoryzuje lokalne Spotify.
+
+## Warstwa MCP asystenta
+
+MCP pozostaje oddzielone od przyszłego „mózgu” opartego o OpenAI API. Serwer rejestruje tylko włączone, zadaniowe narzędzia do odczytu stanu, zmiany widoku i mimiki, sterowania muzyką/głośnością, powiadomień, jasności oraz bezpiecznego odczytu HA. Nie ma ogólnego narzędzia do edycji konfiguracji ani dowolnego wywołania usług HA. Szczegóły kontraktu i transportu opisuje [mcp.md](mcp.md).
 
 ### Aktywność klientów
 

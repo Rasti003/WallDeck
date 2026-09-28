@@ -61,7 +61,10 @@
 - [ ] Client ID + autoryzacja Spotify i fizyczny test playbacku → Bluetooth, sterowania i odtwarzania po zmianie widoku;
 - [ ] prawdziwy Up Next przez dodatkowy adapter/autoryzację, playlisty i search;
 - [ ] like/favorite, animacje prawdziwej kolejki/shared element i długotrwały test 60 fps;
-- [ ] transport MusicController dla MCP/automatyzacji oraz audio focus/duck/pause/resume asystenta;
+- [x] transport MusicController dla MCP/automatyzacji przez command bus WebSocket;
+- [x] chroniony tokenem serwer MCP z osobnymi przełącznikami narzędzi w panelu administratora;
+- [ ] połączenie MCP z OpenAI Responses API przez Secure MCP Tunnel/HTTPS;
+- [ ] audio focus/duck/pause/resume asystenta;
 - [ ] routing audio tablet/Bluetooth;
 - [ ] lokalny wake word, VAD i bufor audio;
 - [ ] STT → LLM → TTS na homelabie;

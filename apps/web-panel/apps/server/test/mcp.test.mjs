@@ -1,0 +1,63 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+import { Client, InMemoryTransport } from "@modelcontextprotocol/client";
+import { defaultSettings } from "@walldeck/contracts";
+import { createWallDeckMcpServer } from "../dist/mcp.js";
+
+function readText(result) {
+  return JSON.parse(result.content.find(item => item.type === "text").text);
+}
+
+test("MCP exposes only enabled tools and routes focused WallDeck actions", async () => {
+  let settings = structuredClone(defaultSettings);
+  settings.mcp.enabled = true;
+  settings.mcp.tools.control_music = false;
+  const calls = [];
+  const deps = {
+    readSettings: async () => settings,
+    writeSettings: async next => (settings = next),
+    currentView: () => "photos",
+    devices: () => [{ deviceId: "wall-tablet", connected: true }],
+    homeAssistantStatus: () => ({ connected: true }),
+    searchHomeEntities: query => [{ entityId: "sensor.salon_temperature", friendlyName: "Temperatura salon", state: "22.5", unit: "°C" }].filter(entity => entity.friendlyName.toLowerCase().includes(query.toLowerCase())),
+    homeEntity: entityId => entityId === "sensor.salon_temperature" ? { entityId, friendlyName: "Temperatura salon", state: "22.5", unit: "°C" } : null,
+    activateView: view => calls.push(["view", view]),
+    notify: notification => calls.push(["notification", notification]),
+    panelCommand: async (name, args) => { calls.push([name, args]); return { ok: true }; },
+  };
+  const server = createWallDeckMcpServer(settings, deps);
+  const client = new Client({ name: "WallDeck tests", version: "1.0.0" });
+  const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+
+  try {
+    await server.connect(serverTransport);
+    await client.connect(clientTransport);
+    const listed = await client.listTools();
+    assert.equal(listed.tools.length, 8);
+    assert.ok(listed.tools.some(tool => tool.name === "get_status"));
+    assert.ok(!listed.tools.some(tool => tool.name === "control_music"));
+
+    const status = readText(await client.callTool({ name: "get_status", arguments: {} }));
+    assert.equal(status.currentView, "photos");
+    assert.equal(status.homeAssistant.connected, true);
+
+    await client.callTool({ name: "show_view", arguments: { view: "music" } });
+    await client.callTool({ name: "show_assistant_mood", arguments: { mood: "curious" } });
+    await client.callTool({ name: "set_tablet_volume", arguments: { percent: 35 } });
+    await client.callTool({ name: "send_notification", arguments: { message: "Nowe zdjęcia", durationSeconds: 7 } });
+    await client.callTool({ name: "set_view_brightness", arguments: { view: "photos", percent: 40 } });
+    const entities = readText(await client.callTool({ name: "search_home_entities", arguments: { query: "salon" } }));
+    const entity = readText(await client.callTool({ name: "get_home_entity", arguments: { entityId: "sensor.salon_temperature" } }));
+
+    assert.deepEqual(calls[0], ["view", "music"]);
+    assert.deepEqual(calls[1], ["assistant.mood", { mood: "curious" }]);
+    assert.deepEqual(calls[2], ["tablet.volume", { value: 0.35 }]);
+    assert.equal(calls[3][0], "notification");
+    assert.equal(settings.viewBrightness.photos, 0.4);
+    assert.equal(entities.entities.length, 1);
+    assert.equal(entity.state, "22.5");
+  } finally {
+    await client.close();
+    await server.close();
+  }
+});

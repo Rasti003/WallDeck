@@ -6,3 +6,7 @@ onlyBuiltDependencies:
   - esbuild
 allowBuilds:
   esbuild: true
+minimumReleaseAgeExclude:
+  - '@modelcontextprotocol/core@2.2.0'
+  - '@modelcontextprotocol/server@2.2.0'
+  - '@modelcontextprotocol/client@2.2.0'
