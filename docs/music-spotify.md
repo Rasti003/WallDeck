@@ -47,6 +47,8 @@ Błędy Spotify zachowują teraz kategorię wyjątku SDK (bez treści wyjątku, 
 Timeout po zmianie konfiguracji może wynikać z blokady Androida 14+ przy otwieraniu zgody Spotify z tła. Poprawka SpotifyBindingContext przekazuje wymaganą flagę dla bindService; nie wymaga ręcznego nadawania Spotify uprawnienia do nakładek ani zmiany ustawień zabezpieczeń systemu. Potwierdzenie na urządzeniu jest wymagane po instalacji poprawionego APK.
 
 Aktualizacja 2026-09-26: poprawka została zainstalowana, rzeczywiste okno zgody Spotify wyświetliło się, a po zatwierdzeniu stan zmienił się na connected bez błędu. Połączenie utrzymało się podczas Music → HA → Music. Test odtwarzania/odsłuch BT pozostaje osobną weryfikacją.
+
+Aktualizacja 2026-09-28: produkcyjne logowanie Web API przez PKCE zakończyło się poprawnie. Zweryfikowano odświeżenie statusu konta, pobranie 10 playlist, pustą kolejkę przy braku aktywnego odtwarzania oraz wyszukiwanie wielu typów z prawdziwymi nazwami i okładkami. Wyniki są widoczne w arkuszu Music. Nie uruchamiano automatycznie muzyki ani nie modyfikowano kolejki użytkownika podczas testu.
 # Spotify Web API i MCP
 
 WallDeck używa dwóch uzupełniających się połączeń:
