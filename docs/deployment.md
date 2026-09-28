@@ -35,6 +35,8 @@ http://ADRES_VM:8080/admin
 
 ## Aktualizacja
 
+Proces kontenera ma UID/GID 10001. Katalogi runtime/zdjęć muszą pozwalać tej grupie na zapis, a przeniesiony `settings.json` również wymaga zapisu grupowego. Po migracji plik z trybem 0640 blokował zapis admina; poprawiono go na 0660 (bez dostępu dla innych). Synchronizator tworzy pliki i katalog blokady wewnątrz storage. Korekty galerii są zapisywane oddzielnie w `photo-edits.json`.
+
 ```bash
 cd /opt/walldeck/repository
 git pull --ff-only

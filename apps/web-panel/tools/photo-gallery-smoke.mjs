@@ -64,6 +64,8 @@ try {
  await evaluate(`Array.from(document.querySelectorAll('button')).find(b=>b.textContent.includes('Wszystkie zdjęcia')).click()`);await pause(500);assert.equal(await evaluate(`document.querySelectorAll('.photo-library button').length`),60);console.log('PASS tablet library');
  await pause(31000);assert.equal((await read()).view,'photos');assert.equal(await evaluate(`!!document.querySelector('.photo-library')`),true);console.log('PASS browsing stays open beyond idle timeout');
  await evaluate(`document.querySelector('.photo-library button').click()`);await pause(1800);assert.equal(await evaluate(`!!document.querySelector('[aria-label="Zdjęcia"]')`),false);assert.equal((await read()).view,'photos');console.log('PASS select photo');
+ swipe(.5,.2,.5,.5,300);await pause(600);assert.equal(await evaluate(`!!document.querySelector('.tablet-menu-glass')`),true);await evaluate(`document.querySelector('[aria-label="Zamknij menu"]').click()`);console.log('PASS global swipe-down menu unchanged');
+ await evaluate(`for(let i=0;i<2;i++)window.dispatchEvent(new CustomEvent('walldeck:notification',{detail:{id:'gallery-smoke-'+Date.now().toString().slice(0,-3),message:'Test powiadomienia',kind:'info',durationMs:700}}))`);await pause(150);assert.equal(await evaluate(`document.querySelectorAll('.app-notification').length`),1);await pause(900);assert.equal(await evaluate(`document.querySelectorAll('.app-notification').length`),0);console.log('PASS global notification deduplication and timeout');
 } finally { await save(originalSettings); await activate(originalView); socket.close(); }
 
 

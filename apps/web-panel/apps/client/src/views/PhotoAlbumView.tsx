@@ -72,7 +72,7 @@ export function PhotoAlbumView() {
   const cancelHold = () => { if (touch.current) clearTimeout(touch.current.timer); };
   useEffect(() => () => cancelHold(), []);
   useEffect(() => { setInteractionLocked(Boolean(dialog)); return () => setInteractionLocked(false); }, [dialog, setInteractionLocked]);
-  useEffect(() => { const open = () => setDialog("library"); window.addEventListener("walldeck:openPhotoLibrary", open); if (sessionStorage.getItem("openPhotoLibrary")) { sessionStorage.removeItem("openPhotoLibrary"); open(); } return () => window.removeEventListener("walldeck:openPhotoLibrary", open); }, []);
+  useEffect(() => { const open = () => { sessionStorage.removeItem("openPhotoLibrary"); setDialog("library"); }; window.addEventListener("walldeck:openPhotoLibrary", open); if (sessionStorage.getItem("openPhotoLibrary")) open(); return () => window.removeEventListener("walldeck:openPhotoLibrary", open); }, []);
 
   useEffect(() => {
     api.settings()
@@ -99,7 +99,7 @@ export function PhotoAlbumView() {
     setHistory(old => {
       const available = new Map(photos.map(p => [p.id, p]));
       const items = old.items.map(l => ({ ...l, items: l.items.filter(p => available.has(p.id)).map(p => available.get(p.id)!) })).filter(l => l.items.length === (l.kind === "pair" ? 2 : 1));
-      if (items.length) return { items, index: Math.min(old.index, items.length - 1) };
+      if (items.length) { const retained = items.findIndex(item => item.key === old.items[old.index]?.key); return { items, index: retained >= 0 ? retained : Math.max(0, Math.min(old.index, items.length - 1)) }; }
       const first = createPhotoLayout(photos, landscapeScreen, null);
       return { items: first ? [first] : [], index: first ? 0 : -1 };
     });
@@ -114,7 +114,7 @@ export function PhotoAlbumView() {
     next?.items.forEach((photo) => { const image = new Image(); image.src = photo.url; });
   }, [layout, library.photos, landscapeScreen]);
 
-  const navigate = (direction: -1 | 1) => { setHistory(old => advanceHistory(old, direction, () => nextLayout.current ?? createPhotoLayout(photos, landscapeScreen, old.items[old.index] ?? null))); nextLayout.current = null; setTick(t => t + 1); };
+  const navigate = (direction: -1 | 1) => { const next = nextLayout.current; setHistory(old => advanceHistory(old, direction, () => next ?? createPhotoLayout(photos, landscapeScreen, old.items[old.index] ?? null))); nextLayout.current = null; setTick(t => t + 1); };
 
   useEffect(() => {
     if (!settings || !photos.length || dialog || menuOpen) return;
