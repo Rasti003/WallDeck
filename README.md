@@ -28,6 +28,7 @@ APK pozostaje cienką warstwą sprzętową. Interfejs rozwijamy jako aplikację 
 - [Architektura i stack panelu WWW](docs/web-architecture-plan.md)
 - [Bezpieczeństwo](docs/security.md)
 - [Plan rozwoju](docs/roadmap.md)
+- [Wdrożenie na serwerze](docs/deployment.md)
 - [Zasady pracy z repozytorium](CONTRIBUTING.md)
 - [Raport testów aplikacji Android](apps/tablet-android/TEST_REPORT.md)
 

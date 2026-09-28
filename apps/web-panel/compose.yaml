@@ -1,0 +1,38 @@
+services:
+  web-panel:
+    build:
+      context: .
+    image: walldeck-web:local
+    container_name: walldeck-web
+    restart: unless-stopped
+    init: true
+    ports:
+      - "${WALLDECK_PORT:-8080}:8080"
+    environment:
+      NODE_ENV: production
+      PORT: 8080
+      WALLDECK_DATA_PATH: /var/lib/walldeck
+      PHOTO_STORAGE_PATH: /var/lib/walldeck/photos
+      TZ: ${TZ:-Europe/Warsaw}
+    volumes:
+      - type: bind
+        source: ${WALLDECK_DATA_DIR:-./runtime}
+        target: /var/lib/walldeck
+      - type: bind
+        source: ${WALLDECK_PHOTO_DIR:-./photos}
+        target: /var/lib/walldeck/photos
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:8080/api/settings').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"
+      interval: 30s
+      timeout: 5s
+      start_period: 15s
+      retries: 3
+

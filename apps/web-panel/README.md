@@ -50,6 +50,18 @@ adb reverse tcp:8080 tcp:8080
 
 i ustawić w APK adres `http://127.0.0.1:8080/panel`.
 
+### Docker / serwer homelab
+
+Wariant produkcyjny korzysta z obrazu bez uprawnień roota, trwałych katalogów danych i healthchecka:
+
+```bash
+cp .env.example .env
+docker compose up -d --build
+docker compose ps
+```
+
+`.env` pozostaje wyłącznie na serwerze. Szczegóły układu katalogów, aktualizacji i przyszłego przeniesienia zdjęć na NAS opisuje [instrukcja wdrożenia](../../docs/deployment.md).
+
 ## Wywołanie widoku
 
 ### Asystent demo

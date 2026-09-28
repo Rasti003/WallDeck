@@ -46,6 +46,7 @@
 - [ ] włączyć dobowy harmonogram i „Synchronizuj teraz” dla shared albumu Google Photos;
 - [x] włączyć lokalny katalog zdjęć do API WallDeck Server i slideshow;
 - [ ] przygotować HTTPS i DNS w homelabie;
+- [x] przygotować kontener produkcyjny, Compose, trwałe katalogi danych i instrukcję wdrożenia na VM;
 - [ ] zaimplementować backend rejestracji urządzeń i sesji;
 - [x] zaprojektować pierwszy pełnoekranowy widok panelu;
 - [ ] wykonać fizyczny test ładowarki, autostartu i polityk HyperOS;

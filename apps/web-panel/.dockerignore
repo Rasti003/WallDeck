@@ -1,0 +1,12 @@
+node_modules
+**/node_modules
+**/dist
+storage
+.env
+.env.*
+!.env.example
+photo-sync.config.json
+.walldeck-album.json
+.walldeck-sync.json
+*.log
+
