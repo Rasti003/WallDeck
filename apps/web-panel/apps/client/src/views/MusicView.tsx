@@ -62,6 +62,14 @@ export function MusicView() {
   }, []);
 
   useEffect(() => {
+    let disposed = false;
+    const refresh = () => api.spotify.queue().then(next => { if (!disposed) setQueue(next); }).catch(() => undefined);
+    void refresh();
+    const timer = setInterval(refresh, 10_000);
+    return () => { disposed = true; clearInterval(timer); };
+  }, []);
+
+  useEffect(() => {
     setSeek(null);
     setAccent("43, 85, 71");
     if (!state.artwork) return;
@@ -112,6 +120,7 @@ export function MusicView() {
   async function spotifyAction(item: SpotifyItem, action: "play" | "queue") {
     await run(() => api.spotify.action(item.uri, action));
     if (action === "play") setSheet(null);
+    window.setTimeout(() => { void api.spotify.queue().then(setQueue).catch(() => undefined); }, 1200);
   }
 
   const itemList = (items: SpotifyItem[]) => <ul className="music-library-list">{items.map(item => <li key={item.uri}>
@@ -183,7 +192,7 @@ export function MusicView() {
 
         <aside className="music-next">
           <div><p className="music-eyebrow">DALEJ</p><h2>Up next</h2></div>
-          <div className="music-queue-empty"><span>≡</span><strong>{queue?.items[0]?.name ?? "Kolejka Spotify"}</strong><p>{queue?.items[0]?.subtitle ?? "Otwórz kolejkę, playlisty albo znajdź konkretny utwór."}</p></div>
+          {queue?.items.length ? <ol className="music-queue-preview">{queue.items.slice(0, 3).map((item, index) => <li key={`${item.uri}:${index}`}><span>{index + 1}</span><div><strong>{item.name}</strong><small>{item.subtitle}</small></div></li>)}</ol> : <div className="music-queue-empty"><span>≡</span><strong>Kolejka jest pusta</strong><p>Wyszukaj utwór, wybierz playlistę albo dodaj coś przyciskiem „＋”.</p></div>}
           <nav><button onClick={() => void openSheet("search")}>Szukaj <span>⌕</span></button><button onClick={() => void openSheet("queue")}>Kolejka <span>↗</span></button><button onClick={() => void openSheet("playlists")}>Playlisty <span>↗</span></button></nav>
         </aside>
       </div>
