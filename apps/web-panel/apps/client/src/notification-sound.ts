@@ -1,4 +1,5 @@
 import type { NotificationSound } from "@walldeck/contracts";
+import { nativeBridge } from "./native";
 
 export function notificationTone(sound: NotificationSound) {
   if (sound === "soft") return [{ frequency: 520, start: 0, duration: .12 }];
@@ -7,7 +8,7 @@ export function notificationTone(sound: NotificationSound) {
   return [];
 }
 
-export function playNotificationSound(sound: NotificationSound, volume: number) {
+function playWebNotificationSound(sound: NotificationSound, volume: number) {
   const tones = notificationTone(sound);
   if (!tones.length) return;
   const AudioContextClass = window.AudioContext ?? (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
@@ -32,4 +33,14 @@ export function playNotificationSound(sound: NotificationSound, volume: number) 
     const end = Math.max(...tones.map(tone => tone.start + tone.duration));
     window.setTimeout(() => void context.close(), (end + .15) * 1000);
   } catch { /* A browser may block sound until the first user interaction. */ }
+}
+
+export function playNotificationSound(sound: NotificationSound, volume: number) {
+  if (sound === "none") return;
+  if (nativeBridge.available) {
+    void nativeBridge.call("notification.playSound", { sound, volume })
+      .catch(() => playWebNotificationSound(sound, volume));
+    return;
+  }
+  playWebNotificationSound(sound, volume);
 }

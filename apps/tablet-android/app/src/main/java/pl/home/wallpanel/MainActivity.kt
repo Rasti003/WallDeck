@@ -46,6 +46,7 @@ class MainActivity : ComponentActivity() {
     private var swipeStartedAt = 0L
     private val store by lazy { ConfigStore(applicationContext) }
     private val audio by lazy { getSystemService(AudioManager::class.java) }
+    private val notificationSounds by lazy { NotificationSoundPlayer(this) }
     private val music by lazy { SpotifyController(this) { state -> runOnUiThread { event("musicStateChanged", state) } } }
     private val audioOutputs by lazy { AudioOutputs(this) }
     private val sensorManager by lazy { getSystemService(SensorManager::class.java) }
@@ -381,7 +382,8 @@ class MainActivity : ComponentActivity() {
                 return
             }
             val result: Any = when (req.getString("method")) {
-                "capabilities" -> JSONObject().put("bridgeVersion", 4).put("methods", JSONArray(listOf("capabilities", "deviceInfo", "sensors", "cameraLightSampling", "battery", "brightness", "mediaVolume", "keepAwake", "haptics", "reload", "exitToTablet", "appVersion", "permissions", "signChallenge", "music.connect", "music.disconnect", "music.getState", "music.command", "music.getQueue", "audio.getOutputs", "audio.selectOutput", "audio.openSystemOutputPicker"))).put("wakeWord", false).put("spotify", true).put("youtube", false).put("homeAssistant", false)
+                "capabilities" -> JSONObject().put("bridgeVersion", 5).put("methods", JSONArray(listOf("capabilities", "deviceInfo", "sensors", "cameraLightSampling", "battery", "brightness", "mediaVolume", "keepAwake", "haptics", "reload", "exitToTablet", "appVersion", "permissions", "signChallenge", "notification.playSound", "music.connect", "music.disconnect", "music.getState", "music.command", "music.getQueue", "audio.getOutputs", "audio.selectOutput", "audio.openSystemOutputPicker"))).put("wakeWord", false).put("spotify", true).put("youtube", false).put("homeAssistant", false)
+                "notification.playSound" -> notificationSounds.play(args.getString("sound"), args.getDouble("volume"))
                 "music.connect" -> music.connect(args.getString("clientId"), args.optBoolean("authorize", false))
                 "music.disconnect" -> music.disconnect()
                 "music.getState" -> music.state()
