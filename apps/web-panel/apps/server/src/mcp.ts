@@ -42,7 +42,18 @@ export function createWallDeckMcpServer(settings: WallDeckSettings, deps: WallDe
     description: "Sprawdza aktywny widok, dostępność tabletu, integrację Home Assistant oraz włączone możliwości MCP. Użyj przed sterowaniem, gdy bieżący stan ma znaczenie.",
     inputSchema: {},
     annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
-  }, async () => textResult({ currentView: deps.currentView(), devices: deps.devices(), homeAssistant: deps.homeAssistantStatus(), enabledTools: Object.entries(enabled).filter(([, value]) => value).map(([key]) => key) }));
+  }, async () => textResult({
+    currentView: deps.currentView(),
+    devices: deps.devices().map(device => ({
+      deviceId: device.deviceId,
+      online: device.online,
+      model: device.model,
+      appVersion: device.appVersion,
+      battery: device.battery,
+    })),
+    homeAssistant: deps.homeAssistantStatus(),
+    enabledTools: Object.entries(enabled).filter(([, value]) => value).map(([key]) => key),
+  }));
 
   registerIf(server, enabled, "show_view", {
     title: "Pokaż widok WallDeck",
