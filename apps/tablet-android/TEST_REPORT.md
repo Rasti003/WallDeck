@@ -177,3 +177,14 @@ Web build and Android assembleDebug/testDebugUnitTest/lintDebug PASS. APK instal
 
 ## 2026-09-26: Music volume popup
 Physical Xiaomi via Wi-Fi/WebView debugger: music-volume-smoke PASS lower volume, mute=0, restore>0, auto-dismiss after 6 seconds. Original volume, ambient configuration and active view restored. First attempt interrupted by active ambient sleep; rerun temporarily disabled it and restored settings. Web typecheck/build PASS; no APK change.
+## Galeria interaktywna — 2026-09-28
+
+Urządzenie: Xiaomi 2603ARP14G, Android 16, ekran 2048×1280 poziomo. WebPanel na VM, frontend d1d1a5a. APK bez zmian. Test przez rzeczywiste gesty ADB i odczyt WebView, `apps/web-panel/tools/photo-gallery-smoke.mjs`:
+
+- PASS: lewo → następny zestaw, prawo → dokładnie poprzedni; bez otwierania HA.
+- PASS: przytrzymanie 850 ms → menu Zdjęcia, siatka 60 miniaturek i natywne przewijanie pionowe.
+- PASS: przeglądarka pozostaje na ekranie po 31 s; wybór zdjęcia zamyka ją i pokazuje wybraną pozycję.
+- PASS: gest w dół nadal otwiera globalne menu widoków.
+- PASS: globalne powiadomienie deduplikuje identyczne ID i znika po zadanym czasie.
+
+Na serwerze: pobrano 3 nowe zdjęcia (119 → 122), wysłano jedno powiadomienie; kolejna synchronizacja bez nowości nie wysłała komunikatu. Admin: zapis obrotu 90° i zoom 1.5× zweryfikowany, korekta testowa przywrócona. Ustawienia nocne i aktywny widok przywrócone w finally.
