@@ -25,6 +25,11 @@ services:
       - no-new-privileges:true
     cap_drop:
       - ALL
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
     healthcheck:
       test:
         - CMD
@@ -35,4 +40,3 @@ services:
       timeout: 5s
       start_period: 15s
       retries: 3
-

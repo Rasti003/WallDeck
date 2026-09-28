@@ -61,3 +61,4 @@ curl --fail http://127.0.0.1:8080/api/settings
 
 Status `healthy` oznacza, że serwer odpowiada i potrafi odczytać ustawienia. Dostępność Home Assistant, Spotify i źródła zdjęć diagnozuje się osobno w panelu administratora.
 
+Compose ogranicza pojedynczy plik logu kontenera do 10 MB i zachowuje trzy rotacje, aby logi nie wypełniły małego dysku systemowego VM.
