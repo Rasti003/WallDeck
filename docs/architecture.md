@@ -129,3 +129,6 @@ MusicVolume uses existing audio.getOutputs and mediaVolume bridge methods. Seria
 `registerPhotos` udostępnia kolekcję, pliki, miniatury, korekty i status synchronizacji. Sharp tworzy miniatury 480 px w runtime. Korekty mają stabilny identyfikator zdjęcia, obrót oraz niezależne kadry obu orientacji; zapis jest atomowy i kolejkowany. `CroppedPhoto` jest wspólnym rendererem edytora i pokazu. Historia przechowuje zestawy, nie tylko indeks losowania.
 
 Zdarzenia `photos.changed` odświeżają kolekcję bez przeładowania, `photos.sync` aktualizują status pobierania. Globalne `notification` przenosi id, message, kind, durationMs i opcjonalną akcję photos. Warstwa powiadomień działa ponad widokami i adminem. `PanelContext.setInteractionLocked` wstrzymuje automatyczne przejścia podczas menu aplikacji.
+## Podpisy metadanych zdjęć
+
+`/api/photos/:id/metadata` odczytuje EXIF/IPTC/XMP z oryginału przez exifr, tylko dla zdjęć aktywnych i z kontrolą ścieżki storage. Odczyt na żądanie dotyczy wyświetlanych zdjęć, buforowany według size/mtime (limit 2000). `PhotoCaption` działa osobno dla każdego zdjęcia pary, nie skaluje się ani nie obraca z kadrem. Brak metadanych nie blokuje wyświetlania zdjęcia.

@@ -157,7 +157,7 @@ export function PhotoAlbumView() {
           exit={{ opacity: 0, scale: 1.005 }}
           transition={{ duration: settings.transitionSeconds, ease: [0.22, 1, 0.36, 1] }}
         >
-          {layout.items.map((photo) => <CroppedPhoto key={photo.id} photo={photo} landscape={landscapeScreen} />)}
+          {layout.items.map((photo) => <CroppedPhoto key={photo.id} photo={photo} landscape={landscapeScreen} caption />)}
         </motion.section>}
       </AnimatePresence>
       <div className="photo-view__vignette" />

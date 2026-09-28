@@ -3,6 +3,7 @@ import { createReadStream } from "node:fs";
 import path from "node:path";
 import { pathToFileURL, fileURLToPath } from "node:url";
 import sharp from "sharp";
+import { readPhotoMetadata } from "./photo-metadata.js";
 import type { FastifyInstance } from "fastify";
 import { defaultPhotoEdit, photoEditSchema, type PhotoEdit, type PhotoItem, type PhotoSyncStatus, type WallDeckSettings } from "@walldeck/contracts";
 
@@ -45,11 +46,12 @@ export async function registerPhotos(app: FastifyInstance, photoRoot: string, ru
     const w = rotated ? i.height : i.width, h = rotated ? i.width : i.height;
     return { id: i.id, width: i.width, height: i.height, orientation: w > h * 1.05 ? "landscape" : h > w * 1.05 ? "portrait" : "square", url: `/api/photos/${encodeURIComponent(i.id)}/file`, thumbnailUrl: `/api/photos/${encodeURIComponent(i.id)}/thumbnail`, edit };
   }));
-  for (const kind of ["file", "thumbnail"] as const) app.get<{ Params: { id: string } }>(`/api/photos/:id/${kind}`, async (request, reply) => {
+  for (const kind of ["file", "thumbnail", "metadata"] as const) app.get<{ Params: { id: string } }>(`/api/photos/:id/${kind}`, async (request, reply) => {
     const item = (await manifest()).items[request.params.id];
     if (!item?.active || !item.filename) return reply.code(404).send({ error: "Nie znaleziono zdjęcia" });
     const filename = path.resolve(photoRoot, item.filename);
     if (path.dirname(filename) !== photoRoot) return reply.code(400).send({ error: "Nieprawidłowa ścieżka" });
+    if (kind === "metadata") return reply.header("cache-control", "private, max-age=300").send(await readPhotoMetadata(filename));
     reply.header("cache-control", "private, max-age=3600");
     if (kind === "file") return reply.type(item.contentType ?? "image/jpeg").send(createReadStream(filename));
     const cache = path.join(runtimeRoot, "thumbnails");

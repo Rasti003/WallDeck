@@ -68,3 +68,6 @@ exitToTablet is deliberately exposed only through the existing trusted main-fram
 API zdjęć nie ujawnia sourceUrl/resolvedUrl manifestu ani ścieżek hosta. Źródło jest czytane wyłącznie z lokalnego manifestu; endpoint synchronizacji nie przyjmuje zdalnego URL. Błędy synchronizacji zwracane do klienta są ogólne, bez prywatnego linku. Nazwy plików są ograniczone do katalogu zdjęć, parametry kadru waliduje Zod. Miniatury i korekty pozostają w prywatnym runtime; trzeba uwzględnić korekty w kopii zapasowej.
 
 Istniejący prototyp API nadal zakłada zaufaną sieć LAN; funkcje admina nie są osobno uwierzytelnione. Nie wystawiać portu serwera publicznie. Nie zmieniono uprawnień Android Bridge.
+# Metadane zdjęć — 2026-09-28
+
+Odczyt EXIF/IPTC/XMP odbywa się lokalnie na serwerze. Endpoint metadanych zwraca tylko datę wykonania i podpis miejsca (lub zaokrąglone współrzędne), bez pełnego EXIF, numerów seryjnych aparatu i prywatnego źródła albumu. Brak wysyłania GPS do usług zewnętrznych. Podpis renderowany jako tekst React, bez HTML.
