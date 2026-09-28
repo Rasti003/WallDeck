@@ -110,3 +110,10 @@
 - [x] Niedestrukcyjny obrót, ukrywanie, kadr per orientacja i podgląd tabletu/pary.
 - [x] Globalna kolejka powiadomień oraz aktualizacja kolekcji po synchronizacji.
 - [ ] Wirtualizacja siatki dla bardzo dużych bibliotek (obecnie leniwe miniatury i strony po 60).
+## Powiadomienia — 2026-09-28
+
+- [x] Globalna konfiguracja czasu zwykłego komunikatu.
+- [x] Alarm trwały lub czasowy, z pierwszeństwem w kolejce.
+- [x] Opcjonalne lokalne dźwięki oraz regulacja ich głośności.
+- [x] Próbki zwykłego powiadomienia i alarmu w adminie.
+- [ ] TTS z ciszą nocną, wyborem głosu i audio focus.

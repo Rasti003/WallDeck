@@ -11,6 +11,7 @@ import {
 } from "@walldeck/contracts";
 import { api } from "./api";
 import { PhotoAdmin } from "./photos/PhotoAdmin";
+import { NotificationAdmin } from "./NotificationAdmin";
 import { connectEvents } from "./events";
 import { menuLabels } from "./TabletMenu";
 import { StateMachinesAdmin } from "./StateMachinesAdmin";
@@ -42,7 +43,7 @@ export function AdminApp() {
   const [entityDraft, setEntityDraft] = useState<{ entityId: string; label: string; position: WallDeckSettings["overlay"]["position"] }>({ entityId: "", label: "", position: "bottom-right" });
   const [haMessage, setHaMessage] = useState("Nie skonfigurowano");
   const [devices, setDevices] = useState<DeviceStatus[]>([]);
-  const [section, setSection] = useState<"overview" | "views" | "photos" | "ha" | "assistant" | "device" | "music" | "states">("overview");
+  const [section, setSection] = useState<"overview" | "views" | "photos" | "notifications" | "ha" | "assistant" | "device" | "music" | "states">("overview");
   useEffect(() => { const open = () => setSection("photos"); window.addEventListener("walldeck:openAdminPhotos", open); return () => window.removeEventListener("walldeck:openAdminPhotos", open); }, []);
 
   useEffect(() => {
@@ -165,6 +166,7 @@ export function AdminApp() {
             ["views", "⌘", "Widoki i reguły"],
             ["states", "⇄", "Stany i przejścia"],
             ["photos", "▧", "Album zdjęć"],
+            ["notifications", "◈", "Powiadomienia"],
             ["music", "♫", "Music · Spotify"],
             ["ha", "◉", "Home Assistant"],
             ["assistant", "◌", "Asystent"],
@@ -178,11 +180,13 @@ export function AdminApp() {
 
       <div className="admin-workspace">
         <header className="admin-topbar">
-          <div><span className="admin-eyebrow">WALLDECK / ADMIN</span><h1>{section === "states" ? "Stany i przejścia" : section === "overview" ? "Pulpit" : section === "views" ? "Widoki i reguły" : section === "photos" ? "Album zdjęć" : section === "assistant" ? "Asystent" : section === "device" ? "Urządzenie" : section === "music" ? "Music · Spotify" : "Home Assistant"}</h1></div>
+          <div><span className="admin-eyebrow">WALLDECK / ADMIN</span><h1>{section === "states" ? "Stany i przejścia" : section === "overview" ? "Pulpit" : section === "views" ? "Widoki i reguły" : section === "photos" ? "Album zdjęć" : section === "notifications" ? "Powiadomienia" : section === "assistant" ? "Asystent" : section === "device" ? "Urządzenie" : section === "music" ? "Music · Spotify" : "Home Assistant"}</h1></div>
           <span className="admin-save-state">{status}</span>
         </header>
 
         {section === "states" && <StateMachinesAdmin settings={settings} currentView={views.current} />}
+
+        {section === "notifications" && <NotificationAdmin settings={settings} setSettings={setSettings} save={save} status={status} />}
 
         {section === "music" && <form className="admin-card admin-form music-admin" onSubmit={save}>
           <h2>Spotify na tablecie</h2>
@@ -366,7 +370,7 @@ export function AdminApp() {
       {section === "photos" &&
       <form className="admin-card admin-form" onSubmit={save}>
         <div><span className="admin-kicker">Widok 01</span><h2>Album zdjęć</h2></div>
-        <div className="field-grid"><label>Przytrzymanie (ms)<input type="number" min="500" max="1500" step="100" value={settings.gallery.holdMilliseconds} onChange={e => setSettings({ ...settings, gallery: { ...settings.gallery, holdMilliseconds: Number(e.target.value) } })} /></label><label>Czas powiadomienia (s)<input type="number" min="3" max="15" value={settings.gallery.notificationSeconds} onChange={e => setSettings({ ...settings, gallery: { ...settings.gallery, notificationSeconds: Number(e.target.value) } })} /></label><label><input type="checkbox" checked={settings.gallery.notifyNewPhotos} onChange={e => setSettings({ ...settings, gallery: { ...settings.gallery, notifyNewPhotos: e.target.checked } })} /> Powiadomienia o nowych zdjęciach</label></div>
+        <div className="field-grid"><label>Przytrzymanie (ms)<input type="number" min="500" max="1500" step="100" value={settings.gallery.holdMilliseconds} onChange={e => setSettings({ ...settings, gallery: { ...settings.gallery, holdMilliseconds: Number(e.target.value) } })} /></label><label><input type="checkbox" checked={settings.gallery.notifyNewPhotos} onChange={e => setSettings({ ...settings, gallery: { ...settings.gallery, notifyNewPhotos: e.target.checked } })} /> Powiadomienia o nowych zdjęciach</label></div>
         <label className="brightness-control">
           <span><strong>Jasność tabletu dla tego widoku</strong><output>{Math.round(settings.viewBrightness.photos * 100)}%</output></span>
           <input

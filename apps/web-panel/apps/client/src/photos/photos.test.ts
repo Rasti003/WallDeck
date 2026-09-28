@@ -26,7 +26,9 @@ describe("gallery", () => {
     expect(new Set(next.items.map(p => p.id)).size).toBe(2);
   });
   it("migrates existing settings", () => {
-    const { gallery, ...old } = defaultSettings;
-    expect(settingsSchema.parse(old).gallery).toEqual(gallery);
+    const { gallery, notifications, ...old } = defaultSettings;
+    const migrated = settingsSchema.parse({ ...old, gallery: { ...gallery, notificationSeconds: 9 } });
+    expect(migrated.gallery).toEqual(gallery);
+    expect(migrated.notifications).toEqual(notifications);
   });
 });

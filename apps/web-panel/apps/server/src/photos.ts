@@ -35,7 +35,7 @@ export async function registerPhotos(app: FastifyInstance, photoRoot: string, ru
       previous = next;
       status.lastSyncAt = next.lastSyncAt ?? null;
       if (changed) broadcast({ type: "photos.changed" });
-      if (added && (await settings()).gallery.notifyNewPhotos) broadcast({ type: "notification", notification: { id: `photos:${next.lastSyncAt}`, message: `Dodano nowe zdjęcia: ${added}`, kind: "success", durationMs: (await settings()).gallery.notificationSeconds * 1000, action: "photos" } });
+      if (added && (await settings()).gallery.notifyNewPhotos) broadcast({ type: "notification", notification: { id: `photos:${next.lastSyncAt}`, message: `Dodano nowe zdjęcia: ${added}`, kind: "success", priority: "normal", action: "photos" } });
     } finally { checking = false; }
   };
   const timer = setInterval(() => { void check().catch(() => undefined); }, 10_000);

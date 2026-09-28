@@ -9,6 +9,7 @@ import {
   defaultSettings,
   deviceReportSchema,
   homeAssistantConfigInputSchema,
+  notificationPreviewSchema,
   settingsSchema,
   viewIdSchema,
   type ViewId,
@@ -67,6 +68,13 @@ await app.register(websocket);
 
 app.get("/api/health", async () => ({ status: "ok", view: currentView }));
 app.get("/api/devices", async () => deviceStatuses());
+app.post("/api/notifications/preview", async (request, reply) => {
+  const parsed = notificationPreviewSchema.safeParse(request.body);
+  if (!parsed.success) return reply.code(400).send({ error: "Nieprawidłowa próbka powiadomienia" });
+  const alarm = parsed.data.priority === "alarm";
+  broadcast({ type: "notification", notification: { id: `admin-preview:${parsed.data.priority}:${Date.now()}`, message: alarm ? "Przykładowy alarm WallDeck" : "Przykładowe powiadomienie WallDeck", kind: alarm ? "error" : "info", ...parsed.data } });
+  return { ok: true as const };
+});
 
 app.get("/api/settings", async () => readSettings());
 app.put("/api/settings", async (request, reply) => {
