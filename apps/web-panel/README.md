@@ -4,7 +4,7 @@ Aplikacja WWW panelu ściennego. Pierwszy widok prezentuje lokalną kopię album
 
 ## Dostępne ekrany
 
-- `/music` — podgląd Music; aktywacja `music` w managerze wyświetla go na `/panel`. Sterowanie wymaga APK z bridge v3.
+- `/music` — Music z odtwarzaniem przez APK oraz wyszukiwaniem, playlistami i kolejką przez Spotify Web API (PKCE).
 
 - `/panel` — pełnoekranowy widok dla aplikacji tabletowej;
 - `/admin` — osobny panel ustawień otwierany z telefonu lub komputera. WallPanel nie pokazuje prowadzącego do niego odnośnika.

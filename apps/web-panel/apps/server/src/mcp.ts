@@ -10,6 +10,9 @@ import {
   type DeviceStatus,
   type McpToolId,
   type WallDeckSettings,
+  type SpotifyItem,
+  type SpotifyQueue,
+  type SpotifyStatus,
 } from "@walldeck/contracts";
 
 type HomeEntity = { entityId: string; friendlyName: string; state: string; unit?: string | null; deviceClass?: string | null; lastChanged?: string | null };
@@ -22,6 +25,10 @@ export interface WallDeckMcpDependencies {
   homeAssistantStatus(): unknown;
   searchHomeEntities(query?: string): HomeEntity[];
   homeEntity(entityId: string): HomeEntity | null;
+  spotifyStatus(): SpotifyStatus;
+  searchSpotify(query: string, types?: SpotifyItem["type"][]): Promise<SpotifyItem[]>;
+  spotifyQueue(): Promise<SpotifyQueue>;
+  spotifyPlaylists(): Promise<SpotifyItem[]>;
   activateView(viewId: "photos" | "ha" | "assistant-expressive" | "music"): void;
   notify(notification: Record<string, unknown>): void;
   panelCommand(name: string, args: Record<string, unknown>): Promise<unknown>;
@@ -52,6 +59,7 @@ export function createWallDeckMcpServer(settings: WallDeckSettings, deps: WallDe
       battery: device.battery,
     })),
     homeAssistant: deps.homeAssistantStatus(),
+    spotify: deps.spotifyStatus(),
     enabledTools: Object.entries(enabled).filter(([, value]) => value).map(([key]) => key),
   }));
 
@@ -85,6 +93,39 @@ export function createWallDeckMcpServer(settings: WallDeckSettings, deps: WallDe
     if (args.action === "repeat" && args.mode === undefined) throw new Error("mode jest wymagane dla repeat");
     return textResult(await deps.panelCommand("music.control", args));
   });
+
+  registerIf(server, enabled, "search_spotify", {
+    title: "Wyszukaj w Spotify",
+    description: "Wyszukuje utwory, albumy, artystów, playlisty lub podcasty. Zwraca URI potrzebne do odtworzenia albo dodania do kolejki.",
+    inputSchema: { query: z.string().trim().min(1).max(120), types: z.array(z.enum(["track", "album", "artist", "playlist", "episode"])).min(1).max(5).default(["track", "playlist"]) },
+    annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: true },
+  }, async ({ query, types }: { query: string; types: SpotifyItem["type"][] }) => textResult({ items: await deps.searchSpotify(query, types) }));
+
+  registerIf(server, enabled, "get_spotify_queue", {
+    title: "Odczytaj kolejkę Spotify",
+    description: "Zwraca aktualnie odtwarzany element i kolejne pozycje kolejki Spotify.", inputSchema: {},
+    annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: true },
+  }, async () => textResult(await deps.spotifyQueue()));
+
+  registerIf(server, enabled, "list_spotify_playlists", {
+    title: "Pokaż playlisty Spotify",
+    description: "Zwraca pierwsze playlisty zalogowanego konta Spotify wraz z URI.", inputSchema: {},
+    annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: true },
+  }, async () => textResult({ items: await deps.spotifyPlaylists() }));
+
+  registerIf(server, enabled, "play_spotify_item", {
+    title: "Odtwórz element Spotify",
+    description: "Uruchamia utwór, album, playlistę lub podcast na Spotify działającym na tablecie WallDeck.",
+    inputSchema: { uri: z.string().regex(/^spotify:(track|album|artist|playlist|episode|show):[A-Za-z0-9]+$/) },
+    annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
+  }, async ({ uri }: { uri: string }) => textResult(await deps.panelCommand("music.playContext", { uri })));
+
+  registerIf(server, enabled, "add_spotify_to_queue", {
+    title: "Dodaj do kolejki Spotify",
+    description: "Dodaje wskazany utwór lub odcinek podcastu do kolejki Spotify na tablecie.",
+    inputSchema: { uri: z.string().regex(/^spotify:(track|episode):[A-Za-z0-9]+$/) },
+    annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
+  }, async ({ uri }: { uri: string }) => textResult(await deps.panelCommand("music.addToQueue", { uri })));
 
   registerIf(server, enabled, "set_tablet_volume", {
     title: "Ustaw głośność tabletu",

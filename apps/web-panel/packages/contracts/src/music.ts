@@ -46,3 +46,24 @@ export interface MusicController {
   selectOutput(id: string): Promise<{ supported: false; fallback: string }>;
   openSystemOutputPicker(): Promise<void>;
 }
+
+export interface SpotifyItem {
+  uri: string;
+  type: "track" | "album" | "artist" | "playlist" | "episode";
+  name: string;
+  subtitle: string;
+  image: string | null;
+}
+
+export interface SpotifyStatus {
+  configured: boolean;
+  connected: boolean;
+  account: string | null;
+  lastError: string | null;
+  redirectUri: string;
+}
+
+export interface SpotifyQueue {
+  currentlyPlaying: SpotifyItem | null;
+  items: SpotifyItem[];
+}

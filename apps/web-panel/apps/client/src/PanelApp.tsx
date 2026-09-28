@@ -96,6 +96,14 @@ export function PanelApp({ forcedView }: { forcedView?: ViewId }) {
             else throw new Error("Nieznana komenda muzyki");
             return await musicController.getPlaybackState();
           }
+          if (message.command === "music.playContext") {
+            await musicController.playContext(String(args.uri));
+            return { ok: true };
+          }
+          if (message.command === "music.addToQueue") {
+            await musicController.addToQueue(String(args.uri));
+            return { ok: true };
+          }
           if (message.command === "tablet.volume") {
             await musicController.setVolume(Number(args.value));
             return await musicController.getAudioOutputState();

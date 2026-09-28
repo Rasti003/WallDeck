@@ -8,6 +8,9 @@ import type {
   PhotoEdit,
   PhotoSyncStatus,
   NotificationPreview,
+  SpotifyItem,
+  SpotifyQueue,
+  SpotifyStatus,
   ViewId,
   WallDeckSettings,
   WeatherNow,
@@ -62,6 +65,15 @@ export const api = {
     entities: (query = "") => json<HomeAssistantEntity[]>(`/api/ha/entities?q=${encodeURIComponent(query)}`),
     entity: (entityId: string) => json<HomeAssistantEntity>(`/api/ha/entities/${encodeURIComponent(entityId)}`),
     overlay: () => json<HomeAssistantSelectedState[]>("/api/ha/overlay"),
+  },
+  spotify: {
+    status: () => json<SpotifyStatus>("/api/spotify/status"),
+    beginAuth: () => json<{ url: string }>("/api/spotify/auth/start", { method: "POST" }),
+    disconnect: () => json<SpotifyStatus>("/api/spotify/disconnect", { method: "POST" }),
+    search: (query: string, types = "track,playlist") => json<{ items: SpotifyItem[] }>(`/api/spotify/search?q=${encodeURIComponent(query)}&type=${encodeURIComponent(types)}`),
+    queue: () => json<SpotifyQueue>("/api/spotify/queue"),
+    playlists: () => json<{ items: SpotifyItem[] }>("/api/spotify/playlists"),
+    action: (uri: string, action: "play" | "queue") => json<unknown>("/api/spotify/action", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ uri, action }) }),
   },
 };
 

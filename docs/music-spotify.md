@@ -1,6 +1,6 @@
 # Music / Spotify
 
-Status: pierwszy adapter i interfejs wdrożone; autoryzacja konta i rzeczywisty test odtwarzania wymagają Client ID. Specyfikacja: [Notion, sekcja 18](https://www.notion.so/3e7827a850e3816ab406dabf341c372a).
+Status: App Remote działa na tablecie; Web API z PKCE obsługuje wyszukiwanie, kolejkę i playlisty. Specyfikacja: [Notion, sekcja 18](https://www.notion.so/3e7827a850e3816ab406dabf341c372a).
 
 ## Konfiguracja
 
@@ -16,16 +16,17 @@ Status: pierwszy adapter i interfejs wdrożone; autoryzacja konta i rzeczywisty 
 
 - Aktualny utwór, wykonawca, album, kontekst, okładka i postęp.
 - Play/pause, poprzedni/następny, seek, shuffle i repeat z ograniczeniami playera.
-- Kontrakt wywoływalny bez UI: playContext i addToQueue (wyłącznie poprawne URI Spotify); przeglądarka playlist i wyszukiwarka pozostają późniejszym etapem.
+- Wyszukiwanie utworów, albumów, artystów, playlist i podcastów oraz podgląd kolejki i playlist przez Web API.
+- Kontrakt wywoływalny bez UI: playContext i addToQueue, dostępny także jako kontrolowane narzędzia WallDeck MCP.
 - Home → HA; żadna nawigacja sama nie wysyła pause.
 - Jasność per widok, odrębna od pozostałych ekranów.
 - Lista dostępnych wyjść audio i głośność systemowego strumienia multimediów.
 - Systemowe ustawienia Bluetooth jako fallback wyboru wyjścia. Nazwa aktywnej trasy Spotify, kodek i stan jego Audio Focus pozostają nieznane.
 - Fade zmiany utworu, przejścia arkuszy, mikroanimacje kontrolek, subtelne tło wyliczone z okładki i respektowanie reduced motion.
 
-## Ograniczenia pierwszego etapu
+## Ograniczenia
 
-App Remote nie udostępnia odczytu prawdziwej kolejki. Up Next nie pokazuje fikcyjnych utworów. Kolejka/playlisty wymagają osobnego adaptera i ustalenia autoryzacji Spotify Web API. Like/favorite nie jest włączone. Animacja elementów kolejki będzie wdrożona wraz z rzeczywistymi danymi.
+App Remote nie udostępnia odczytu prawdziwej kolejki, dlatego WallDeck pobiera ją z Web API po osobnej zgodzie użytkownika. Like/favorite i edycja playlist nie są włączone.
 
 Publiczne Android API nie daje WallDeck pełnej kontroli nad routingiem playera Spotify. `audio.selectOutput` zwraca brak wsparcia; przycisk ustawień nie potwierdza przełączenia głośnika. Spotify może także odtwarzać na urządzeniu Connect poza tabletem — lista lokalnych wyjść nie dowodzi rzeczywistej trasy.
 
@@ -46,3 +47,27 @@ Błędy Spotify zachowują teraz kategorię wyjątku SDK (bez treści wyjątku, 
 Timeout po zmianie konfiguracji może wynikać z blokady Androida 14+ przy otwieraniu zgody Spotify z tła. Poprawka SpotifyBindingContext przekazuje wymaganą flagę dla bindService; nie wymaga ręcznego nadawania Spotify uprawnienia do nakładek ani zmiany ustawień zabezpieczeń systemu. Potwierdzenie na urządzeniu jest wymagane po instalacji poprawionego APK.
 
 Aktualizacja 2026-09-26: poprawka została zainstalowana, rzeczywiste okno zgody Spotify wyświetliło się, a po zatwierdzeniu stan zmienił się na connected bez błędu. Połączenie utrzymało się podczas Music → HA → Music. Test odtwarzania/odsłuch BT pozostaje osobną weryfikacją.
+# Spotify Web API i MCP
+
+WallDeck używa dwóch uzupełniających się połączeń:
+
+- Spotify App Remote w APK steruje aplikacją Spotify działającą na tablecie;
+- ograniczone połączenie Spotify Web API pobiera wyniki wyszukiwania, kolejkę i playlisty.
+
+Połączenie Web API używa OAuth Authorization Code z PKCE. Client Secret nie jest wymagany. Tokeny są szyfrowane AES-256-GCM i zapisywane z prawami `0600` w katalogu danych WallDeck. Zakres OAuth ogranicza się do `playlist-read-private`, `user-read-playback-state` i `user-read-currently-playing`.
+
+W Spotify Developer Dashboard trzeba zachować adres Androida `walldeck://spotify-callback` i dodać dokładnie:
+
+```text
+http://127.0.0.1:8888/api/spotify/callback
+```
+
+Na serwerze port callbacku jest związany wyłącznie z `127.0.0.1`. Podczas jednorazowego logowania z innego komputera należy zestawić tunel SSH:
+
+```text
+ssh -N -L 8888:127.0.0.1:8888 walldeck
+```
+
+Następnie w Admin → Music · Spotify wybierz „Połącz wyszukiwanie”. Odśwież stan po zakończeniu logowania.
+
+WallDeck MCP udostępnia pięć niezależnych funkcji Spotify: wyszukiwanie, odczyt kolejki, listę playlist, odtwarzanie elementu oraz dodanie utworu lub podcastu do kolejki. Każdą można osobno wyłączyć w Admin → MCP · AI.

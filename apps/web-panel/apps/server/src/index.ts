@@ -21,6 +21,7 @@ import {
 } from "@walldeck/contracts";
 import { HomeAssistantClient, HomeAssistantConfigStore } from "./home-assistant.js";
 import { registerMcpEndpoint } from "./mcp.js";
+import { SpotifyConnector } from "./spotify.js";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const webRoot = path.resolve(here, "../../client/dist");
@@ -90,6 +91,9 @@ const homeAssistant = new HomeAssistantClient((event) => {
 
 const storedHaConfig = await haConfigStore.load();
 if (storedHaConfig) void homeAssistant.configure(storedHaConfig);
+const spotify = new SpotifyConnector(runtimeRoot);
+const initialSettings = await readSettings();
+await spotify.load(initialSettings.music.clientId);
 
 const app = Fastify({ logger: true });
 await app.register(websocket);
@@ -108,7 +112,47 @@ app.get("/api/settings", async () => readSettings());
 app.put("/api/settings", async (request, reply) => {
   const parsed = settingsSchema.safeParse(request.body);
   if (!parsed.success) return reply.code(400).send({ error: "Nieprawidłowe ustawienia", details: parsed.error.issues });
+  spotify.configure(parsed.data.music.clientId);
   return writeSettingsValue(parsed.data);
+});
+
+app.get("/api/spotify/status", async () => spotify.status());
+app.post("/api/spotify/auth/start", async (_request, reply) => {
+  try { return { url: spotify.beginAuth() }; }
+  catch (error) { return reply.code(400).send({ error: error instanceof Error ? error.message : String(error) }); }
+});
+app.get<{ Querystring: { code?: string; state?: string; error?: string } }>("/api/spotify/callback", async (request, reply) => {
+  try {
+    if (request.query.error) throw new Error("Logowanie Spotify zostało anulowane");
+    if (!request.query.code || !request.query.state) throw new Error("Brakuje danych odpowiedzi Spotify");
+    await spotify.completeAuth(request.query.code, request.query.state);
+    return reply.type("text/html; charset=utf-8").send("<!doctype html><meta charset=utf-8><title>WallDeck Spotify</title><style>body{font:18px system-ui;background:#152019;color:#dce8d7;display:grid;place-items:center;height:100vh;margin:0}main{text-align:center}</style><main><h1>Spotify połączone</h1><p>Możesz zamknąć tę kartę i wrócić do WallDeck.</p></main>");
+  } catch (error) {
+    return reply.code(400).type("text/html; charset=utf-8").send(`<h1>Nie udało się połączyć Spotify</h1><p>${String(error).replace(/[<>&]/g, "")}</p>`);
+  }
+});
+app.post("/api/spotify/disconnect", async () => { await spotify.disconnect(); return spotify.status(); });
+app.get<{ Querystring: { q?: string; type?: string } }>("/api/spotify/search", async (request, reply) => {
+  const query = request.query.q?.trim() ?? "";
+  const allowed = new Set(["track", "album", "artist", "playlist", "episode"]);
+  const types = request.query.type?.split(",").filter(type => allowed.has(type)) as any;
+  if (!query || (request.query.type && !types.length)) return reply.code(400).send({ error: "Podaj zapytanie i poprawny typ Spotify" });
+  try { return { items: await spotify.search(query, types?.length ? types : undefined) }; }
+  catch (error) { return reply.code(502).send({ error: error instanceof Error ? error.message : String(error) }); }
+});
+app.get("/api/spotify/queue", async (_request, reply) => {
+  try { return await spotify.queue(); } catch (error) { return reply.code(502).send({ error: error instanceof Error ? error.message : String(error) }); }
+});
+app.get("/api/spotify/playlists", async (_request, reply) => {
+  try { return { items: await spotify.playlists() }; } catch (error) { return reply.code(502).send({ error: error instanceof Error ? error.message : String(error) }); }
+});
+app.post<{ Body: { uri?: string; action?: string } }>("/api/spotify/action", async (request, reply) => {
+  const uri = request.body?.uri ?? ""; const action = request.body?.action ?? "";
+  const playable = /^spotify:(track|album|artist|playlist|episode|show):[A-Za-z0-9]+$/.test(uri);
+  const queueable = /^spotify:(track|episode):[A-Za-z0-9]+$/.test(uri);
+  if ((action === "play" && !playable) || (action === "queue" && !queueable) || !["play", "queue"].includes(action)) return reply.code(400).send({ error: "Nieprawidłowa akcja Spotify" });
+  try { return await panelCommand(action === "play" ? "music.playContext" : "music.addToQueue", { uri }); }
+  catch (error) { return reply.code(502).send({ error: error instanceof Error ? error.message : String(error) }); }
 });
 
 await registerPhotos(app, photoRoot, runtimeRoot, broadcast, readSettings);
@@ -200,6 +244,10 @@ registerMcpEndpoint(app, {
   homeAssistantStatus: () => homeAssistant.status(),
   searchHomeEntities: query => homeAssistant.searchEntities(query),
   homeEntity: entityId => homeAssistant.entity(entityId),
+  spotifyStatus: () => spotify.status(),
+  searchSpotify: (query, types) => spotify.search(query, types),
+  spotifyQueue: () => spotify.queue(),
+  spotifyPlaylists: () => spotify.playlists(),
   activateView,
   notify: notification => broadcast({ type: "notification", notification }),
   panelCommand,

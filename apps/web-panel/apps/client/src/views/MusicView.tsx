@@ -1,6 +1,6 @@
 import { useContext, useEffect, useRef, useState, type CSSProperties } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import type { AudioOutputState } from "@walldeck/contracts";
+import type { AudioOutputState, SpotifyItem, SpotifyQueue } from "@walldeck/contracts";
 import { PanelContext } from "../panel-context";
 import { api } from "../api";
 import { nativeBridge } from "../native";
@@ -28,7 +28,11 @@ export function MusicView() {
     window.addEventListener("pointerdown", outside); window.addEventListener("keydown", escape);
     return () => { window.removeEventListener("pointerdown", outside); window.removeEventListener("keydown", escape); };
   }, [optionsOpen]);
-  const [sheet, setSheet] = useState<"audio" | "queue" | "playlists" | null>(null);
+  const [sheet, setSheet] = useState<"audio" | "queue" | "playlists" | "search" | null>(null);
+  const [queue, setQueue] = useState<SpotifyQueue | null>(null);
+  const [playlists, setPlaylists] = useState<SpotifyItem[]>([]);
+  const [searchResults, setSearchResults] = useState<SpotifyItem[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
   const [seek, setSeek] = useState<number | null>(null);
   const [volume, setVolume] = useState<number | null>(null);
   const [accent, setAccent] = useState("43, 85, 71");
@@ -89,6 +93,34 @@ export function MusicView() {
     if (location.pathname.startsWith("/music")) location.assign("/panel");
   }
 
+  async function openSheet(next: "audio" | "queue" | "playlists" | "search") {
+    setSheet(next); setMessage("");
+    try {
+      if (next === "queue") setQueue(await api.spotify.queue());
+      if (next === "playlists") setPlaylists((await api.spotify.playlists()).items);
+    } catch (error) { setMessage(error instanceof Error ? error.message : String(error)); }
+  }
+
+  async function searchSpotify() {
+    if (!searchQuery.trim()) return;
+    setBusy(true); setMessage("");
+    try { setSearchResults((await api.spotify.search(searchQuery.trim(), "track,playlist,album,artist,episode")).items); }
+    catch (error) { setMessage(error instanceof Error ? error.message : String(error)); }
+    finally { setBusy(false); }
+  }
+
+  async function spotifyAction(item: SpotifyItem, action: "play" | "queue") {
+    await run(() => api.spotify.action(item.uri, action));
+    if (action === "play") setSheet(null);
+  }
+
+  const itemList = (items: SpotifyItem[]) => <ul className="music-library-list">{items.map(item => <li key={item.uri}>
+    {item.image ? <img src={item.image} alt="" /> : <span className="music-item-placeholder">♫</span>}
+    <div><strong>{item.name}</strong><span>{item.subtitle}</span></div>
+    <button onClick={() => void spotifyAction(item, "play")}>Odtwórz</button>
+    {(item.type === "track" || item.type === "episode") && <button title="Dodaj do kolejki" aria-label={`Dodaj ${item.name} do kolejki`} onClick={() => void spotifyAction(item, "queue")}>＋</button>}
+  </li>)}</ul>;
+
   return (
     <main className="music-view" style={{ "--music-accent": accent } as CSSProperties}>
       <div className="music-ambient" aria-hidden="true" />
@@ -145,22 +177,22 @@ export function MusicView() {
             <button aria-label="Następny utwór" disabled={!ready || !state.capabilities.next} onClick={() => void run(music.next)}>⏭</button>
             <MusicVolume available={available} />
           </div>
-          <button className="music-output" disabled={!available} onClick={() => setSheet("audio")}><span>◖))</span><div><strong>Wyjście audio</strong><small>{output?.bluetoothAvailable ? "Bluetooth dostępny · sprawdź wyjście w systemie" : "Głośność i urządzenia tabletu"}</small></div><span>›</span></button>
+          <button className="music-output" disabled={!available} onClick={() => void openSheet("audio")}><span>◖))</span><div><strong>Wyjście audio</strong><small>{output?.bluetoothAvailable ? "Bluetooth dostępny · sprawdź wyjście w systemie" : "Głośność i urządzenia tabletu"}</small></div><span>›</span></button>
           {(message || state.error) && <p className="music-error" role="status">{message || musicErrorMessage(state.error)}</p>}
         </section>
 
         <aside className="music-next">
           <div><p className="music-eyebrow">DALEJ</p><h2>Up next</h2></div>
-          <div className="music-queue-empty"><span>≡</span><strong>Kolejka jest w Spotify</strong><p>Podgląd kolejnych utworów wymaga dodatkowego połączenia z kontem. Obecna integracja go nie udostępnia.</p></div>
-          <nav><button onClick={() => setSheet("queue")}>Kolejka <span>↗</span></button><button onClick={() => setSheet("playlists")}>Playlisty <span>↗</span></button></nav>
+          <div className="music-queue-empty"><span>≡</span><strong>{queue?.items[0]?.name ?? "Kolejka Spotify"}</strong><p>{queue?.items[0]?.subtitle ?? "Otwórz kolejkę, playlisty albo znajdź konkretny utwór."}</p></div>
+          <nav><button onClick={() => void openSheet("search")}>Szukaj <span>⌕</span></button><button onClick={() => void openSheet("queue")}>Kolejka <span>↗</span></button><button onClick={() => void openSheet("playlists")}>Playlisty <span>↗</span></button></nav>
         </aside>
       </div>
 
       <AnimatePresence>
         {sheet && <motion.div className="music-sheet-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setSheet(null)}>
-          <motion.section className="music-sheet" role="dialog" aria-modal="true" aria-label={sheet === "audio" ? "Wyjście audio" : sheet === "queue" ? "Kolejka" : "Playlisty"} initial={{ y: reducedMotion ? 0 : 40 }} animate={{ y: 0 }} onClick={event => event.stopPropagation()}>
+          <motion.section className="music-sheet" role="dialog" aria-modal="true" aria-label={sheet === "audio" ? "Wyjście audio" : sheet === "queue" ? "Kolejka" : sheet === "search" ? "Wyszukiwanie" : "Playlisty"} initial={{ y: reducedMotion ? 0 : 40 }} animate={{ y: 0 }} onClick={event => event.stopPropagation()}>
             <button className="music-sheet-close" autoFocus onClick={() => setSheet(null)} aria-label="Zamknij">×</button>
-            <p className="music-eyebrow">MUSIC</p><h2>{sheet === "audio" ? "Wyjście audio" : sheet === "queue" ? "Kolejka Spotify" : "Twoje playlisty"}</h2>
+            <p className="music-eyebrow">MUSIC</p><h2>{sheet === "audio" ? "Wyjście audio" : sheet === "queue" ? "Kolejka Spotify" : sheet === "search" ? "Znajdź w Spotify" : "Twoje playlisty"}</h2>
             {sheet === "audio" ? <>
               <p>Android zarządza dźwiękiem Spotify. Lista pokazuje dostępne wyjścia; aktywnej trasy Spotify nie można wiarygodnie odczytać.</p>
               <ul>{output?.outputs.map(device => <li key={device.id}><strong>{device.name}</strong><span>{device.bluetooth ? "Bluetooth" : "Android audio"}</span></li>)}</ul>
@@ -169,7 +201,7 @@ export function MusicView() {
               </label>
               <button className="music-connect" onClick={() => void run(music.openSystemOutputPicker)}>Otwórz ustawienia Bluetooth</button>
               <small>Kodek i Audio Focus Spotify: niedostępne do odczytu. WallDeck nie przejmuje dźwięku ani mikrofonu.</small>
-            </> : <p>{sheet === "queue" ? "Spotify App Remote pozwala sterować odtwarzaniem, ale nie zwraca prawdziwej kolejki. Podgląd dodamy z osobną autoryzacją Spotify Web API." : "Przeglądanie playlist jest kolejnym etapem integracji. Na razie wybierz playlistę w Spotify, a potem steruj nią tutaj."}</p>}
+            </> : sheet === "search" ? <><form className="music-search" onSubmit={event => { event.preventDefault(); void searchSpotify(); }}><input autoFocus value={searchQuery} onChange={event => setSearchQuery(event.target.value)} placeholder="Utwór, artysta lub playlista"/><button disabled={busy || !searchQuery.trim()}>Szukaj</button></form>{itemList(searchResults)}</> : sheet === "queue" ? (queue ? itemList(queue.items) : <p>Połącz Web API Spotify w panelu administratora, aby zobaczyć kolejkę.</p>) : (playlists.length ? itemList(playlists) : <p>Połącz Web API Spotify w panelu administratora, aby zobaczyć playlisty.</p>)}
           </motion.section>
         </motion.div>}
       </AnimatePresence>

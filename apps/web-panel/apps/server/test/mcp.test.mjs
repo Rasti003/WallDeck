@@ -21,6 +21,10 @@ test("MCP exposes only enabled tools and routes focused WallDeck actions", async
     homeAssistantStatus: () => ({ connected: true }),
     searchHomeEntities: query => [{ entityId: "sensor.salon_temperature", friendlyName: "Temperatura salon", state: "22.5", unit: "°C" }].filter(entity => entity.friendlyName.toLowerCase().includes(query.toLowerCase())),
     homeEntity: entityId => entityId === "sensor.salon_temperature" ? { entityId, friendlyName: "Temperatura salon", state: "22.5", unit: "°C" } : null,
+    spotifyStatus: () => ({ configured: true, connected: true, account: "Test", lastError: null, redirectUri: "http://127.0.0.1/callback" }),
+    searchSpotify: async query => [{ uri: "spotify:track:abc", type: "track", name: query, subtitle: "Artist", image: null }],
+    spotifyQueue: async () => ({ currentlyPlaying: null, items: [] }),
+    spotifyPlaylists: async () => [],
     activateView: view => calls.push(["view", view]),
     notify: notification => calls.push(["notification", notification]),
     panelCommand: async (name, args) => { calls.push([name, args]); return { ok: true }; },
@@ -33,7 +37,7 @@ test("MCP exposes only enabled tools and routes focused WallDeck actions", async
     await server.connect(serverTransport);
     await client.connect(clientTransport);
     const listed = await client.listTools();
-    assert.equal(listed.tools.length, 8);
+    assert.equal(listed.tools.length, 13);
     assert.ok(listed.tools.some(tool => tool.name === "get_status"));
     assert.ok(!listed.tools.some(tool => tool.name === "control_music"));
 
@@ -48,6 +52,7 @@ test("MCP exposes only enabled tools and routes focused WallDeck actions", async
     await client.callTool({ name: "set_view_brightness", arguments: { view: "photos", percent: 40 } });
     const entities = readText(await client.callTool({ name: "search_home_entities", arguments: { query: "salon" } }));
     const entity = readText(await client.callTool({ name: "get_home_entity", arguments: { entityId: "sensor.salon_temperature" } }));
+    const spotify = readText(await client.callTool({ name: "search_spotify", arguments: { query: "Test" } }));
 
     assert.deepEqual(calls[0], ["view", "music"]);
     assert.deepEqual(calls[1], ["assistant.mood", { mood: "curious" }]);
@@ -56,6 +61,7 @@ test("MCP exposes only enabled tools and routes focused WallDeck actions", async
     assert.equal(settings.viewBrightness.photos, 0.4);
     assert.equal(entities.entities.length, 1);
     assert.equal(entity.state, "22.5");
+    assert.equal(spotify.items[0].uri, "spotify:track:abc");
   } finally {
     await client.close();
     await server.close();

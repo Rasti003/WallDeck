@@ -18,6 +18,7 @@ import { StateMachinesAdmin } from "./StateMachinesAdmin";
 import { AssistantAdmin } from "./assistant/AssistantAdmin";
 import { createOverlayItemId } from "./overlay-item-id";
 import { McpAdmin } from "./McpAdmin";
+import { MusicAdmin } from "./MusicAdmin";
 
 const positions: { value: WallDeckSettings["overlay"]["position"]; label: string }[] = [
   { value: "top-left", label: "Góra — lewo" }, { value: "top-center", label: "Góra — środek" },
@@ -190,23 +191,7 @@ export function AdminApp() {
 
         {section === "notifications" && <NotificationAdmin settings={settings} setSettings={setSettings} save={save} status={status} />}
 
-        {section === "music" && <form className="admin-card admin-form music-admin" onSubmit={save}>
-          <h2>Spotify na tablecie</h2>
-          <p>WallDeck pokazuje muzykę i steruje aplikacją Spotify działającą w tle. Po zapisaniu ustawień otwórz Music na tablecie i wybierz „Połącz ze Spotify”.</p>
-          <div className="field-grid music-fields"><label>Spotify Client ID
-            <input value={settings.music.clientId} maxLength={32} pattern="([a-fA-F0-9]{32})?" placeholder="Client ID z Spotify Developer Dashboard" autoComplete="off" onChange={event => setSettings({ ...settings, music: { clientId: event.target.value.trim() } })} />
-          </label></div>
-          <p>Client ID jest publicznym identyfikatorem aplikacji. Client Secret nie jest potrzebny.</p>
-          <dl><dt>Redirect URI do rejestracji</dt><dd><code>walldeck://spotify-callback</code></dd><dt>Pakiet Android</dt><dd><code>pl.home.wallpanel</code></dd></dl>
-          <p>W Spotify Developer Dashboard dodaj aplikację Android i odcisk SHA-1 certyfikatu użytej wersji APK. Instrukcja znajduje się w dokumentacji projektu.</p>
-          <label className="brightness-control"><span><strong>Jasność widoku Music</strong><output>{Math.round(settings.viewBrightness.music * 100)}%</output></span>
-            <input type="range" min="5" max="100" value={Math.round(settings.viewBrightness.music * 100)} onChange={event => setSettings({ ...settings, viewBrightness: { ...settings.viewBrightness, music: Number(event.target.value) / 100 } })} />
-          </label>
-          <footer><div className="button-row"><button type="submit">Zapisz ustawienia</button><button type="button" className="button-secondary" onClick={() => void activate("music")}>Pokaż Music na panelu</button></div></footer>
-          <h3>Zakres pierwszej wersji</h3>
-          <p>Aktualny utwór, okładka, postęp, odtwarzanie, losowanie i powtarzanie oraz głośność. Bluetooth wybierasz w ustawieniach Androida. Powrót do HA lub galerii nie zatrzymuje muzyki.</p>
-          <p>Kolejka Up Next i przeglądanie playlist wymagają kolejnego etapu integracji. Przeglądarka na komputerze pokazuje podgląd; odtwarzaniem steruje tablet.</p>
-        </form>}
+        {section === "music" && <MusicAdmin settings={settings} setSettings={setSettings} save={save} activate={() => activate("music")} status={status} />}
 
         {section === "overview" && <section className="admin-dashboard">
           <div className="summary-grid">
