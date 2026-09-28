@@ -188,3 +188,7 @@ Urządzenie: Xiaomi 2603ARP14G, Android 16, ekran 2048×1280 poziomo. WebPanel n
 - PASS: globalne powiadomienie deduplikuje identyczne ID i znika po zadanym czasie.
 
 Na serwerze: pobrano 3 nowe zdjęcia (119 → 122), wysłano jedno powiadomienie; kolejna synchronizacja bez nowości nie wysłała komunikatu. Admin: zapis obrotu 90° i zoom 1.5× zweryfikowany, korekta testowa przywrócona. Ustawienia nocne i aktywny widok przywrócone w finally.
+
+## Natywny dźwięk powiadomień — 2026-09-28
+
+Xiaomi 2603ARP14G, Android 16, bridge v5. Android `assembleDebug`, testy jednostkowe i lint PASS; WebPanel typecheck, 39 testów klienta i build PASS. APK zainstalowano po kontrolowanym wyjściu z lock task i ponownie uruchomiono w trybie panelu. Wywołanie `notification.playSound` dla próbki `chime` zwróciło `played=true`, `route=tablet-speaker`, `preferredDeviceAccepted=true`, `deviceName=2603ARP14G`. Dźwięk korzysta z natywnego `AudioTrack` i wbudowanego głośnika, a nie z trasy `STREAM_MUSIC` używanej przez Spotify/Bluetooth. Web Audio pozostaje fallbackiem poza aplikacją tabletową.
