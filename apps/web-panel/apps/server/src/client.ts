@@ -8,7 +8,7 @@ export async function registerClient(app: FastifyInstance, root: string) {
     wildcard: true,
     cacheControl: false,
     setHeaders(response, filePath) {
-      if (filePath.endsWith(".html")) response.setHeader("Cache-Control", "no-cache");
+      if (filePath.endsWith(".html")) response.setHeader("Cache-Control", "no-store, max-age=0");
     },
   });
   app.setNotFoundHandler((request, reply) => {
@@ -17,7 +17,7 @@ export async function registerClient(app: FastifyInstance, root: string) {
       route => pathname === route || (route !== "/" && pathname.startsWith(`${route}/`)),
     );
     if ((request.method === "GET" || request.method === "HEAD") && isPage) {
-      return reply.header("Cache-Control", "no-cache").sendFile("index.html");
+      return reply.header("Cache-Control", "no-store, max-age=0").sendFile("index.html");
     }
     return reply.code(404).send({ error: "Nie znaleziono zasobu" });
   });

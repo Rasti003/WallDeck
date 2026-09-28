@@ -28,7 +28,7 @@ test("serves assets created after startup and never returns HTML for missing ass
       const response = await app.inject(url);
       assert.equal(response.statusCode, 200);
       assert.match(response.headers["content-type"], /html/);
-      assert.equal(response.headers["cache-control"], "no-cache");
+      assert.equal(response.headers["cache-control"], "no-store, max-age=0");
     }
   } finally {
     await app.close();

@@ -220,6 +220,9 @@ class MainActivity : ComponentActivity() {
         WebView.setWebContentsDebuggingEnabled(BuildConfig.DEBUG)
         view.settings.apply {
             javaScriptEnabled = true; domStorageEnabled = true
+            // Always revalidate the application shell after an APK/app restart. Vite assets
+            // remain cacheable again as soon as the first main-frame load completes.
+            cacheMode = WebSettings.LOAD_NO_CACHE
             allowFileAccess = false; allowContentAccess = false
             mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
             setSupportMultipleWindows(false); javaScriptCanOpenWindowsAutomatically = false
@@ -232,6 +235,9 @@ class MainActivity : ComponentActivity() {
             override fun onPageStarted(view: WebView, url: String, favicon: android.graphics.Bitmap?) {
                 reply = null
                 if (!PanelPolicy.sameOrigin(url, trusted)) { view.stopLoading(); toast("Zablokowano obcy origin") }
+            }
+            override fun onPageFinished(view: WebView, url: String) {
+                if (PanelPolicy.sameOrigin(url, trusted)) view.settings.cacheMode = WebSettings.LOAD_DEFAULT
             }
             override fun onReceivedError(view: WebView, request: WebResourceRequest, error: WebResourceError) {
                 if (request.isForMainFrame) toast("Panel niedostępny. Sprawdź serwer lub URL w konfiguratorze.")
