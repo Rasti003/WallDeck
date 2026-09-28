@@ -141,6 +141,7 @@ app.get<{ Querystring: { q?: string; type?: string } }>("/api/spotify/search", a
   catch (error) { return reply.code(502).send({ error: error instanceof Error ? error.message : String(error) }); }
 });
 app.get("/api/spotify/queue", async (_request, reply) => {
+  reply.header("Cache-Control", "no-store, max-age=0");
   try { return await spotify.queue(); } catch (error) { return reply.code(502).send({ error: error instanceof Error ? error.message : String(error) }); }
 });
 app.get("/api/spotify/playlists", async (_request, reply) => {

@@ -71,7 +71,7 @@ export const api = {
     beginAuth: () => json<{ url: string }>("/api/spotify/auth/start", { method: "POST" }),
     disconnect: () => json<SpotifyStatus>("/api/spotify/disconnect", { method: "POST" }),
     search: (query: string, types = "track,playlist") => json<{ items: SpotifyItem[] }>(`/api/spotify/search?q=${encodeURIComponent(query)}&type=${encodeURIComponent(types)}`),
-    queue: () => json<SpotifyQueue>("/api/spotify/queue"),
+    queue: () => json<SpotifyQueue>("/api/spotify/queue", { cache: "no-store" }),
     playlists: () => json<{ items: SpotifyItem[] }>("/api/spotify/playlists"),
     action: (uri: string, action: "play" | "queue") => json<unknown>("/api/spotify/action", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ uri, action }) }),
   },

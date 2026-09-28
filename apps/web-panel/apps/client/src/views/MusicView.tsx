@@ -1,4 +1,4 @@
-import { useContext, useEffect, useRef, useState, type CSSProperties } from "react";
+import { useCallback, useContext, useEffect, useRef, useState, type CSSProperties } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import type { AudioOutputState, SpotifyItem, SpotifyQueue } from "@walldeck/contracts";
 import { PanelContext } from "../panel-context";
@@ -41,6 +41,14 @@ export function MusicView() {
   const connected = state.connection === "connected";
   const ready = connected && Boolean(state.track) && !busy;
   const position = seek ?? playbackPosition(state, now);
+  const queueRequest = useRef(0);
+  const refreshQueue = useCallback(async () => {
+    const request = ++queueRequest.current;
+    try {
+      const next = await api.spotify.queue();
+      if (request === queueRequest.current) setQueue(next);
+    } catch { /* A temporary Spotify API failure must not clear the visible queue. */ }
+  }, []);
 
   useEffect(() => {
     if (!available) return;
@@ -62,12 +70,22 @@ export function MusicView() {
   }, []);
 
   useEffect(() => {
-    let disposed = false;
-    const refresh = () => api.spotify.queue().then(next => { if (!disposed) setQueue(next); }).catch(() => undefined);
-    void refresh();
-    const timer = setInterval(refresh, 10_000);
-    return () => { disposed = true; clearInterval(timer); };
-  }, []);
+    void refreshQueue();
+    const timer = setInterval(() => void refreshQueue(), 5_000);
+    const visible = () => { if (document.visibilityState === "visible") void refreshQueue(); };
+    window.addEventListener("focus", visible);
+    document.addEventListener("visibilitychange", visible);
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener("focus", visible);
+      document.removeEventListener("visibilitychange", visible);
+    };
+  }, [refreshQueue]);
+
+  useEffect(() => {
+    // Native Spotify events identify a track change sooner than the fallback poll.
+    if (state.track?.uri) void refreshQueue();
+  }, [refreshQueue, state.track?.uri]);
 
   useEffect(() => {
     setSeek(null);
@@ -120,7 +138,7 @@ export function MusicView() {
   async function spotifyAction(item: SpotifyItem, action: "play" | "queue") {
     await run(() => api.spotify.action(item.uri, action));
     if (action === "play") setSheet(null);
-    window.setTimeout(() => { void api.spotify.queue().then(setQueue).catch(() => undefined); }, 1200);
+    window.setTimeout(() => void refreshQueue(), 1200);
   }
 
   const itemList = (items: SpotifyItem[]) => <ul className="music-library-list">{items.map(item => <li key={item.uri}>
@@ -192,7 +210,7 @@ export function MusicView() {
 
         <aside className="music-next">
           <div><p className="music-eyebrow">DALEJ</p><h2>Up next</h2></div>
-          {queue?.items.length ? <ol className="music-queue-preview">{queue.items.slice(0, 3).map((item, index) => <li key={`${item.uri}:${index}`}><span>{index + 1}</span><div><strong>{item.name}</strong><small>{item.subtitle}</small></div></li>)}</ol> : <div className="music-queue-empty"><span>≡</span><strong>Kolejka jest pusta</strong><p>Wyszukaj utwór, wybierz playlistę albo dodaj coś przyciskiem „＋”.</p></div>}
+          {queue?.items.length ? <ol className="music-queue-preview">{queue.items.slice(0, 3).map((item, index) => <motion.li layout key={`${item.uri}:${index}`} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: reducedMotion ? 0 : .28 }}><span>{index + 1}</span><div><strong>{item.name}</strong><small>{item.subtitle}</small></div></motion.li>)}</ol> : <div className="music-queue-empty"><span>≡</span><strong>Kolejka jest pusta</strong><p>Wyszukaj utwór, wybierz playlistę albo dodaj coś przyciskiem „＋”.</p></div>}
           <nav><button onClick={() => void openSheet("search")}>Szukaj <span>⌕</span></button><button onClick={() => void openSheet("queue")}>Kolejka <span>↗</span></button><button onClick={() => void openSheet("playlists")}>Playlisty <span>↗</span></button></nav>
         </aside>
       </div>
