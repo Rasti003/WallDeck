@@ -1,4 +1,4 @@
-import { createReadStream } from "node:fs";
+import { registerPhotos } from "./photos.js";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -11,7 +11,6 @@ import {
   homeAssistantConfigInputSchema,
   settingsSchema,
   viewIdSchema,
-  type PhotoItem,
   type ViewId,
   type WallDeckSettings,
   type WeatherNow,
@@ -19,19 +18,6 @@ import {
   type DeviceStatus,
 } from "@walldeck/contracts";
 import { HomeAssistantClient, HomeAssistantConfigStore } from "./home-assistant.js";
-
-interface ManifestItem {
-  id: string;
-  filename: string;
-  width: number;
-  height: number;
-  active: boolean;
-  contentType?: string;
-}
-
-interface PhotoManifest {
-  items: Record<string, ManifestItem>;
-}
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const webRoot = path.resolve(here, "../../client/dist");
@@ -48,20 +34,6 @@ async function readSettings(): Promise<WallDeckSettings> {
   } catch {
     return defaultSettings;
   }
-}
-
-async function readManifest(): Promise<PhotoManifest> {
-  try {
-    return JSON.parse(await readFile(path.join(photoRoot, ".walldeck-album.json"), "utf8"));
-  } catch {
-    return { items: {} };
-  }
-}
-
-function orientationOf(width: number, height: number): PhotoItem["orientation"] {
-  if (width > height * 1.05) return "landscape";
-  if (height > width * 1.05) return "portrait";
-  return "square";
 }
 
 let currentView: ViewId = "photos";
@@ -105,28 +77,7 @@ app.put("/api/settings", async (request, reply) => {
   return parsed.data;
 });
 
-app.get("/api/photos", async () => {
-  const manifest = await readManifest();
-  return Object.values(manifest.items)
-    .filter((item) => item.active && item.filename)
-    .map((item): PhotoItem => ({
-      id: item.id,
-      url: `/api/photos/${encodeURIComponent(item.id)}/file`,
-      width: item.width,
-      height: item.height,
-      orientation: orientationOf(item.width, item.height),
-    }));
-});
-
-app.get<{ Params: { id: string } }>("/api/photos/:id/file", async (request, reply) => {
-  const manifest = await readManifest();
-  const item = manifest.items[request.params.id];
-  if (!item?.active || !item.filename) return reply.code(404).send({ error: "Nie znaleziono zdjęcia" });
-  const fullPath = path.resolve(photoRoot, item.filename);
-  if (path.dirname(fullPath) !== photoRoot) return reply.code(400).send({ error: "Nieprawidłowa ścieżka" });
-  reply.type(item.contentType ?? "image/jpeg").header("cache-control", "public, max-age=86400, immutable");
-  return reply.send(createReadStream(fullPath));
-});
+await registerPhotos(app, photoRoot, runtimeRoot, broadcast, readSettings);
 
 app.get("/api/views", async () => ({ current: currentView, available: [
   { id: "photos", name: "Album zdjęć" },

@@ -13,6 +13,9 @@ import { musicController } from "./music/controller";
 import type { MusicState } from "@walldeck/contracts";
 
 export function PanelApp({ forcedView }: { forcedView?: ViewId }) {
+  const [interactionLocked, setInteractionLocked] = useState(false);
+  const lockedRef = useRef(false);
+  lockedRef.current = interactionLocked;
   const [menuOpen, setMenuOpen] = useState(false);
   const menuOpenRef = useRef(false);
   menuOpenRef.current = menuOpen;
@@ -117,7 +120,7 @@ export function PanelApp({ forcedView }: { forcedView?: ViewId }) {
       if (disposed) return;
       musicPlaying.current = state.connection === "connected" && !state.paused && Boolean(state.track);
       setMusicInactive(!musicPlaying.current);
-      if (!started(state) || forcedView || playbackView.current === "music") return;
+      if (!started(state) || forcedView || playbackView.current === "music" || lockedRef.current) return;
       if (idleTimer.current) clearTimeout(idleTimer.current);
       interruptionPending.current = false;
       setAssistantIdleTransition(false);
@@ -164,6 +167,7 @@ export function PanelApp({ forcedView }: { forcedView?: ViewId }) {
       return;
     }
     const onLight = (event: Event) => {
+      if (lockedRef.current) return;
       const lux = Number((event as CustomEvent<{ lux?: number }>).detail?.lux);
       const action = ambientSleepAction(lux, settings.ambientSleep, darkEpisodeActive.current);
       if (action === "sleep") {
@@ -178,6 +182,7 @@ export function PanelApp({ forcedView }: { forcedView?: ViewId }) {
       }
     };
     const onCameraLight = (event: Event) => {
+      if (lockedRef.current) return;
       const brightnessPercent = Number((event as CustomEvent<{ brightnessPercent?: number }>).detail?.brightnessPercent);
       const action = cameraSleepAction(brightnessPercent, settings.ambientSleep, darkEpisodeActive.current);
       if (action === "sleep") {
@@ -208,7 +213,7 @@ export function PanelApp({ forcedView }: { forcedView?: ViewId }) {
     const poll = async () => {
       try {
         const entity = await api.homeAssistant.entity(ambient.homeAssistantEntityId!);
-        if (cancelled) return;
+        if (cancelled || lockedRef.current) return;
         const action = homeAssistantSleepAction(entity.state, ambient, darkEpisodeActive.current);
         if (action === "sleep") {
           darkEpisodeActive.current = true;
@@ -236,7 +241,7 @@ export function PanelApp({ forcedView }: { forcedView?: ViewId }) {
         : assistantIdleTransition && idleFromMusic.current && activeView === "assistant-expressive"
           ? { target: "photos" as const, seconds: settings.viewRouter.inactivityAction.assistantIdleSeconds, startsAssistantIdle: false, completesAssistantIdle: true }
           : inactivityTransition(activeView, settings.viewRouter, assistantIdleTransition);
-    if (forcedView || menuOpen || !transition) return;
+    if (forcedView || menuOpen || interactionLocked || !transition) return;
     idleTimer.current = setTimeout(() => {
       if (activeView === "ha" && cameFromMusic.current && musicPlaying.current) {
         interruptionPending.current = false;
@@ -262,10 +267,10 @@ export function PanelApp({ forcedView }: { forcedView?: ViewId }) {
       if (transition.completesAssistantIdle) setAssistantIdleTransition(false);
       activate(transition.target);
     }, transition.seconds * 1_000);
-  }, [activeView, activate, assistantIdleTransition, danceTransition, forcedView, menuOpen, musicInactive, settings.viewRouter]);
+  }, [activeView, activate, assistantIdleTransition, danceTransition, forcedView, menuOpen, interactionLocked, musicInactive, settings.viewRouter]);
 
   const registerActivity = useCallback(() => {
-    if (menuOpenRef.current) return;
+    if (menuOpenRef.current || lockedRef.current) return;
     const target = danceTransition && activeView === "assistant-expressive" ? "music" : assistantIdleTransition && idleFromMusic.current && activeView === "assistant-expressive" ? "music" : viewAfterActivity(activeView, settings.viewRouter, assistantIdleTransition);
     if (target) {
       if (interruptionPending.current) return;
@@ -331,6 +336,7 @@ export function PanelApp({ forcedView }: { forcedView?: ViewId }) {
 
   const View = viewRegistry[activeView];
   const activateSwipeDown = useCallback(() => {
+    if (lockedRef.current) return;
     if (!forcedView && settings.tabletMenu.enabled) {
       menuOpenRef.current = true;
       if (idleTimer.current) clearTimeout(idleTimer.current);
@@ -355,7 +361,7 @@ export function PanelApp({ forcedView }: { forcedView?: ViewId }) {
       onPointerUp={(event) => {
         const start = touchStart.current;
         touchStart.current = null;
-        if (!start || menuOpenRef.current) return;
+        if (!start || menuOpenRef.current || lockedRef.current) return;
         const deltaX = event.clientX - start.x;
         const deltaY = event.clientY - start.y;
         if (start.y <= innerHeight * 0.4 && deltaY >= 96 && Math.abs(deltaX) <= deltaY * 0.65 && Date.now() - start.time <= 900) {
@@ -371,7 +377,7 @@ export function PanelApp({ forcedView }: { forcedView?: ViewId }) {
       }}
     >
       {!forcedView && settings.tabletMenu.enabled && <TabletMenu open={menuOpen} current={activeView} views={settings.tabletMenu.views} onOpen={activateSwipeDown} onClose={() => setMenuOpen(false)} onSelect={view => { setMenuOpen(false); setDanceTransition(false); setAssistantIdleTransition(false); setRequestedAssistantState(null); activate(view); }} />}
-      <PanelContext.Provider value={{ settings, activeView, requestedAssistantState }}>
+      <PanelContext.Provider value={{ settings, activeView, requestedAssistantState, menuOpen, setInteractionLocked }}>
       <AnimatePresence mode="wait" custom={instantTransition}>
         <motion.div
           key={activeView}

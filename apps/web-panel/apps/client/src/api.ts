@@ -5,6 +5,8 @@ import type {
   HomeAssistantSelectedState,
   HomeAssistantStatus,
   PhotoItem,
+  PhotoEdit,
+  PhotoSyncStatus,
   ViewId,
   WallDeckSettings,
   WeatherNow,
@@ -22,6 +24,9 @@ async function json<T>(url: string, init?: RequestInit): Promise<T> {
 export const api = {
   devices: () => json<DeviceStatus[]>("/api/devices"),
   photos: () => json<PhotoItem[]>("/api/photos"),
+  photoSyncStatus: () => json<PhotoSyncStatus>("/api/photos/sync"),
+  syncPhotos: () => json<PhotoSyncStatus>("/api/photos/sync", { method: "POST" }),
+  savePhoto: (id: string, edit: PhotoEdit) => json<PhotoEdit>(`/api/photos/${encodeURIComponent(id)}/edit`, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify(edit) }),
   settings: () => json<WallDeckSettings>("/api/settings"),
   saveSettings: (settings: WallDeckSettings) => json<WallDeckSettings>("/api/settings", {
     method: "PUT",

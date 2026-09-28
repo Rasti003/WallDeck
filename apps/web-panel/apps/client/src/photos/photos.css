@@ -1,0 +1,20 @@
+.cropped-photo { position:relative; width:100%; height:100%; min-width:0; min-height:0; overflow:hidden; background:#101815; }
+.cropped-photo img { position:absolute; max-width:none; object-fit:fill; user-select:none; pointer-events:none; }
+.photo-layout .cropped-photo img { width:auto; height:auto; }
+.photo-dialog-backdrop { position:fixed; inset:0; z-index:100; display:flex; align-items:center; justify-content:center; padding:24px; background:#050c0b99; backdrop-filter:blur(18px); }
+.photo-dialog { width:min(850px,95vw); max-height:90dvh; overflow:auto; padding:28px; border:1px solid #c0efcf30; border-radius:28px; background:linear-gradient(135deg,#213b32ec,#111c1ded); color:#edf8f0; box-shadow:0 24px 90px #0008; animation:photo-enter .2s ease-out; }
+.photo-dialog header,.photo-dialog footer,.photo-sync,.photo-editor__controls { display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap; }
+.photo-dialog h2 { margin:6px 0 18px; }.photo-dialog button,.photo-admin button,.app-notification button { border:1px solid #bfeacd30; border-radius:14px; padding:11px 16px; background:#c0efd012; color:inherit; cursor:pointer; }
+.photo-dialog button:disabled { opacity:.45; cursor:wait; }.photo-dialog button[aria-pressed=true] { background:#90d8aa38; }
+.photo-sync small { display:block; margin-top:6px; opacity:.65; }.photo-sync { margin:12px 0 22px; }.photo-sync button { font-size:13px; }
+.photo-library { display:grid; grid-template-columns:repeat(auto-fill,minmax(130px,1fr)); gap:12px; margin:20px 0; }
+.photo-library button { aspect-ratio:1; position:relative; padding:0; overflow:hidden; border-radius:14px; }.photo-library span { position:absolute; bottom:5px; left:5px; background:#0009; padding:4px 8px; font-size:12px; }
+.photo-editor label { display:block; margin:12px 0; }.photo-editor input[type=range] { width:100%; accent-color:#b1e2bd; }.photo-editor p { opacity:.7; font-size:13px; }
+.tablet-preview { margin:20px auto; padding:10px; background:#070909; border:2px solid #596660; border-radius:22px; width:100%; max-width:650px; box-shadow:0 18px 50px #0006; }
+.tablet-preview__screen { display:grid; width:100%; overflow:hidden; border-radius:12px; }.landscape .paired { grid-template-columns:1fr 1fr; gap:4px; }.portrait .paired { grid-template-rows:1fr 1fr; gap:4px; }
+.photo-dialog { color-scheme:dark; scrollbar-width:thin; scrollbar-color:#709783 transparent; overscroll-behavior:contain; }
+.photo-crop-drag { min-height:0; min-width:0; position:relative; touch-action:none; cursor:move; }.crop-guides { pointer-events:none; position:absolute; inset:0; background:linear-gradient(90deg,transparent 33%,#fff3 33%,#fff3 33.2%,transparent 33.2%,transparent 66%,#fff3 66%,#fff3 66.2%,transparent 66.2%),linear-gradient(0deg,transparent 33%,#fff3 33%,#fff3 33.2%,transparent 33.2%,transparent 66%,#fff3 66%,#fff3 66.2%,transparent 66.2%); }
+.photo-view { touch-action:none; }.photo-dialog { touch-action:pan-y; }.photo-empty { position:absolute; inset:0; display:grid; place-content:center; text-align:center; }
+.app-notification { position:fixed; z-index:1000; bottom:28px; left:50%; transform:translateX(-50%); display:flex; align-items:center; gap:18px; max-width:90vw; padding:14px 20px; border-radius:20px; background:#17352dea; border:1px solid #c1ebce40; backdrop-filter:blur(20px); color:#effaf3; box-shadow:0 10px 40px #0005; }
+@keyframes photo-enter { from { opacity:0; translate:0 10px; } to { opacity:1; translate:0 0; } }
+@media(prefers-reduced-motion:reduce) { .photo-dialog { animation:none; } }

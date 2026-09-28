@@ -66,6 +66,7 @@ export const overlayPositionSchema = z.enum([
 ]);
 
 export const settingsSchema = z.object({
+  gallery: z.object({ holdMilliseconds: z.number().int().min(500).max(1500), notifyNewPhotos: z.boolean(), notificationSeconds: z.number().int().min(3).max(15) }).default({ holdMilliseconds: 600, notifyNewPhotos: true, notificationSeconds: 5 }),
   tabletMenu: z.object({ enabled: z.boolean().default(true), views: z.array(z.enum(["photos", "ha", "music", "assistant-expressive"])).min(1).max(4).refine(v => new Set(v).size === v.length).default(["photos", "ha", "music", "assistant-expressive"]) }).default({ enabled: true, views: ["photos", "ha", "music", "assistant-expressive"] }),
   music: z.object({ clientId: z.string().trim().regex(/^([a-fA-F0-9]{32})?$/).default("") }).default({ clientId: "" }),
   photoIntervalSeconds: z.number().int().min(10).max(3600),
@@ -96,6 +97,7 @@ export const settingsSchema = z.object({
 export type WallDeckSettings = z.infer<typeof settingsSchema>;
 
 export const defaultSettings: WallDeckSettings = {
+  gallery: { holdMilliseconds: 600, notifyNewPhotos: true, notificationSeconds: 5 },
   tabletMenu: { enabled: true, views: ["photos", "ha", "music", "assistant-expressive"] },
   music: { clientId: "" },
   photoIntervalSeconds: 30,
@@ -119,12 +121,21 @@ export const defaultSettings: WallDeckSettings = {
 };
 
 export interface PhotoItem {
+  edit?: PhotoEdit;
+  thumbnailUrl?: string;
   id: string;
   url: string;
   width: number;
   height: number;
   orientation: "landscape" | "portrait" | "square";
 }
+
+export const photoCropSchema = z.object({ x: z.number().min(0).max(1), y: z.number().min(0).max(1), zoom: z.number().min(1).max(4) });
+export const photoEditSchema = z.object({ rotation: z.union([z.literal(0), z.literal(90), z.literal(180), z.literal(270)]), hidden: z.boolean(), landscape: photoCropSchema, portrait: photoCropSchema });
+export type PhotoEdit = z.infer<typeof photoEditSchema>;
+export const defaultPhotoEdit: PhotoEdit = { rotation: 0, hidden: false, landscape: { x: .5, y: .5, zoom: 1 }, portrait: { x: .5, y: .5, zoom: 1 } };
+export interface PhotoSyncStatus { running: boolean; lastSyncAt: string | null; error: string | null; downloaded: number; }
+export interface AppNotification { id: string; message: string; kind: "info" | "success" | "error"; durationMs: number; action?: "photos"; }
 
 export interface WeatherNow {
   temperature: number;

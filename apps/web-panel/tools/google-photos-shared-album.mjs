@@ -73,6 +73,7 @@ async function fetchWithRetry(url, attempts = 3) {
   for (let attempt = 1; attempt <= attempts; attempt += 1) {
     try {
       const response = await fetch(url, {
+        signal: AbortSignal.timeout(60_000),
         redirect: "follow",
         headers: { "user-agent": "WallDeckPhotoSync/0.1" },
       });
@@ -111,6 +112,13 @@ async function downloadItem(item, storagePath) {
 
 export async function syncSharedAlbum({ albumUrl, storagePath, concurrency = 3, onProgress = () => {} }) {
   await mkdir(storagePath, { recursive: true });
+  const lock = path.join(storagePath, '.walldeck-sync.lock');
+  await mkdir(lock); // Shared by the CLI and server: never write a manifest concurrently.
+  try { return await syncUnlocked({ albumUrl, storagePath, concurrency, onProgress }); }
+  finally { await rm(lock, { recursive: true, force: true }); }
+}
+
+async function syncUnlocked({ albumUrl, storagePath, concurrency, onProgress }) {
   const page = await fetchWithRetry(albumUrl);
   const html = await page.text();
   const remoteItems = parseAlbumPage(html);

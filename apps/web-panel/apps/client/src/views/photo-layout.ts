@@ -31,7 +31,7 @@ export function createPhotoLayout(
 
   if (usePair) {
     const first = randomItem(pairPool, excluded, random);
-    const second = randomItem(pairPool, new Set([...excluded, first.id]), random);
+    const second = randomItem(pairPool.filter(p => p.id !== first.id), excluded, random);
     return { key: `${first.id}:${second.id}`, kind: "pair", items: [first, second] };
   }
 

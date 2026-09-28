@@ -124,3 +124,8 @@ tabletMenu settings migrate with defaults, reject empty/duplicate entries. Web s
 Bridge v4 adds exitToTablet with empty args and {ok:true} acknowledgement, followed by native exit. TabletMenu discovers the capability before showing the footer icon. Existing trusted-origin/main-frame validation still gates the command.
 
 MusicVolume uses existing audio.getOutputs and mediaVolume bridge methods. Serial writes coalesce pending slider changes; UI reads back actual quantized Android volume. Native volume is polled while open; remembered non-zero level supports mute restore. No native bridge changes.
+# Galeria — rozszerzenie 2026-09-28
+
+`registerPhotos` udostępnia kolekcję, pliki, miniatury, korekty i status synchronizacji. Sharp tworzy miniatury 480 px w runtime. Korekty mają stabilny identyfikator zdjęcia, obrót oraz niezależne kadry obu orientacji; zapis jest atomowy i kolejkowany. `CroppedPhoto` jest wspólnym rendererem edytora i pokazu. Historia przechowuje zestawy, nie tylko indeks losowania.
+
+Zdarzenia `photos.changed` odświeżają kolekcję bez przeładowania, `photos.sync` aktualizują status pobierania. Globalne `notification` przenosi id, message, kind, durationMs i opcjonalną akcję photos. Warstwa powiadomień działa ponad widokami i adminem. `PanelContext.setInteractionLocked` wstrzymuje automatyczne przejścia podczas menu aplikacji.

@@ -10,6 +10,7 @@ import {
   type WallDeckSettings,
 } from "@walldeck/contracts";
 import { api } from "./api";
+import { PhotoAdmin } from "./photos/PhotoAdmin";
 import { connectEvents } from "./events";
 import { menuLabels } from "./TabletMenu";
 import { StateMachinesAdmin } from "./StateMachinesAdmin";
@@ -42,6 +43,7 @@ export function AdminApp() {
   const [haMessage, setHaMessage] = useState("Nie skonfigurowano");
   const [devices, setDevices] = useState<DeviceStatus[]>([]);
   const [section, setSection] = useState<"overview" | "views" | "photos" | "ha" | "assistant" | "device" | "music" | "states">("overview");
+  useEffect(() => { const open = () => setSection("photos"); window.addEventListener("walldeck:openAdminPhotos", open); return () => window.removeEventListener("walldeck:openAdminPhotos", open); }, []);
 
   useEffect(() => {
     Promise.all([api.settings(), api.views(), api.photos(), api.homeAssistant.config(), api.devices()]).then(([nextSettings, nextViews, photos, homeAssistant, nextDevices]) => {
@@ -73,7 +75,8 @@ export function AdminApp() {
     const socket = connectEvents((event) => {
       const message = JSON.parse(event.data) as { type: string; viewId?: ViewId; status?: HomeAssistantStatus; homeAssistant?: HomeAssistantStatus; entities?: HomeAssistantSelectedState[]; homeAssistantStates?: HomeAssistantSelectedState[]; devices?: DeviceStatus[]; device?: DeviceStatus };
       if ((message.type === "snapshot" || message.type === "view.activated") && message.viewId) setViews(current => ({ ...current, current: message.viewId! }));
-      const next = message.type === "snapshot" ? message.homeAssistant : message.status;
+      const next = message.type === "snapshot" ? message.homeAssistant : message.type === "ha.statusChanged" ? message.status : undefined;
+      if (message.type === "photos.changed") void api.photos().then(items => setPhotoCount(items.length));
       if (next) {
         setHaStatus(next);
         setHaMessage(next.connected ? "Połączono" : next.lastError ?? (next.configured ? "Łączenie…" : "Nie skonfigurowano"));
@@ -359,8 +362,11 @@ export function AdminApp() {
       </form>}
 
       {section === "photos" &&
+      <PhotoAdmin />}
+      {section === "photos" &&
       <form className="admin-card admin-form" onSubmit={save}>
         <div><span className="admin-kicker">Widok 01</span><h2>Album zdjęć</h2></div>
+        <div className="field-grid"><label>Przytrzymanie (ms)<input type="number" min="500" max="1500" step="100" value={settings.gallery.holdMilliseconds} onChange={e => setSettings({ ...settings, gallery: { ...settings.gallery, holdMilliseconds: Number(e.target.value) } })} /></label><label>Czas powiadomienia (s)<input type="number" min="3" max="15" value={settings.gallery.notificationSeconds} onChange={e => setSettings({ ...settings, gallery: { ...settings.gallery, notificationSeconds: Number(e.target.value) } })} /></label><label><input type="checkbox" checked={settings.gallery.notifyNewPhotos} onChange={e => setSettings({ ...settings, gallery: { ...settings.gallery, notifyNewPhotos: e.target.checked } })} /> Powiadomienia o nowych zdjęciach</label></div>
         <label className="brightness-control">
           <span><strong>Jasność tabletu dla tego widoku</strong><output>{Math.round(settings.viewBrightness.photos * 100)}%</output></span>
           <input

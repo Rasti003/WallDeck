@@ -63,3 +63,8 @@ OEM toolbar closure recovery intentionally excludes manual tablet mode and hardw
 REORDER_TASKS added for recovery of the existing WallDeck task after OEM hide. Recovery is limited to an active docked lock-task session; no polling of other app content.
 
 exitToTablet is deliberately exposed only through the existing trusted main-frame bridge. It uses the same native manual-exit suppression and policy cleanup; no new origin or permission was added.
+# Galeria i synchronizacja — 2026-09-28
+
+API zdjęć nie ujawnia sourceUrl/resolvedUrl manifestu ani ścieżek hosta. Źródło jest czytane wyłącznie z lokalnego manifestu; endpoint synchronizacji nie przyjmuje zdalnego URL. Błędy synchronizacji zwracane do klienta są ogólne, bez prywatnego linku. Nazwy plików są ograniczone do katalogu zdjęć, parametry kadru waliduje Zod. Miniatury i korekty pozostają w prywatnym runtime; trzeba uwzględnić korekty w kopii zapasowej.
+
+Istniejący prototyp API nadal zakłada zaufaną sieć LAN; funkcje admina nie są osobno uwierzytelnione. Nie wystawiać portu serwera publicznie. Nie zmieniono uprawnień Android Bridge.

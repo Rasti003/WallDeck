@@ -151,3 +151,12 @@ Shuffle, repeat and volume use borderless icon controls matching track navigatio
 Playback controls use symmetric grid tracks: Play stays centered on the seek bar regardless of shuffle/repeat and volume widths. Narrow layouts stack the two secondary icons.
 
 Shuffle and repeat now live in the glass playback-options popover (ellipsis). The control row has one secondary icon on each side of centered playback controls. Outside press or Escape dismisses options.
+# Galeria interaktywna
+
+Na tablecie przesunięcie w lewo wybiera następny zestaw, w prawo wraca po historii (do 100 zestawów). Przytrzymanie domyślnie 600 ms otwiera menu Zdjęcia. Menu i przeglądarka wstrzymują pokaz oraz automatyczne przejścia widoków; gest w dół pozostaje menu globalnym. Ręczna zmiana uruchamia odliczanie pokazu od początku.
+
+Tablet i `/admin` → Album zdjęć udostępniają kolekcję oraz „Pobierz nowe”. Miniatury ładowane są leniwie, po 60 pozycji. Admin pozwala obracać o 90°, ukrywać i kadrować zdjęcia przez przeciąganie/przybliżanie, z osobnymi kadrami dla ekranu poziomego i pionowego. Podgląd korzysta z proporcji raportowanego tabletu (domyślnie Redmi Pad 2: 2048×1280) i ma opcję pary zdjęć. Korekty są w runtime `photo-edits.json`; oryginały i Google Photos pozostają niezmienione. „Przywróć oryginał” resetuje korekty po zapisaniu.
+
+Serwer odczytuje prywatne źródło z istniejącego manifestu albumu. Nie przyjmuje URL albumu z przeglądarki. Kontener zawiera moduł synchronizacji; na hoście katalog zdjęć musi być zapisywalny dla UID 10001. Synchronizator CLI i przycisk współdzielą blokadę `.walldeck-sync.lock`. Po awaryjnym zakończeniu procesu usuń pozostały katalog blokady dopiero po sprawdzeniu, że żaden synchronizator nie działa.
+
+Globalne powiadomienia są kolejkowane i deduplikowane, z akcją „Zobacz”. Serwer wykrywa zmiany manifestu co 10 sekund, również z harmonogramu CLI. Pierwsze wczytanie kolekcji nie generuje komunikatu. Czas przytrzymania, czas komunikatu i powiadamianie o nowych zdjęciach konfiguruje admin. Aktualna synchronizacja nadal korzysta z parsera udostępnionego albumu; zmiany strony Google mogą wymagać jego aktualizacji.

@@ -1,10 +1,15 @@
 import { AnimatePresence, motion } from "motion/react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import type { HomeAssistantSelectedState, PhotoItem, WallDeckSettings, WeatherNow } from "@walldeck/contracts";
 import { api } from "../api";
 import { connectEvents } from "../events";
 import { useLandscape, useNow } from "../hooks";
 import { createPhotoLayout, type PhotoLayout } from "./photo-layout";
+import { PanelContext } from "../panel-context";
+import { usePhotos } from "../photos/usePhotos";
+import { CroppedPhoto } from "../photos/CroppedPhoto";
+import { PhotoLibrary, PhotoSyncControls } from "../photos/PhotoLibrary";
+import { advanceHistory, type PhotoHistory } from "../photos/history";
 
 function weatherSymbol(code: number, isDay: boolean) {
   if (code === 0) return isDay ? "☀" : "☾";
@@ -51,18 +56,27 @@ function Overlay({ settings, weather, homeAssistant }: { settings: WallDeckSetti
 
 export function PhotoAlbumView() {
   const landscapeScreen = useLandscape();
-  const [photos, setPhotos] = useState<PhotoItem[]>([]);
+  const library = usePhotos();
+  const photos = library.photos.filter(p => !p.edit?.hidden);
+  const { setInteractionLocked, menuOpen } = useContext(PanelContext);
+  const [dialog, setDialog] = useState<"menu" | "library" | null>(null);
   const [settings, setSettings] = useState<WallDeckSettings | null>(null);
   const [weather, setWeather] = useState<WeatherNow | null>(null);
   const [homeAssistant, setHomeAssistant] = useState<HomeAssistantSelectedState[]>([]);
-  const [layout, setLayout] = useState<PhotoLayout | null>(null);
+  const [history, setHistory] = useState<PhotoHistory>({ items: [], index: -1 });
+  const layout = history.items[history.index] ?? null;
+  const [tick, setTick] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const nextLayout = useRef<PhotoLayout | null>(null);
+  const touch = useRef<{ x: number; y: number; held: boolean; timer: ReturnType<typeof setTimeout> } | null>(null);
+  const cancelHold = () => { if (touch.current) clearTimeout(touch.current.timer); };
+  useEffect(() => () => cancelHold(), []);
+  useEffect(() => { setInteractionLocked(Boolean(dialog)); return () => setInteractionLocked(false); }, [dialog, setInteractionLocked]);
+  useEffect(() => { const open = () => setDialog("library"); window.addEventListener("walldeck:openPhotoLibrary", open); if (sessionStorage.getItem("openPhotoLibrary")) { sessionStorage.removeItem("openPhotoLibrary"); open(); } return () => window.removeEventListener("walldeck:openPhotoLibrary", open); }, []);
 
   useEffect(() => {
-    Promise.all([api.photos(), api.settings()])
-      .then(([photoData, settingsData]) => {
-        setPhotos(photoData);
+    api.settings()
+      .then((settingsData) => {
         setSettings(settingsData);
       })
       .catch((reason) => setError(reason instanceof Error ? reason.message : String(reason)));
@@ -82,27 +96,31 @@ export function PhotoAlbumView() {
   }, [settings?.overlay.showWeather, settings?.overlay.weatherLocation.latitude, settings?.overlay.weatherLocation.longitude, refreshWeather]);
 
   useEffect(() => {
-    if (!photos.length) return;
-    setLayout((previous) => createPhotoLayout(photos, landscapeScreen, previous));
+    setHistory(old => {
+      const available = new Map(photos.map(p => [p.id, p]));
+      const items = old.items.map(l => ({ ...l, items: l.items.filter(p => available.has(p.id)).map(p => available.get(p.id)!) })).filter(l => l.items.length === (l.kind === "pair" ? 2 : 1));
+      if (items.length) return { items, index: Math.min(old.index, items.length - 1) };
+      const first = createPhotoLayout(photos, landscapeScreen, null);
+      return { items: first ? [first] : [], index: first ? 0 : -1 };
+    });
     nextLayout.current = null;
-  }, [photos, landscapeScreen]);
+  }, [library.photos]);
+  useEffect(() => { const first = createPhotoLayout(photos, landscapeScreen, null); setHistory({ items: first ? [first] : [], index: first ? 0 : -1 }); }, [landscapeScreen]);
 
   useEffect(() => {
     if (!layout || !photos.length) return;
     const next = createPhotoLayout(photos, landscapeScreen, layout);
     nextLayout.current = next;
     next?.items.forEach((photo) => { const image = new Image(); image.src = photo.url; });
-  }, [layout, photos, landscapeScreen]);
+  }, [layout, library.photos, landscapeScreen]);
+
+  const navigate = (direction: -1 | 1) => { setHistory(old => advanceHistory(old, direction, () => nextLayout.current ?? createPhotoLayout(photos, landscapeScreen, old.items[old.index] ?? null))); nextLayout.current = null; setTick(t => t + 1); };
 
   useEffect(() => {
-    if (!settings || !photos.length) return;
-    const timer = setInterval(() => setLayout((previous) => {
-      const next = nextLayout.current ?? createPhotoLayout(photos, landscapeScreen, previous);
-      nextLayout.current = null;
-      return next;
-    }), settings.photoIntervalSeconds * 1_000);
-    return () => clearInterval(timer);
-  }, [photos, landscapeScreen, settings?.photoIntervalSeconds]);
+    if (!settings || !photos.length || dialog || menuOpen) return;
+    const timer = setTimeout(() => navigate(1), settings.photoIntervalSeconds * 1_000);
+    return () => clearTimeout(timer);
+  }, [library.photos, landscapeScreen, settings?.photoIntervalSeconds, dialog, menuOpen, history, tick]);
 
   useEffect(() => {
     const socket = connectEvents((event) => {
@@ -114,15 +132,24 @@ export function PhotoAlbumView() {
     return () => socket.close();
   }, []);
 
-  const imageStyle = useMemo(() => ({ transitionDuration: `${settings?.transitionSeconds ?? 1.4}s` }), [settings?.transitionSeconds]);
-
   if (error) return <div className="panel-state"><strong>Nie udało się uruchomić albumu</strong><span>{error}</span></div>;
-  if (!settings || !layout) return <div className="panel-state panel-state--loading"><span>WallDeck</span></div>;
+  if (!settings) return <div className="panel-state panel-state--loading"><span>WallDeck</span></div>;
 
   return (
-    <main className="photo-view">
+    <main className="photo-view" onContextMenu={e => e.preventDefault()} onPointerDown={e => {
+      if (dialog || menuOpen || !e.isPrimary) return;
+      cancelHold();
+      const current = { x: e.clientX, y: e.clientY, held: false, timer: setTimeout(() => { current.held = true; setDialog("menu"); }, settings.gallery.holdMilliseconds) };
+      touch.current = current;
+    }} onPointerMove={e => { if (touch.current && Math.hypot(e.clientX - touch.current.x, e.clientY - touch.current.y) > 14) cancelHold(); }} onPointerCancel={() => { cancelHold(); touch.current = null; }} onPointerUp={e => {
+      cancelHold(); const start = touch.current; touch.current = null;
+      if (!start) return;
+      const dx = e.clientX - start.x, dy = e.clientY - start.y;
+      if (start.held || dialog) { e.stopPropagation(); return; }
+      if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.4) { e.stopPropagation(); navigate(dx < 0 ? 1 : -1); }
+    }}>
       <AnimatePresence mode="sync" initial={false}>
-        <motion.section
+        {layout && <motion.section
           key={layout.key}
           className={`photo-layout photo-layout--${layout.kind} ${landscapeScreen ? "is-landscape" : "is-portrait"}`}
           initial={{ opacity: 0, scale: 1.015 }}
@@ -130,11 +157,13 @@ export function PhotoAlbumView() {
           exit={{ opacity: 0, scale: 1.005 }}
           transition={{ duration: settings.transitionSeconds, ease: [0.22, 1, 0.36, 1] }}
         >
-          {layout.items.map((photo) => <img key={photo.id} src={photo.url} alt="" draggable={false} style={imageStyle} />)}
-        </motion.section>
+          {layout.items.map((photo) => <CroppedPhoto key={photo.id} photo={photo} landscape={landscapeScreen} />)}
+        </motion.section>}
       </AnimatePresence>
       <div className="photo-view__vignette" />
       <Overlay settings={settings} weather={weather} homeAssistant={homeAssistant} />
+      {!layout && <div className="photo-empty"><h2>Twoja ramka czeka na zdjęcia</h2><button onPointerUp={e => e.stopPropagation()} onClick={() => setDialog("menu")}>Otwórz kolekcję</button><p>{library.error}</p></div>}
+      {dialog && <div className="photo-dialog-backdrop" onPointerDown={e => e.stopPropagation()} onPointerUp={e => e.stopPropagation()} onClick={e => { if (e.target === e.currentTarget) setDialog(null); }}><section className="photo-dialog" role="dialog" aria-modal="true" aria-label="Zdjęcia" onKeyDown={e => { if (e.key === "Escape") setDialog(null); }}><header><div><small>TWOJA RAMKA</small><h2>Zdjęcia</h2></div><button aria-label="Zamknij zdjęcia" onClick={() => setDialog(null)}>×</button></header><PhotoSyncControls count={library.photos.length} {...library} />{dialog === "menu" ? <button onClick={() => setDialog("library")}>▧ Wszystkie zdjęcia</button> : <PhotoLibrary photos={library.photos} onSelect={photo => { const next: PhotoLayout = { key: photo.id, kind: "single", items: [photo] }; setHistory(old => { const items = [...old.items.slice(0, old.index + 1), next].slice(-100); return { items, index: items.length - 1 }; }); setDialog(null); setTick(t => t + 1); }} />}</section></div>}
     </main>
   );
 }

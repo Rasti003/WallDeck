@@ -103,3 +103,10 @@
 - [x] Replace persistent large tablet-mode button with discreet menu tablet icon.
 
 - [x] Touch volume popover in Music: slider, minus/plus, mute restore, auto-dismiss.
+## Galeria — 2026-09-28
+
+- [x] Gesty poziome, historia zestawów i menu po przytrzymaniu.
+- [x] Kolekcja i pobieranie na tablecie oraz w adminie.
+- [x] Niedestrukcyjny obrót, ukrywanie, kadr per orientacja i podgląd tabletu/pary.
+- [x] Globalna kolejka powiadomień oraz aktualizacja kolekcji po synchronizacji.
+- [ ] Wirtualizacja siatki dla bardzo dużych bibliotek (obecnie leniwe miniatury i strony po 60).

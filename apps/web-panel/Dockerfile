@@ -38,6 +38,7 @@ COPY --from=build --chown=walldeck:walldeck /app/apps/client/dist ./apps/client/
 COPY --from=build --chown=walldeck:walldeck /app/packages/contracts/package.json ./packages/contracts/package.json
 COPY --from=build --chown=walldeck:walldeck /app/packages/contracts/node_modules ./packages/contracts/node_modules
 COPY --from=build --chown=walldeck:walldeck /app/packages/contracts/dist ./packages/contracts/dist
+COPY --chown=walldeck:walldeck tools/google-photos-shared-album.mjs ./tools/google-photos-shared-album.mjs
 
 USER walldeck
 EXPOSE 8080
