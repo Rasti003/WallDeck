@@ -109,7 +109,7 @@ export function registerLiveConversation(app: FastifyInstance, deps: Dependencie
             session: {
               model: settings.voice.live.model,
               store: false,
-              instructions: `${settings.voice.instructions} Rozmawiaj wyłącznie po polsku. Jesteś głosem domowego asystenta WallDeck. Odpowiadaj krótko. Zlecaj do klienta każde polecenie wymagające narzędzia, aktualnych danych, pamięci albo działania w domu. Nie ogłaszaj wykonania działania przed otrzymaniem wyniku delegacji.`,
+              instructions: `${settings.voice.instructions} Rozmawiaj wyłącznie po polsku. Jesteś głosem domowego asystenta WallDeck. Odpowiadaj krótko. Pozwól użytkownikowi dokończyć całe zdanie i nie deleguj po pierwszej krótkiej pauzie. Zlecaj do klienta każde polecenie wymagające narzędzia, aktualnych danych, pamięci albo działania w domu. Nie ogłaszaj wykonania działania przed otrzymaniem wyniku delegacji.`,
               audio: { format: { type: "audio/pcm", rate: PCM_RATE }, output: { voice: settings.voice.live.voice } },
               delegation: { type: "client" },
             },

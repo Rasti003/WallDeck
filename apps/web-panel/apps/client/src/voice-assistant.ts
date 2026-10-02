@@ -16,6 +16,7 @@ type SpeakerEvent = { label?: string; confidence?: number; experimental?: boolea
 export class VoiceAssistantRuntime {
   private socket: WebSocket | null = null;
   private inputTranscript = "";
+  private lastTranscriptAt = 0;
   private outputStarted = false;
   private inputActive = false;
   private outputPlaybackUntil = 0;
@@ -98,6 +99,7 @@ export class VoiceAssistantRuntime {
     this.callbacks.setState("attention");
     this.callbacks.onStatus?.("Łączenie z GPT-Live…");
     this.inputTranscript = "";
+    this.lastTranscriptAt = 0;
     this.outputStarted = false;
     this.outputPlaybackUntil = 0;
     this.pendingAudio = [];
@@ -128,6 +130,7 @@ export class VoiceAssistantRuntime {
       if (remainder.length >= 2) void this.executePreservedCommand(remainder);
     } else if (message.type === "inputTranscript" && typeof message.delta === "string") {
       this.inputTranscript += message.delta;
+      this.lastTranscriptAt = Date.now();
       this.callbacks.setState("listening");
     } else if (message.type === "outputTranscript") {
       this.callbacks.setState("speaking");
@@ -167,7 +170,7 @@ export class VoiceAssistantRuntime {
     if (this.pendingDelegations.has(delegationId)) return;
     this.pendingDelegations.add(delegationId);
     this.callbacks.setState("thinking");
-    await new Promise(resolve => setTimeout(resolve, 250));
+    await this.waitForTranscriptToSettle();
     const command = this.inputTranscript.trim();
     const socket = this.socket;
     if (!socket || socket.readyState !== WebSocket.OPEN) return;
@@ -191,10 +194,8 @@ export class VoiceAssistantRuntime {
     if (this.outputResumeTimer) clearTimeout(this.outputResumeTimer);
     this.outputResumeTimer = null;
     this.inputActive = false;
-    await Promise.allSettled([
-      nativeBridge.call("assistantAudio.stopInput"),
-      nativeBridge.call("assistantAudio.stopOutput"),
-    ]);
+    await nativeBridge.call("assistantAudio.stopInput").catch(() => undefined);
+    await this.finishOutput();
     if (!this.disposed) {
       this.callbacks.setState("success");
       this.callbacks.onStatus?.("Rozmowa zakończona");
@@ -218,6 +219,38 @@ export class VoiceAssistantRuntime {
     if (!this.inputActive) return;
     this.inputActive = false;
     await nativeBridge.call("assistantAudio.stopInput").catch(() => undefined);
+  }
+
+  private async waitForTranscriptToSettle() {
+    const started = Date.now();
+    while (Date.now() - started < 5_000) {
+      const quietFor = this.lastTranscriptAt ? Date.now() - this.lastTranscriptAt : 0;
+      if (this.inputTranscript.trim() && quietFor >= 1_600) return;
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+  }
+
+  private async finishOutput() {
+    if (!this.outputStarted) {
+      await nativeBridge.call("assistantAudio.stopOutput").catch(() => undefined);
+      return;
+    }
+    let timeout: ReturnType<typeof setTimeout> | undefined;
+    let listener: EventListener | undefined;
+    const drained = new Promise<void>(resolve => {
+      listener = () => resolve();
+      window.addEventListener("wallpanel:assistantOutputDrained", listener, { once: true });
+      timeout = setTimeout(resolve, 20_000);
+    });
+    try {
+      await nativeBridge.call("assistantAudio.finishOutput");
+      await drained;
+    } catch {
+      await nativeBridge.call("assistantAudio.stopOutput").catch(() => undefined);
+    } finally {
+      if (timeout) clearTimeout(timeout);
+      if (listener) window.removeEventListener("wallpanel:assistantOutputDrained", listener);
+    }
   }
 
   private scheduleCloseAfterPlayback(base64Audio: string) {

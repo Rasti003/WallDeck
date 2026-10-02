@@ -61,6 +61,7 @@ class MainActivity : ComponentActivity() {
             this,
             onChunk = { chunk -> runOnUiThread { event("assistantAudioChunk", JSONObject().put("audio", chunk).put("sampleRate", 24_000)) } },
             onSpeaker = { observation -> runOnUiThread { event("speakerObserved", observation) } },
+            onOutputDrained = { data -> runOnUiThread { event("assistantOutputDrained", data) } },
         )
     }
     private val sensorManager by lazy { getSystemService(SensorManager::class.java) }
@@ -405,7 +406,7 @@ class MainActivity : ComponentActivity() {
                 return
             }
             val result: Any = when (req.getString("method")) {
-                "capabilities" -> JSONObject().put("bridgeVersion", 6).put("methods", JSONArray(listOf("capabilities", "deviceInfo", "sensors", "cameraLightSampling", "battery", "brightness", "mediaVolume", "keepAwake", "haptics", "reload", "exitToTablet", "appVersion", "permissions", "signChallenge", "notification.playSound", "music.connect", "music.disconnect", "music.getState", "music.command", "music.getQueue", "audio.getOutputs", "audio.selectOutput", "audio.openSystemOutputPicker", "wakeWord.configure", "wakeWord.status", "wakeWord.pause", "wakeWord.resume", "assistantAudio.startInput", "assistantAudio.stopInput", "assistantAudio.startOutput", "assistantAudio.appendOutput", "assistantAudio.stopOutput"))).put("wakeWord", true).put("wakeWordLocalOnly", true).put("speakerObservation", true).put("spotify", true).put("youtube", false).put("homeAssistant", false)
+                "capabilities" -> JSONObject().put("bridgeVersion", 7).put("methods", JSONArray(listOf("capabilities", "deviceInfo", "sensors", "cameraLightSampling", "battery", "brightness", "mediaVolume", "keepAwake", "haptics", "reload", "exitToTablet", "appVersion", "permissions", "signChallenge", "notification.playSound", "music.connect", "music.disconnect", "music.getState", "music.command", "music.getQueue", "audio.getOutputs", "audio.selectOutput", "audio.openSystemOutputPicker", "wakeWord.configure", "wakeWord.status", "wakeWord.pause", "wakeWord.resume", "assistantAudio.startInput", "assistantAudio.stopInput", "assistantAudio.startOutput", "assistantAudio.appendOutput", "assistantAudio.finishOutput", "assistantAudio.stopOutput"))).put("wakeWord", true).put("wakeWordLocalOnly", true).put("speakerObservation", true).put("spotify", true).put("youtube", false).put("homeAssistant", false)
                 "wakeWord.configure" -> {
                     val enabled = args.optBoolean("enabled", false)
                     if (enabled && checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) runOnUiThread {
@@ -420,6 +421,7 @@ class MainActivity : ComponentActivity() {
                 "assistantAudio.stopInput" -> assistantAudio.stopInput()
                 "assistantAudio.startOutput" -> assistantAudio.startOutput()
                 "assistantAudio.appendOutput" -> assistantAudio.appendOutput(args.getString("audio"))
+                "assistantAudio.finishOutput" -> assistantAudio.finishOutput()
                 "assistantAudio.stopOutput" -> assistantAudio.stopOutput()
                 "notification.playSound" -> notificationSounds.play(args.getString("sound"), args.getDouble("volume"))
                 "music.connect" -> music.connect(args.getString("clientId"), args.optBoolean("authorize", false))

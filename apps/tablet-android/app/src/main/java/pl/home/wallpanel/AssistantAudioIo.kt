@@ -6,6 +6,7 @@ import android.content.pm.PackageManager
 import android.media.*
 import android.media.audiofx.AcousticEchoCanceler
 import android.os.Process
+import android.os.SystemClock
 import android.util.Base64
 import androidx.core.content.ContextCompat
 import org.json.JSONArray
@@ -21,12 +22,13 @@ class AssistantAudioIo(
     private val context: Context,
     private val onChunk: (String) -> Unit,
     private val onSpeaker: (JSONObject) -> Unit,
+    private val onOutputDrained: (JSONObject) -> Unit,
 ) {
     private val sampleRate = 24_000
     private val recording = AtomicBoolean(false)
     private val outputExecutor = Executors.newSingleThreadExecutor()
     private var input: AudioRecord? = null
-    private var output: AudioTrack? = null
+    private var outputSession: OutputSession? = null
     private var echoCanceler: AcousticEchoCanceler? = null
     private var inputThread: Thread? = null
     private var observeSpeaker = false
@@ -89,32 +91,65 @@ class AssistantAudioIo(
     fun startOutput(): JSONObject {
         stopOutput()
         val minimum = AudioTrack.getMinBufferSize(sampleRate, AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_16BIT)
-        output = AudioTrack.Builder()
+        val track = AudioTrack.Builder()
             .setAudioAttributes(AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ASSISTANCE_ACCESSIBILITY).setContentType(AudioAttributes.CONTENT_TYPE_SPEECH).build())
             .setAudioFormat(AudioFormat.Builder().setEncoding(AudioFormat.ENCODING_PCM_16BIT).setSampleRate(sampleRate).setChannelMask(AudioFormat.CHANNEL_OUT_MONO).build())
             .setTransferMode(AudioTrack.MODE_STREAM)
             .setBufferSizeInBytes(max(minimum * 3, 14_400))
             .build()
         val speaker = context.getSystemService(AudioManager::class.java).getDevices(AudioManager.GET_DEVICES_OUTPUTS).firstOrNull { it.type == AudioDeviceInfo.TYPE_BUILTIN_SPEAKER }
-        val preferred = speaker != null && output?.setPreferredDevice(speaker) == true
-        output?.play()
+        val preferred = speaker != null && track.setPreferredDevice(speaker)
+        val session = OutputSession(track)
+        outputSession = session
+        track.play()
         return JSONObject().put("playing", true).put("sampleRate", sampleRate).put("route", "tablet-speaker").put("preferredDeviceAccepted", preferred)
     }
 
     fun appendOutput(base64: String): JSONObject {
         require(base64.length <= 262_144) { "AUDIO_CHUNK_TOO_LARGE" }
         val data = Base64.decode(base64, Base64.DEFAULT)
-        outputExecutor.execute { runCatching { output?.write(data, 0, data.size, AudioTrack.WRITE_BLOCKING) } }
+        val session = outputSession ?: error("AUDIO_OUTPUT_UNAVAILABLE")
+        outputExecutor.execute {
+            val written = runCatching { session.track.write(data, 0, data.size, AudioTrack.WRITE_BLOCKING) }.getOrDefault(0)
+            if (written > 0) session.framesWritten += written / 2L
+        }
         return JSONObject().put("accepted", data.size)
     }
 
+    fun finishOutput(): JSONObject {
+        val session = outputSession ?: return JSONObject().put("draining", false).put("playing", false)
+        outputSession = null
+        outputExecutor.execute {
+            val started = SystemClock.elapsedRealtime()
+            val initialHead = Integer.toUnsignedLong(session.track.playbackHeadPosition)
+            val remainingFrames = max(0L, session.framesWritten - initialHead)
+            val timeoutMs = max(3_000L, remainingFrames * 1_000L / sampleRate + 3_000L)
+            while (Integer.toUnsignedLong(session.track.playbackHeadPosition) < session.framesWritten && SystemClock.elapsedRealtime() - started < timeoutMs) {
+                Thread.sleep(20)
+            }
+            val playedFrames = Integer.toUnsignedLong(session.track.playbackHeadPosition)
+            releaseTrack(session.track)
+            onOutputDrained(
+                JSONObject()
+                    .put("framesWritten", session.framesWritten)
+                    .put("framesPlayed", playedFrames)
+                    .put("timedOut", playedFrames < session.framesWritten),
+            )
+        }
+        return JSONObject().put("draining", true).put("playing", true)
+    }
+
     fun stopOutput(): JSONObject {
-        val track = output
-        output = null
+        val track = outputSession?.track
+        outputSession = null
+        releaseTrack(track)
+        return JSONObject().put("playing", false)
+    }
+
+    private fun releaseTrack(track: AudioTrack?) {
         runCatching { track?.pause() }
         runCatching { track?.flush() }
         runCatching { track?.release() }
-        return JSONObject().put("playing", false)
     }
 
     fun destroy() {
@@ -122,6 +157,8 @@ class AssistantAudioIo(
         stopOutput()
         outputExecutor.shutdownNow()
     }
+
+    private data class OutputSession(val track: AudioTrack, var framesWritten: Long = 0)
 }
 
 /** Experimental local clustering. Labels are diagnostic only and never grant permissions. */
