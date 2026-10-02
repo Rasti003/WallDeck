@@ -22,6 +22,7 @@ const NATURAL_PAUSE_MS = 500;
 const FOLLOW_UP_WINDOW_MS = 12_000;
 const HARD_LIMIT_FINISH_GRACE_MS = 30_000;
 const ACTIVE_TURN_GRACE_MS = 3_000;
+const DELEGATION_GRACE_MS = 35_000;
 
 function containsAudiblePcm(pcm: Buffer): boolean {
   if (pcm.length < 2) return false;
@@ -83,7 +84,10 @@ export function registerLiveConversation(app: FastifyInstance, deps: Dependencie
     let outputPlaybackUntil = 0;
     let idleTimer: ReturnType<typeof setTimeout> | undefined;
     let hardTimer: ReturnType<typeof setTimeout> | undefined;
+    let delegationTimer: ReturnType<typeof setTimeout> | undefined;
     let hardGraceDeadline = 0;
+    let awaitingDelegationResponse = false;
+    const pendingDelegations = new Set<string>();
 
     const send = (message: unknown) => {
       if (socket.readyState === 1) socket.send(JSON.stringify(message));
@@ -108,9 +112,22 @@ export function registerLiveConversation(app: FastifyInstance, deps: Dependencie
         Math.max(OUTPUT_GENERATION_GRACE_MS, queuedPlaybackMs + Math.max(settings.voice.live.idleCloseMs, FOLLOW_UP_WINDOW_MS)),
       );
     };
+    const waitForDelegation = (delegationId?: string | null) => {
+      if (delegationId) pendingDelegations.add(delegationId);
+      awaitingDelegationResponse = true;
+      if (idleTimer) clearTimeout(idleTimer);
+      if (delegationTimer) clearTimeout(delegationTimer);
+      delegationTimer = setTimeout(() => requestClose("delegation-timeout"), DELEGATION_GRACE_MS);
+    };
+    const delegationAnswered = () => {
+      awaitingDelegationResponse = false;
+      pendingDelegations.clear();
+      if (delegationTimer) clearTimeout(delegationTimer);
+      delegationTimer = undefined;
+    };
     const closeAtHardLimit = () => {
       const now = Date.now();
-      const activeTurn = outputPlaybackUntil > now || now - lastTurnActivityAt <= ACTIVE_TURN_GRACE_MS;
+      const activeTurn = awaitingDelegationResponse || outputPlaybackUntil > now || now - lastTurnActivityAt <= ACTIVE_TURN_GRACE_MS;
       if (activeTurn && now < hardGraceDeadline) {
         hardTimer = setTimeout(closeAtHardLimit, Math.min(1_000, hardGraceDeadline - now));
         return;
@@ -130,6 +147,9 @@ export function registerLiveConversation(app: FastifyInstance, deps: Dependencie
             if (pendingAudio.length > 50) pendingAudio.shift();
           }
         } else if (message.type === "delegation.result" && typeof message.content === "string" && message.content.length <= 4_000 && !closeRequested) {
+          if (message.delegationId) pendingDelegations.delete(message.delegationId);
+          lastTurnActivityAt = Date.now();
+          waitForDelegation();
           live.send({ type: "session.commentary.append", event_id: `result_${Date.now()}`, delegation_id: message.delegationId, content: message.content });
         } else if (message.type === "context" && typeof message.content === "string" && message.content.length <= 2_000 && !closeRequested) {
           live.send({ type: "session.instructions.append", event_id: `context_${Date.now()}`, delegation_id: null, content: message.content });
@@ -155,7 +175,8 @@ export function registerLiveConversation(app: FastifyInstance, deps: Dependencie
 Język i styl: Rozmawiaj wyłącznie po polsku, naturalnie i zwięźle. Odpowiadaj głosem bezpośrednio na zwykłe pytania i swobodną rozmowę. Jeżeli startowy input kończy się wiadomością użytkownika, odpowiedz na nią natychmiast po uruchomieniu sesji.
 Backchannel policy: Nie deleguj prostych odpowiedzi, powitań, krótkich wyjaśnień ani wiedzy, którą znasz. Możesz krótko powiedzieć, że sprawdzasz, gdy backend rzeczywiście pracuje.
 Interruption policy: Słuchaj także podczas mówienia. Gdy użytkownik zacznie mówić lub Cię poprawi, przerwij obecną wypowiedź, wysłuchaj go i odpowiedz na najnowszą intencję.
-Delegation policy: Deleguj do klienta tylko zadania wymagające narzędzi WallDeck/MCP, Spotify, Home Assistant, aktualnych danych, działania w systemie, pamięci albo wyraźnie trudniejszego rozumowania. Po otrzymaniu wyniku delegacji przedstaw go naturalnie użytkownikowi.`,
+Delegation policy: Deleguj do klienta tylko zadania wymagające narzędzi WallDeck/MCP, Spotify, Home Assistant, aktualnych danych, działania w systemie, pamięci albo wyraźnie trudniejszego rozumowania. Po otrzymaniu wyniku delegacji przedstaw go naturalnie użytkownikowi.
+Music policy: Prośba typu „wybierz mi muzykę do nauki i puść” jest kompletna: deleguj wybór oraz uruchomienie Spotify bez pytania o konkretną playlistę.`,
               input: initialCommand ? [{ type: "message", role: "user", content: [{ type: "input_text", text: initialCommand }] }] : [],
               audio: { format: { type: "audio/pcm", rate: PCM_RATE }, output: { voice: settings.voice.live.voice } },
               delegation: { type: "client" },
@@ -178,10 +199,12 @@ Delegation policy: Deleguj do klienta tylko zadania wymagające narzędzi WallDe
           inputTranscript += event.delta;
           send({ type: "inputTranscript", delta: event.delta, startMs: event.start_ms, endMs: event.end_ms });
         } else if (event.type === "session.output_transcript.delta") {
+          delegationAnswered();
           lastTurnActivityAt = Date.now();
           outputTranscript += event.delta;
           send({ type: "outputTranscript", delta: event.delta, startMs: event.start_ms, endMs: event.end_ms });
         } else if (event.type === "session.output_audio.delta") {
+          delegationAnswered();
           lastTurnActivityAt = Date.now();
           const pcm = Buffer.from(event.delta, "base64");
           const audible = containsAudiblePcm(pcm);
@@ -197,6 +220,7 @@ Delegation policy: Deleguj do klienta tylko zadania wymagające narzędzi WallDe
             droppedSilenceBytes += pcm.length;
           }
         } else if (event.type === "session.delegation.created") {
+          waitForDelegation(event.delegation.id);
           send({ type: "delegation", delegationId: event.delegation.id, offsetMs: event.offset_ms });
         } else if (event.type === "session.usage.updated") {
           finalUsage = Math.max(finalUsage, event.usage.seconds);
@@ -215,6 +239,7 @@ Delegation policy: Deleguj do klienta tylko zadania wymagające narzędzi WallDe
     } finally {
       if (idleTimer) clearTimeout(idleTimer);
       if (hardTimer) clearTimeout(hardTimer);
+      if (delegationTimer) clearTimeout(delegationTimer);
       live.close({ code: 1000, reason: "WallDeck conversation finished" });
       if (sessionStarted) {
         finalUsage = finalUsage || Math.max(0, (Date.now() - startedAt) / 1_000);
