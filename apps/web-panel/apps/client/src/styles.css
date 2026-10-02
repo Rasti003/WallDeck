@@ -253,6 +253,8 @@ button, input, select { font: inherit; }
 @media (max-width: 720px) { .ambient-sleep-fields, .camera-light-fields { grid-template-columns: 1fr; } }
 
 .ai-admin { display: grid; gap: 14px; }
+.ai-mcp-admin { display: grid; gap: 14px; }
+.ai-mcp-admin > * { width: 100%; }
 .ai-admin .admin-card { margin-bottom: 0; }
 .ai-status-card { display: grid; grid-template-columns: minmax(280px, 1.4fr) minmax(320px, 1fr); align-items: center; gap: 32px; }
 .ai-status-card h2, .ai-config h2, .ai-console h2 { margin-bottom: 10px; }

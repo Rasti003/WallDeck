@@ -65,7 +65,7 @@ export function AiAssistantAdmin({ settings, setSettings }: Props) {
 
   return <section className="ai-admin">
     <article className="admin-card ai-status-card">
-      <div><span className="admin-kicker">OPENAI + WALLDECK MCP</span><h2>Asystent tekstowy</h2><p>Polecenie trafia do wybranego modelu, a działania są wykonywane przez te same narzędzia MCP, które włączasz w sekcji MCP · AI.</p></div>
+      <div><span className="admin-kicker">OPENAI + WALLDECK MCP</span><h2>Asystent tekstowy</h2><p>Polecenie trafia do wybranego modelu, a działania są wykonywane przez narzędzia MCP konfigurowane niżej na tej stronie.</p></div>
       <div className="ai-status-grid">
         <span className={connection.configured ? "is-ready" : ""}><i />Klucz API<strong>{connection.configured ? "zapisany" : "brak"}</strong></span>
         <span className={connection.mcpReady ? "is-ready" : ""}><i />MCP<strong>{connection.mcpReady ? "gotowe" : "wyłączone"}</strong></span>

@@ -4,7 +4,7 @@ Pierwsza wersja asystenta działa jako konsola tekstowa w `/admin`. Nie korzysta
 
 ## Konfiguracja
 
-W sekcji **Asystent AI** można ustawić:
+W jednej sekcji **Asystent AI i MCP** można ustawić modele oraz niżej kontrolować dostępne narzędzia:
 
 - klucz OpenAI API — szyfrowany AES-256-GCM w katalogu runtime i nigdy zwracany do przeglądarki;
 - model podstawowy i poziom rozumowania;

@@ -30,7 +30,7 @@ export function McpAdmin({ settings, setSettings, save, status }: {
       <span className="admin-kicker">Model Context Protocol</span><h2>Narzędzia asystenta</h2>
       <p className="form-intro">Serwer MCP udostępnia modelowi mały, kontrolowany zestaw funkcji WallDeck. Wyłączone narzędzie znika z listy MCP i model nie może go wywołać.</p>
       <label className="switch-row"><input type="checkbox" checked={settings.mcp.enabled} onChange={event => setSettings(current => ({ ...current, mcp: { ...current.mcp, enabled: event.target.checked } }))} /><span><strong>Włącz serwer MCP</strong><small>Endpoint: <code>{location.origin}/mcp</code></small></span></label>
-      <p className="form-intro">Dostęp wymaga tokenu zapisanego wyłącznie na serwerze. Dla OpenAI API połączymy prywatny homelab przez Secure MCP Tunnel albo docelowe HTTPS — bez publicznego wystawiania obecnego panelu HTTP.</p>
+      <p className="form-intro">Dostęp wymaga tokenu zapisanego wyłącznie na serwerze. Wbudowany asystent łączy się z MCP lokalnie wewnątrz WallDeck Server. Dopiero zewnętrzny klient wymagałby docelowego HTTPS lub bezpiecznego tunelu.</p>
     </section>
     <section className="admin-card">
       <span className="admin-kicker">Zakres dostępu</span><h2>Aktywne funkcje</h2>
@@ -43,7 +43,7 @@ export function McpAdmin({ settings, setSettings, save, status }: {
     </section>
     <section className="admin-card">
       <span className="admin-kicker">Celowo poza zakresem</span><h2>Funkcje wymagające osobnej decyzji</h2>
-      <p className="form-intro">MCP nie może obecnie wyjść z kiosku, zmienić sekretów, wykonać dowolnej usługi Home Assistant ani edytować całego pliku ustawień. TTS, wake word i rozmowa przez OpenAI API pozostają kolejnymi etapami.</p>
+      <p className="form-intro">MCP nie może obecnie wyjść z kiosku, zmienić sekretów, wykonać dowolnej usługi Home Assistant ani edytować całego pliku ustawień. Mikrofon tabletu, wake word i STT pozostają kolejnymi etapami.</p>
     </section>
     <footer className="admin-card assistant-settings-save"><span role="status">{status}</span><button type="submit">Zapisz ustawienia MCP</button></footer>
   </form>;
