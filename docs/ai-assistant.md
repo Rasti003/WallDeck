@@ -42,15 +42,15 @@ Pola modelu i Voice ID ElevenLabs należą już do wspólnego kontraktu ustawie�
 
 ## Rozmowa na tablecie
 
-Bridge v6 dodaje natywny tor PCM 24 kHz. Android korzysta wyłącznie z lokalnego `SpeechRecognizer` do wykrycia „Ej Waldek”; jeżeli urządzenie nie ma recognizera on-device, moduł zgłasza niedostępność i nie przechodzi na rozpoznawanie chmurowe. Po wykryciu frazy recognizer zwalnia mikrofon, a `AudioRecord` przesyła kolejne fragmenty przez zaufany bridge i WebSocket WallDeck Server do GPT-Live. Odpowiedź PCM wraca do natywnego `AudioTrack`, który preferuje wbudowany głośnik tabletu.
+Bridge v6 dodaje natywny tor PCM 24 kHz. Wake word działa w ciągłym, lokalnym strumieniu Vosk 16 kHz z polskim modelem `vosk-model-small-pl-0.22`; nie korzysta z usługi rozpoznawania Google ani chmury. Przy pierwszym uruchomieniu APK pobiera oficjalny model 50,5 MiB, weryfikuje przypiętą sumę SHA-256 i zapisuje go w prywatnym katalogu. Po wykryciu frazy Vosk zwalnia mikrofon, a `AudioRecord` przesyła wypowiedź przez zaufany bridge i WebSocket WallDeck Server do GPT-Live. Odpowiedź PCM wraca do natywnego `AudioTrack`, który preferuje wbudowany głośnik tabletu.
 
-Androidowy recognizer jest odnawiany maksymalnie co 12 sekund oraz po błędzie, braku wyniku lub zawieszeniu przetwarzania. Fraza i jej typowe warianty mają bias rozpoznawania, a krótkie progi ciszy pozwalają szybko zakończyć próbkę. Dzięki temu pojedyncze zatrzymanie usługi rozpoznawania nie wyłącza wake wordu do następnego przeładowania aplikacji.
+Stały strumień usuwa miganie wskaźnika wywołane restartami `SpeechRecognizer`. Android nadal pokazuje systemowy wskaźnik użycia mikrofonu, gdy wake word jest aktywny; zwykła aplikacja nie może go ukryć. Wyłączenie wake wordu w adminie zamyka strumień i usuwa wskaźnik.
 
 Prototyp działa jako pojedyncza, półdupleksowa tura: po nadejściu pierwszego fragmentu odpowiedzi zatrzymuje wejście mikrofonowe, odtwarza całą kolejkę PCM, zamyka płatną sesję i wraca do lokalnego wake wordu. Zapobiega to ponownemu rozpoznawaniu głosu asystenta na głośniku tabletu oraz przypadkowym kolejnym turom od dźwięków otoczenia. Pełny dialog wieloturowy i barge-in pozostają zadaniem po pomiarze VAD oraz eliminacji echa na docelowym montażu.
 
 GPT-Live prowadzi rozmowę i deleguje działania do klienta. Klient wywołuje dotychczasową ścieżkę Luna → MCP, a zweryfikowany wynik zwraca do sesji przez `session.commentary.append`. Zwykła wypowiedź modelu nie wymaga narzędzia `speak`; osobne narzędzie będzie potrzebne dopiero dla komunikatów inicjowanych poza aktywną rozmową.
 
-Pierwszy prototyp wymaga krótkiej pauzy po wake wordzie, aby lokalny recognizer zdążył zwolnić mikrofon. Jeśli recognizer zwróci również dalszą część wypowiedzi, klient zachowuje ją jako tekstowe polecenie i przekazuje wynik do GPT-Live do wypowiedzenia. Sesja zamyka się po ciszy po odpowiedzi albo po twardym limicie, a lokalny nasłuch uruchamia się ponownie.
+Krótka pauza po wake wordzie nadal poprawia podział frazy. Jeśli Vosk zwróci również dalszą część wypowiedzi, klient zachowuje ją jako tekstowe polecenie i przekazuje wynik do GPT-Live do wypowiedzenia. Sesja zamyka się po odpowiedzi albo po twardym limicie, a lokalny nasłuch uruchamia się ponownie.
 
 Eksperymentalna obserwacja mówcy oblicza lokalnie prosty fingerprint akustyczny i grupuje próbki jako `Głos 1–3`. Do serwera trafia tylko etykieta, pewność i czas obserwacji. Funkcję można wyłączyć; wynik nie wpływa na pamięć, narzędzia ani uprawnienia i nie jest traktowany jako uwierzytelnienie.
 

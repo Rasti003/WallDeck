@@ -209,3 +209,10 @@ Xiaomi 2603ARP14G, Android 16, bridge v5. Android `assembleDebug`, testy jednost
 - Po zgłoszeniu braku reakcji diagnostyka wykazała `enabled=true`, `permission=true`, lecz `listening=false`: lokalny recognizer zakończył nasłuch i nie zwrócił ani wyniku, ani błędu.
 - Dodano watchdog wyniku po zakończeniu mowy, odświeżanie maksymalnie co 12 s, szybsze progi ciszy i bias dla „Ej/Hej Waldek” oraz wariantów `Valdek`.
 - APK przebudowano, zainstalowano przez USB i przywrócono kiosk. Obserwacja fizycznego WebView przez 28 s potwierdziła dwa pełne cykle `listening → session-refresh → listening`; recognizer nie pozostał już w stanie zatrzymanym. Android `assembleDebug`, `testDebugUnitTest` i `lintDebug`: PASS.
+
+### Zastąpienie SpeechRecognizer przez Vosk
+
+- Użytkownik potwierdził, że mimo watchdogów „Ej Waldek” nie reaguje, a zielony wskaźnik mikrofonu pulsuje przy każdym restarcie. Mechanizm Android `SpeechRecognizer` został wycofany z wake wordu.
+- APK pobrał oficjalny polski model Vosk `vosk-model-small-pl-0.22` (52 979 372 bajty), zweryfikował SHA-256 `c4cd16498ea544f446f9e9a55cbd602b71cfe5a2b6f2b0834d81e1b6fce15f0d`, rozpakował i załadował go lokalnie.
+- Po ponownej instalacji status bridge przez 12 s pozostał stabilny: `engine=vosk-pl`, `modelReady=true`, `listening=true`, `progress=100`; bez cyklicznego zatrzymywania wejścia. Tablet pozostał w `LOCKED`.
+- Rzeczywista detekcja głosu użytkownika wymaga jeszcze próby po tej instalacji. Systemowy wskaźnik prywatności Androida podczas ciągłego użycia mikrofonu jest oczekiwany i nie może być ukryty przez APK.
