@@ -30,7 +30,7 @@ Głos jest opcjonalny. Administrator wybiera `GPT-Live`, oszczędny `gpt-4o-mini
 
 GPT-Live dostaje zweryfikowany tekst odpowiedzi z istniejącego asystenta i zwraca PCM 24 kHz opakowane przez serwer jako WAV. Sesja nie przejmuje jeszcze mikrofonu ani narzędzi — Luna i MCP pozostają dotychczasową warstwą wykonawczą. Serwer:
 
-- zamyka sesję po skonfigurowanej ciszy od ostatniego fragmentu audio;
+- zamyka sesję po skonfigurowanej ciszy od ostatniego słyszalnego fragmentu PCM;
 - wymusza twardy limit czasu całej sesji;
 - wysyła `session.close`, czeka na `session.closed` i zapisuje końcowe `usage.seconds`;
 - przechowuje miesięczny licznik w prywatnym runtime `assistant-voice-usage.json`;

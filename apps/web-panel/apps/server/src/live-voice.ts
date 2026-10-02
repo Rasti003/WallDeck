@@ -32,6 +32,17 @@ function wavFromPcm16(pcm: Buffer): Buffer {
   return Buffer.concat([header, pcm]);
 }
 
+function containsAudiblePcm(pcm: Buffer): boolean {
+  if (pcm.length < 2) return false;
+  let total = 0;
+  let samples = 0;
+  for (let offset = 0; offset + 1 < pcm.length; offset += 32) {
+    total += Math.abs(pcm.readInt16LE(offset));
+    samples += 1;
+  }
+  return samples > 0 && total / samples >= 90;
+}
+
 export class LiveVoiceUsageStore {
   private readonly filePath: string;
   private writeQueue = Promise.resolve();
@@ -149,9 +160,12 @@ export async function renderLiveSpeech(
           content: `Powiedz teraz po polsku dokładnie tę wiadomość i zacznij natychmiast. Po jej wypowiedzeniu zamilknij: ${text}`,
         });
       } else if (event.type === "session.output_audio.delta") {
-        audioChunks.push(Buffer.from(event.delta, "base64"));
-        if (idleTimer) clearTimeout(idleTimer);
-        idleTimer = setTimeout(requestClose, settings.live.idleCloseMs);
+        const chunk = Buffer.from(event.delta, "base64");
+        audioChunks.push(chunk);
+        if (containsAudiblePcm(chunk)) {
+          if (idleTimer) clearTimeout(idleTimer);
+          idleTimer = setTimeout(requestClose, settings.live.idleCloseMs);
+        }
       } else if (event.type === "session.output_transcript.delta") {
         transcript += event.delta;
       } else if (event.type === "session.usage.updated") {
