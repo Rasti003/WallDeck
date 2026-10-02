@@ -23,6 +23,7 @@ export class VoiceAssistantRuntime {
   private disposed = false;
   private pendingDelegations = new Set<string>();
   private pendingAudio: string[] = [];
+  private sessionReady = false;
 
   constructor(private settings: AiAssistantSettings, private callbacks: Callbacks) {}
 
@@ -76,7 +77,7 @@ export class VoiceAssistantRuntime {
   private onAudioChunk = (event: CustomEvent<AudioChunkEvent>) => {
     const audio = event.detail?.audio;
     if (!audio || !this.socket) return;
-    if (this.socket.readyState === WebSocket.OPEN) {
+    if (this.socket.readyState === WebSocket.OPEN && this.sessionReady) {
       this.socket.send(JSON.stringify({ type: "audio", audio }));
       return;
     }
@@ -100,6 +101,7 @@ export class VoiceAssistantRuntime {
     this.outputStarted = false;
     this.outputPlaybackUntil = 0;
     this.pendingAudio = [];
+    this.sessionReady = false;
     this.pendingDelegations.clear();
     void nativeBridge.call("haptics").catch(() => undefined);
     await nativeBridge.call("wakeWord.pause").catch(() => undefined);
@@ -115,6 +117,7 @@ export class VoiceAssistantRuntime {
 
   private async handleMessage(message: Record<string, unknown>, remainder: string) {
     if (message.type === "ready") {
+      this.sessionReady = true;
       this.callbacks.setState("listening");
       this.callbacks.onStatus?.("Słucham");
       await this.startInput();
@@ -184,6 +187,7 @@ export class VoiceAssistantRuntime {
     if (!this.socket && this.disposed) return;
     this.socket = null;
     this.pendingAudio = [];
+    this.sessionReady = false;
     if (this.outputResumeTimer) clearTimeout(this.outputResumeTimer);
     this.outputResumeTimer = null;
     this.inputActive = false;

@@ -29,7 +29,7 @@ class WakeWordRecognizer(
     private val context: Context,
     private val onWake: (JSONObject) -> Unit,
     private val onStatus: (JSONObject) -> Unit,
-) : RecognitionListener {
+) {
     private val handler = Handler(Looper.getMainLooper())
     private val worker = Executors.newSingleThreadExecutor()
     private val preparing = AtomicBoolean(false)
@@ -42,6 +42,7 @@ class WakeWordRecognizer(
     private var state = "idle"
     private var progress = 0
     private var generation = 0
+    private var recognitionSession = 0
     private var lastTranscript = ""
 
     fun configure(shouldEnable: Boolean, wakePhrase: String): JSONObject {
@@ -132,6 +133,7 @@ class WakeWordRecognizer(
     private fun startListening(expectedGeneration: Int) {
         if (!enabled || suspended || expectedGeneration != generation || listening || !hasPermission()) return
         val loaded = model ?: return
+        val session = ++recognitionSession
         try {
             val recognizer = if (phrase == DEFAULT_PHRASE) {
                 Recognizer(loaded, SAMPLE_RATE, DEFAULT_GRAMMAR)
@@ -141,7 +143,13 @@ class WakeWordRecognizer(
             speech = SpeechService(recognizer, SAMPLE_RATE).also { service ->
                 listening = true
                 publish("listening")
-                service.startListening(this)
+                service.startListening(object : RecognitionListener {
+                    override fun onPartialResult(hypothesis: String) = inspect(session, hypothesis, "partial")
+                    override fun onResult(hypothesis: String) = inspect(session, hypothesis, "text")
+                    override fun onFinalResult(hypothesis: String) = finishRecognition(session, hypothesis)
+                    override fun onError(exception: Exception) = failRecognition(session, "recognizer-error", exception.message ?: exception.javaClass.simpleName, 1_500)
+                    override fun onTimeout() = failRecognition(session, "recognizer-timeout", null, 500)
+                })
             }
         } catch (error: Exception) {
             listening = false
@@ -151,6 +159,7 @@ class WakeWordRecognizer(
     }
 
     private fun stopListening(nextState: String) {
+        recognitionSession++
         listening = false
         val current = speech
         speech = null
@@ -159,8 +168,8 @@ class WakeWordRecognizer(
         publish(nextState)
     }
 
-    private fun inspect(hypothesis: String, key: String) {
-        if (!enabled || !listening) return
+    private fun inspect(session: Int, hypothesis: String, key: String) {
+        if (session != recognitionSession || !enabled || !listening) return
         val transcript = runCatching { JSONObject(hypothesis).optString(key) }.getOrDefault("")
         val normalized = normalize(transcript)
         if (normalized.isNotEmpty()) lastTranscript = normalized
@@ -230,11 +239,10 @@ class WakeWordRecognizer(
         onStatus(data)
     }
 
-    override fun onPartialResult(hypothesis: String) = inspect(hypothesis, "partial")
-    override fun onResult(hypothesis: String) = inspect(hypothesis, "text")
-    override fun onFinalResult(hypothesis: String) {
-        inspect(hypothesis, "text")
-        if (speech != null) {
+    private fun finishRecognition(session: Int, hypothesis: String) {
+        if (session != recognitionSession) return
+        inspect(session, hypothesis, "text")
+        if (session == recognitionSession && speech != null) {
             listening = false
             speech = null
             publish("recognizer-finished")
@@ -242,19 +250,14 @@ class WakeWordRecognizer(
             handler.postDelayed({ if (enabled && !suspended && expectedGeneration == generation) startListening(expectedGeneration) }, 500)
         }
     }
-    override fun onError(exception: Exception) {
+
+    private fun failRecognition(session: Int, nextState: String, error: String?, retryDelayMs: Long) {
+        if (session != recognitionSession) return
         listening = false
         speech = null
-        publish("recognizer-error", exception.message ?: exception.javaClass.simpleName)
+        publish(nextState, error)
         val expectedGeneration = generation
-        handler.postDelayed({ if (enabled && !suspended && expectedGeneration == generation) startListening(expectedGeneration) }, 1_500)
-    }
-    override fun onTimeout() {
-        listening = false
-        speech = null
-        publish("recognizer-timeout")
-        val expectedGeneration = generation
-        handler.postDelayed({ if (enabled && !suspended && expectedGeneration == generation) startListening(expectedGeneration) }, 500)
+        handler.postDelayed({ if (enabled && !suspended && expectedGeneration == generation) startListening(expectedGeneration) }, retryDelayMs)
     }
 
     private companion object {

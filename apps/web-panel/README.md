@@ -138,7 +138,7 @@ When Music is not playing, 30 seconds without interaction starts assistant idle,
 
 Admin: zakładka „Stany i przejścia” opisuje widoki, Music, Spotify, noc, animacje, album i zasilanie. Czasy/progi pochodzą z formularzy; lista animacji i automatyczne przejścia z reduktora asystenta. To dokumentacja zachowania, nie debugger na żywo.
 
-Zakładka „Asystent AI i MCP” obsługuje tekstowy przepływ Luna → MCP, próbki głosu oraz rozmowę tabletu. Lokalny wake word „Ej Waldek” uruchamia serwerową sesję GPT-Live; PCM 24 kHz płynie przez bridge v6, a delegacje wykonawcze wracają do istniejącej Luny i MCP. GPT-Live ma miesięczny limit kosztu i twardy limit sesji. Admin może osobno wyłączyć rozmowę, wake word oraz eksperymentalną obserwację mówcy. Pola ElevenLabs pozostają przygotowane bez aktywnego providera.
+Zakładka „Asystent AI i MCP” obsługuje tekstowy przepływ Luna → MCP, próbki głosu oraz rozmowę tabletu. Lokalny wake word „Ej Waldek” uruchamia serwerową sesję GPT-Live; PCM 24 kHz płynie przez bridge v6, a delegacje wykonawcze wracają do istniejącej Luny i MCP. Audio zebrane podczas nawiązywania połączenia jest ograniczenie buforowane i trafia do OpenAI dopiero po `session.started`. GPT-Live ma miesięczny limit kosztu i twardy limit sesji. Admin może osobno wyłączyć rozmowę, wake word oraz eksperymentalną obserwację mówcy. Pola ElevenLabs pozostają przygotowane bez aktywnego providera.
 
 Tablet menu: downward swipe in upper 40% or top handle opens a glass-style view selector. Admin > Views and rules > Menu tabletu controls enabled state, ordered visible views (minimum one). Menu overrides the legacy downward-swipe action and suspends inactivity while open. Xiaomi top-edge toolbar remains an OS limitation: start inside the panel or use the handle.
 

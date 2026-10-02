@@ -53,6 +53,7 @@ export function registerLiveConversation(app: FastifyInstance, deps: Dependencie
     let sessionStarted = false;
     let closeRequested = false;
     let finalUsage = 0;
+    const pendingAudio: string[] = [];
     let idleTimer: ReturnType<typeof setTimeout> | undefined;
     let hardTimer: ReturnType<typeof setTimeout> | undefined;
 
@@ -76,7 +77,12 @@ export function registerLiveConversation(app: FastifyInstance, deps: Dependencie
         const message = JSON.parse(raw.toString()) as ClientMessage;
         if (message.type === "audio" && typeof message.audio === "string" && message.audio.length <= 160_000 && !closeRequested) {
           if (idleTimer) clearTimeout(idleTimer);
-          live.send({ type: "session.input_audio.append", event_id: `audio_${Date.now()}`, audio: message.audio });
+          if (sessionStarted) {
+            live.send({ type: "session.input_audio.append", event_id: `audio_${Date.now()}`, audio: message.audio });
+          } else {
+            pendingAudio.push(message.audio);
+            if (pendingAudio.length > 50) pendingAudio.shift();
+          }
         } else if (message.type === "delegation.result" && typeof message.content === "string" && message.content.length <= 4_000 && !closeRequested) {
           live.send({ type: "session.commentary.append", event_id: `result_${Date.now()}`, delegation_id: message.delegationId, content: message.content });
         } else if (message.type === "context" && typeof message.content === "string" && message.content.length <= 2_000 && !closeRequested) {
@@ -109,6 +115,9 @@ export function registerLiveConversation(app: FastifyInstance, deps: Dependencie
         const event = envelope.message;
         if (event.type === "session.started") {
           sessionStarted = true;
+          pendingAudio.splice(0).forEach((audio, index) => {
+            live.send({ type: "session.input_audio.append", event_id: `buffered_${Date.now()}_${index}`, audio });
+          });
           send({ type: "ready", sessionId: event.session.id, sampleRate: PCM_RATE });
         } else if (event.type === "session.input_transcript.delta") {
           if (idleTimer) clearTimeout(idleTimer);
