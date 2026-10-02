@@ -16,6 +16,9 @@ export class VoiceAssistantRuntime {
   private socket: WebSocket | null = null;
   private inputTranscript = "";
   private outputStarted = false;
+  private inputActive = false;
+  private outputPlaybackUntil = 0;
+  private outputResumeTimer: ReturnType<typeof setTimeout> | null = null;
   private disposed = false;
   private pendingDelegations = new Set<string>();
 
@@ -36,6 +39,8 @@ export class VoiceAssistantRuntime {
     this.socket?.send(JSON.stringify({ type: "close" }));
     this.socket?.close();
     this.socket = null;
+    if (this.outputResumeTimer) clearTimeout(this.outputResumeTimer);
+    this.outputResumeTimer = null;
     if (nativeBridge.available) {
       await Promise.allSettled([
         nativeBridge.call("assistantAudio.stopInput"),
@@ -84,6 +89,7 @@ export class VoiceAssistantRuntime {
     this.callbacks.onStatus?.("Łączenie z GPT-Live…");
     this.inputTranscript = "";
     this.outputStarted = false;
+    this.outputPlaybackUntil = 0;
     this.pendingDelegations.clear();
     await nativeBridge.call("wakeWord.pause").catch(() => undefined);
     const protocol = location.protocol === "https:" ? "wss:" : "ws:";
@@ -99,7 +105,7 @@ export class VoiceAssistantRuntime {
       this.callbacks.setState("listening");
       this.callbacks.onStatus?.("Słucham");
       await nativeBridge.call("assistantAudio.startOutput").catch(() => undefined);
-      await nativeBridge.call("assistantAudio.startInput", { speakerObservation: this.settings.voice.live.speakerObservationEnabled });
+      await this.startInput();
       if (remainder.length >= 2) void this.executePreservedCommand(remainder);
     } else if (message.type === "inputTranscript" && typeof message.delta === "string") {
       this.inputTranscript += message.delta;
@@ -107,8 +113,13 @@ export class VoiceAssistantRuntime {
     } else if (message.type === "outputTranscript") {
       this.callbacks.setState("speaking");
     } else if (message.type === "audio" && typeof message.audio === "string") {
-      if (!this.outputStarted) { this.outputStarted = true; this.callbacks.setState("speaking"); }
+      if (!this.outputStarted) {
+        this.outputStarted = true;
+        this.callbacks.setState("speaking");
+        await this.stopInput();
+      }
       await nativeBridge.call("assistantAudio.appendOutput", { audio: message.audio }).catch(() => undefined);
+      this.scheduleInputAfterPlayback(message.audio);
     } else if (message.type === "delegation" && typeof message.delegationId === "string") {
       void this.handleDelegation(message.delegationId);
     } else if (message.type === "closed") {
@@ -156,6 +167,9 @@ export class VoiceAssistantRuntime {
   private async finish() {
     if (!this.socket && this.disposed) return;
     this.socket = null;
+    if (this.outputResumeTimer) clearTimeout(this.outputResumeTimer);
+    this.outputResumeTimer = null;
+    this.inputActive = false;
     await Promise.allSettled([
       nativeBridge.call("assistantAudio.stopInput"),
       nativeBridge.call("assistantAudio.stopOutput"),
@@ -165,5 +179,32 @@ export class VoiceAssistantRuntime {
       this.callbacks.onStatus?.("Rozmowa zakończona");
       await nativeBridge.call("wakeWord.resume").catch(() => undefined);
     }
+  }
+
+  private async startInput() {
+    if (this.inputActive || !this.socket || this.socket.readyState !== WebSocket.OPEN) return;
+    await nativeBridge.call("assistantAudio.startInput", { speakerObservation: this.settings.voice.live.speakerObservationEnabled });
+    this.inputActive = true;
+  }
+
+  private async stopInput() {
+    if (!this.inputActive) return;
+    this.inputActive = false;
+    await nativeBridge.call("assistantAudio.stopInput").catch(() => undefined);
+  }
+
+  private scheduleInputAfterPlayback(base64Audio: string) {
+    const padding = base64Audio.endsWith("==") ? 2 : base64Audio.endsWith("=") ? 1 : 0;
+    const byteCount = Math.max(0, Math.floor(base64Audio.length * 3 / 4) - padding);
+    const durationMs = byteCount / (24_000 * 2) * 1_000;
+    this.outputPlaybackUntil = Math.max(Date.now(), this.outputPlaybackUntil) + durationMs;
+    if (this.outputResumeTimer) clearTimeout(this.outputResumeTimer);
+    this.outputResumeTimer = setTimeout(() => {
+      this.outputResumeTimer = null;
+      this.outputStarted = false;
+      this.callbacks.setState("listening");
+      this.callbacks.onStatus?.("Słucham");
+      void this.startInput();
+    }, Math.max(0, this.outputPlaybackUntil - Date.now()) + 300);
   }
 }
