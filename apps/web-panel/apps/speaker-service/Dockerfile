@@ -12,7 +12,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 WORKDIR /app
 
 RUN apt-get update \
-  && apt-get install -y --no-install-recommends libsndfile1 ffmpeg ca-certificates \
+  && apt-get install -y --no-install-recommends libsndfile1 ca-certificates \
   && rm -rf /var/lib/apt/lists/*
 
 RUN python -m pip install --no-cache-dir torch==2.9.1 torchaudio==2.9.1 --index-url https://download.pytorch.org/whl/cpu
