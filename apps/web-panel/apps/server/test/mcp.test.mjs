@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { Client, InMemoryTransport } from "@modelcontextprotocol/client";
 import { defaultSettings } from "@walldeck/contracts";
-import { createWallDeckMcpServer } from "../dist/mcp.js";
+import { createWallDeckMcpServer, currentTimeSnapshot } from "../dist/mcp.js";
 
 function readText(result) {
   return JSON.parse(result.content.find(item => item.type === "text").text);
@@ -37,14 +37,18 @@ test("MCP exposes only enabled tools and routes focused WallDeck actions", async
     await server.connect(serverTransport);
     await client.connect(clientTransport);
     const listed = await client.listTools();
-    assert.equal(listed.tools.length, 14);
+    assert.equal(listed.tools.length, 15);
     assert.ok(listed.tools.some(tool => tool.name === "get_status"));
+    assert.ok(listed.tools.some(tool => tool.name === "get_current_time"));
     assert.ok(listed.tools.some(tool => tool.name === "adjust_tablet_volume"));
     assert.ok(!listed.tools.some(tool => tool.name === "control_music"));
 
     const status = readText(await client.callTool({ name: "get_status", arguments: {} }));
+    const currentTime = readText(await client.callTool({ name: "get_current_time", arguments: {} }));
     assert.equal(status.currentView, "photos");
     assert.equal(status.homeAssistant.connected, true);
+    assert.equal(currentTime.timeZone, "Europe/Warsaw");
+    assert.match(currentTime.localTime, /^\d{2}:\d{2}:\d{2}$/);
 
     await client.callTool({ name: "show_view", arguments: { view: "music" } });
     await client.callTool({ name: "show_assistant_mood", arguments: { mood: "curious" } });
@@ -69,4 +73,13 @@ test("MCP exposes only enabled tools and routes focused WallDeck actions", async
     await client.close();
     await server.close();
   }
+});
+
+test("current time snapshot respects Warsaw daylight saving time", () => {
+  const summer = currentTimeSnapshot(new Date("2026-07-01T10:15:30.000Z"));
+  const winter = currentTimeSnapshot(new Date("2026-01-01T10:15:30.000Z"));
+  assert.equal(summer.localTime, "12:15:30");
+  assert.equal(summer.utcOffset, "GMT+02:00");
+  assert.equal(winter.localTime, "11:15:30");
+  assert.equal(winter.utcOffset, "GMT+01:00");
 });

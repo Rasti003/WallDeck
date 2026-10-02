@@ -4,13 +4,14 @@ export type { MusicState, AudioOutputState, MusicController, SpotifyItem, Spotif
 export const assistantStates = ["idle", "attention", "listening", "thinking", "speaking", "success", "error", "sleep", "curious", "uncertain", "confirm", "surprised", "wink", "laughing", "dancing"] as const;
 export const assistantStateSchema = z.enum(assistantStates);
 export type AssistantState = z.infer<typeof assistantStateSchema>;
-export const mcpToolIds = ["get_status", "show_view", "show_assistant_mood", "control_music", "search_spotify", "get_spotify_queue", "list_spotify_playlists", "play_spotify_item", "add_spotify_to_queue", "set_tablet_volume", "adjust_tablet_volume", "send_notification", "set_view_brightness", "search_home_entities", "get_home_entity"] as const;
+export const mcpToolIds = ["get_status", "get_current_time", "show_view", "show_assistant_mood", "control_music", "search_spotify", "get_spotify_queue", "list_spotify_playlists", "play_spotify_item", "add_spotify_to_queue", "set_tablet_volume", "adjust_tablet_volume", "send_notification", "set_view_brightness", "search_home_entities", "get_home_entity"] as const;
 export const mcpToolIdSchema = z.enum(mcpToolIds);
 export type McpToolId = z.infer<typeof mcpToolIdSchema>;
 export const mcpSettingsSchema = z.object({
   enabled: z.boolean().default(false),
   tools: z.object({
     get_status: z.boolean().default(true),
+    get_current_time: z.boolean().default(true),
     show_view: z.boolean().default(true),
     show_assistant_mood: z.boolean().default(true),
     control_music: z.boolean().default(true),
@@ -26,14 +27,14 @@ export const mcpSettingsSchema = z.object({
     search_home_entities: z.boolean().default(true),
     get_home_entity: z.boolean().default(true),
   }).default({
-    get_status: true, show_view: true, show_assistant_mood: true, control_music: true, search_spotify: true, get_spotify_queue: true, list_spotify_playlists: true, play_spotify_item: true, add_spotify_to_queue: true,
+    get_status: true, get_current_time: true, show_view: true, show_assistant_mood: true, control_music: true, search_spotify: true, get_spotify_queue: true, list_spotify_playlists: true, play_spotify_item: true, add_spotify_to_queue: true,
     set_tablet_volume: true, adjust_tablet_volume: true, send_notification: true, set_view_brightness: true,
     search_home_entities: true, get_home_entity: true,
   }),
 }).default({
   enabled: false,
   tools: {
-    get_status: true, show_view: true, show_assistant_mood: true, control_music: true, search_spotify: true, get_spotify_queue: true, list_spotify_playlists: true, play_spotify_item: true, add_spotify_to_queue: true,
+    get_status: true, get_current_time: true, show_view: true, show_assistant_mood: true, control_music: true, search_spotify: true, get_spotify_queue: true, list_spotify_playlists: true, play_spotify_item: true, add_spotify_to_queue: true,
     set_tablet_volume: true, adjust_tablet_volume: true, send_notification: true, set_view_brightness: true,
     search_home_entities: true, get_home_entity: true,
   },
@@ -260,7 +261,7 @@ export type WallDeckSettings = z.infer<typeof settingsSchema>;
 export const defaultSettings: WallDeckSettings = {
   gallery: { holdMilliseconds: 600, notifyNewPhotos: true },
   notifications: { normal: { durationSeconds: 5, sound: "none" }, alarm: { persistent: true, durationSeconds: 30, sound: "alarm" }, volume: .35, ttsEnabled: false },
-  mcp: { enabled: false, tools: { get_status: true, show_view: true, show_assistant_mood: true, control_music: true, search_spotify: true, get_spotify_queue: true, list_spotify_playlists: true, play_spotify_item: true, add_spotify_to_queue: true, set_tablet_volume: true, adjust_tablet_volume: true, send_notification: true, set_view_brightness: true, search_home_entities: true, get_home_entity: true } },
+  mcp: { enabled: false, tools: { get_status: true, get_current_time: true, show_view: true, show_assistant_mood: true, control_music: true, search_spotify: true, get_spotify_queue: true, list_spotify_playlists: true, play_spotify_item: true, add_spotify_to_queue: true, set_tablet_volume: true, adjust_tablet_volume: true, send_notification: true, set_view_brightness: true, search_home_entities: true, get_home_entity: true } },
   aiAssistant: aiAssistantSettingsSchema.parse(undefined),
   tabletMenu: { enabled: true, views: ["photos", "ha", "music", "assistant-expressive"] },
   music: { clientId: "" },

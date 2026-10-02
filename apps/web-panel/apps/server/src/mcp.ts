@@ -36,6 +36,23 @@ export interface WallDeckMcpDependencies {
 
 const textResult = (value: unknown) => ({ content: [{ type: "text" as const, text: JSON.stringify(value) }] });
 
+export function currentTimeSnapshot(now = new Date(), timeZone = "Europe/Warsaw") {
+  const parts = Object.fromEntries(new Intl.DateTimeFormat("en-CA", {
+    timeZone, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23",
+  }).formatToParts(now).filter(part => part.type !== "literal").map(part => [part.type, part.value]));
+  const utcOffset = new Intl.DateTimeFormat("en", { timeZone, timeZoneName: "longOffset" }).formatToParts(now).find(part => part.type === "timeZoneName")?.value ?? "GMT";
+  return {
+    timeZone,
+    localDate: `${parts.year}-${parts.month}-${parts.day}`,
+    localTime: `${parts.hour}:${parts.minute}:${parts.second}`,
+    weekday: new Intl.DateTimeFormat("pl-PL", { timeZone, weekday: "long" }).format(now),
+    formatted: new Intl.DateTimeFormat("pl-PL", { timeZone, dateStyle: "full", timeStyle: "medium" }).format(now),
+    utcOffset,
+    isoUtc: now.toISOString(),
+    unixMs: now.getTime(),
+  };
+}
+
 function registerIf(server: McpServer, enabled: Record<McpToolId, boolean>, id: McpToolId, config: any, handler: any) {
   if (enabled[id]) server.registerTool(id, config, handler);
 }
@@ -62,6 +79,13 @@ export function createWallDeckMcpServer(settings: WallDeckSettings, deps: WallDe
     spotify: deps.spotifyStatus(),
     enabledTools: Object.entries(enabled).filter(([, value]) => value).map(([key]) => key),
   }));
+
+  registerIf(server, enabled, "get_current_time", {
+    title: "Odczytaj aktualną datę i godzinę",
+    description: "Zwraca dokładną bieżącą datę, godzinę, dzień tygodnia i przesunięcie UTC dla domu w strefie Europe/Warsaw. Użyj zawsze, gdy odpowiedź lub działanie zależy od słów: teraz, dziś, jutro, godzina, data albo termin.",
+    inputSchema: {},
+    annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
+  }, async () => textResult(currentTimeSnapshot()));
 
   registerIf(server, enabled, "show_view", {
     title: "Pokaż widok WallDeck",

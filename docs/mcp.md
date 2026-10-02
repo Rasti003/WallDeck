@@ -7,6 +7,7 @@ WallDeck udostępnia kontrolowany interfejs Model Context Protocol pod adresem `
 | Narzędzie | Typ | Zakres |
 |---|---|---|
 | `get_status` | odczyt | aktywny widok, tablet, HA i aktywne narzędzia |
+| `get_current_time` | odczyt | bieżąca data, godzina, dzień tygodnia i przesunięcie UTC dla `Europe/Warsaw` |
 | `show_view` | akcja | zdjęcia, Dom, Music lub twarz asystenta |
 | `show_assistant_mood` | akcja | jedna z walidowanych animacji/nastrojów twarzy |
 | `control_music` | akcja | play, pauza, następny, poprzedni, seek, shuffle, repeat |

@@ -3,6 +3,7 @@ import { mcpToolIds, type McpToolId, type WallDeckSettings } from "@walldeck/con
 
 const tools: Record<McpToolId, { name: string; description: string; kind: "odczyt" | "akcja" }> = {
   get_status: { name: "Stan WallDeck", description: "Aktywny widok, tablet, Home Assistant i dostępne narzędzia.", kind: "odczyt" },
+  get_current_time: { name: "Aktualna data i godzina", description: "Dokładny czas lokalny w strefie Europe/Warsaw oraz czas UTC.", kind: "odczyt" },
   show_view: { name: "Przełączanie widoku", description: "Zdjęcia, Dom, Music lub ekran asystenta.", kind: "akcja" },
   show_assistant_mood: { name: "Mimika asystenta", description: "Pokazanie konkretnego nastroju lub stanu twarzy.", kind: "akcja" },
   control_music: { name: "Sterowanie muzyką", description: "Play, pauza, następny, poprzedni, seek, shuffle i repeat.", kind: "akcja" },
