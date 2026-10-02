@@ -13,7 +13,8 @@ type WakeEvent = { transcript?: string; remainder?: string };
 type AudioChunkEvent = { audio?: string };
 type SpeakerEvent = { label?: string; confidence?: number; experimental?: boolean };
 
-const OUTPUT_GENERATION_GRACE_MS = 3_000;
+const LIVE_PREBUFFER_BYTES = 24_000;
+const LIVE_PREBUFFER_MS = 350;
 
 export class VoiceAssistantRuntime {
   private socket: WebSocket | null = null;
@@ -21,8 +22,6 @@ export class VoiceAssistantRuntime {
   private lastTranscriptAt = 0;
   private outputStarted = false;
   private inputActive = false;
-  private outputPlaybackUntil = 0;
-  private outputResumeTimer: ReturnType<typeof setTimeout> | null = null;
   private disposed = false;
   private pendingDelegations = new Set<string>();
   private pendingAudio: string[] = [];
@@ -31,6 +30,13 @@ export class VoiceAssistantRuntime {
   private preservedCommandActive = false;
   private nativeOutputReady = false;
   private delegationFallbackTimer: ReturnType<typeof setTimeout> | null = null;
+  private handledTranscriptLength = 0;
+  private liveAudioChunks: string[] = [];
+  private liveAudioBytes = 0;
+  private livePlaybackStarted = false;
+  private livePrebufferTimer: ReturnType<typeof setTimeout> | null = null;
+  private audioWriteChain: Promise<void> = Promise.resolve();
+  private pendingUserTurn = false;
 
   constructor(private settings: AiAssistantSettings, private callbacks: Callbacks) {}
 
@@ -49,8 +55,8 @@ export class VoiceAssistantRuntime {
     this.socket?.send(JSON.stringify({ type: "close" }));
     this.socket?.close();
     this.socket = null;
-    if (this.outputResumeTimer) clearTimeout(this.outputResumeTimer);
-    this.outputResumeTimer = null;
+    if (this.livePrebufferTimer) clearTimeout(this.livePrebufferTimer);
+    this.livePrebufferTimer = null;
     if (this.delegationFallbackTimer) clearTimeout(this.delegationFallbackTimer);
     this.delegationFallbackTimer = null;
     if (nativeBridge.available) {
@@ -109,13 +115,18 @@ export class VoiceAssistantRuntime {
     this.inputTranscript = "";
     this.lastTranscriptAt = 0;
     this.outputStarted = false;
-    this.outputPlaybackUntil = 0;
     this.pendingAudio = [];
     this.sessionReady = false;
     this.pendingDelegations.clear();
     this.bufferedSpeechTask = null;
     this.preservedCommandActive = remainder.length >= 2;
     this.nativeOutputReady = false;
+    this.handledTranscriptLength = 0;
+    this.liveAudioChunks = [];
+    this.liveAudioBytes = 0;
+    this.livePlaybackStarted = false;
+    this.audioWriteChain = Promise.resolve();
+    this.pendingUserTurn = false;
     if (this.delegationFallbackTimer) clearTimeout(this.delegationFallbackTimer);
     this.delegationFallbackTimer = null;
     void nativeBridge.call("haptics").catch(() => undefined);
@@ -139,29 +150,34 @@ export class VoiceAssistantRuntime {
         if (this.socket?.readyState !== WebSocket.OPEN) break;
         this.socket.send(JSON.stringify({ type: "audio", audio }));
       }
-      if (remainder.length >= 2) this.bufferedSpeechTask = this.executePreservedCommand(remainder);
+      if (remainder.length >= 2) void this.executePreservedCommand(remainder);
       else this.scheduleDelegationFallback(8_000);
     } else if (message.type === "inputTranscript" && typeof message.delta === "string") {
       this.inputTranscript += message.delta;
       this.lastTranscriptAt = Date.now();
+      this.pendingUserTurn = true;
       this.callbacks.setState("listening");
       this.scheduleDelegationFallback(3_500);
     } else if (message.type === "outputTranscript") {
       this.callbacks.setState("speaking");
-    } else if (message.type === "audio" && typeof message.audio === "string" && !this.bufferedSpeechTask) {
+    } else if (message.type === "audio" && typeof message.audio === "string") {
       if (!this.outputStarted) {
         this.outputStarted = true;
-        this.callbacks.setState("speaking");
-        await this.stopInput();
-        await this.ensureOutputReady();
       }
-      await nativeBridge.call("assistantAudio.appendOutput", { audio: message.audio }).catch(() => undefined);
-      this.scheduleCloseAfterPlayback(message.audio);
+      if (this.pendingUserTurn) {
+        this.handledTranscriptLength = this.inputTranscript.length;
+        this.pendingUserTurn = false;
+      }
+      this.callbacks.setState("speaking");
+      this.callbacks.onStatus?.("Mówię — możesz mi przerwać");
+      if (this.delegationFallbackTimer) clearTimeout(this.delegationFallbackTimer);
+      this.delegationFallbackTimer = null;
+      this.queueLiveAudio(message.audio);
     } else if (message.type === "delegation" && typeof message.delegationId === "string") {
       if (this.preservedCommandActive || this.bufferedSpeechTask) return;
       if (this.delegationFallbackTimer) clearTimeout(this.delegationFallbackTimer);
       this.delegationFallbackTimer = null;
-      this.bufferedSpeechTask = this.handleDelegation(message.delegationId);
+      this.startDelegation(message.delegationId);
     } else if (message.type === "closed") {
       this.socket?.close();
     } else if (message.type === "error") {
@@ -174,37 +190,37 @@ export class VoiceAssistantRuntime {
   private async executePreservedCommand(command: string) {
     const socket = this.socket;
     if (!socket || socket.readyState !== WebSocket.OPEN) return;
-    this.callbacks.setState("thinking");
-    await this.stopInput();
-    socket.send(JSON.stringify({ type: "context", content: `Użytkownik powiedział po wake wordzie: ${command}` }));
-    let speechText: string;
-    try {
-      const result = await api.assistant.run({ message: command, forceFallback: false });
-      speechText = result.text;
-    } catch (error) {
-      speechText = `Nie udało się wykonać polecenia: ${error instanceof Error ? error.message : String(error)}`;
-    }
-    try {
-      await this.playBufferedSpeech(speechText);
-    } finally {
-      if (socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify({ type: "close" }));
-    }
+    socket.send(JSON.stringify({ type: "context", content: `Użytkownik właśnie powiedział po frazie wybudzającej: „${command}”. Potraktuj to jako bieżącą wypowiedź użytkownika: odpowiedz bezpośrednio albo deleguj tylko wtedy, gdy potrzebujesz backendu.` }));
+    this.preservedCommandActive = false;
+    setTimeout(() => {
+      if (!this.outputStarted && !this.bufferedSpeechTask && this.socket?.readyState === WebSocket.OPEN) {
+        this.startDelegation(null, command);
+      }
+    }, 7_000);
   }
 
-  private async handleDelegation(delegationId: string | null) {
+  private startDelegation(delegationId: string | null, commandOverride?: string) {
+    if (this.bufferedSpeechTask) return;
+    const task = this.handleDelegation(delegationId, commandOverride);
+    this.bufferedSpeechTask = task;
+    void task.finally(() => {
+      if (this.bufferedSpeechTask === task) this.bufferedSpeechTask = null;
+    });
+  }
+
+  private async handleDelegation(delegationId: string | null, commandOverride?: string) {
     const delegationKey = delegationId ?? "transcript-fallback";
     if (this.pendingDelegations.has(delegationKey)) return;
     this.pendingDelegations.add(delegationKey);
     this.callbacks.setState("thinking");
-    await this.waitForTranscriptToSettle();
-    const command = this.inputTranscript.trim();
+    if (!commandOverride) await this.waitForTranscriptToSettle();
+    const command = commandOverride?.trim() || this.inputTranscript.slice(this.handledTranscriptLength).trim();
     const socket = this.socket;
     if (!socket || socket.readyState !== WebSocket.OPEN) return;
     if (!command) {
       socket.send(JSON.stringify({ type: "delegation.result", delegationId, content: "Nie otrzymano czytelnej treści polecenia. Poproś użytkownika krótko o powtórzenie." }));
       return;
     }
-    await this.stopInput();
     let speechText: string;
     try {
       const result = await api.assistant.run({ message: command, forceFallback: false });
@@ -212,11 +228,13 @@ export class VoiceAssistantRuntime {
     } catch (error) {
       speechText = `Zadanie nie zostało wykonane: ${error instanceof Error ? error.message : String(error)}`;
     }
-    try {
-      await this.playBufferedSpeech(speechText);
-    } finally {
-      if (socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify({ type: "close" }));
+    this.handledTranscriptLength = this.inputTranscript.length;
+    this.pendingUserTurn = false;
+    if (socket.readyState === WebSocket.OPEN) {
+      socket.send(JSON.stringify({ type: "delegation.result", delegationId, content: speechText }));
+      this.callbacks.onStatus?.("Backend odpowiedział");
     }
+    this.pendingDelegations.delete(delegationKey);
   }
 
   private scheduleDelegationFallback(delayMs: number) {
@@ -226,7 +244,7 @@ export class VoiceAssistantRuntime {
       this.delegationFallbackTimer = null;
       if (this.bufferedSpeechTask || this.preservedCommandActive) return;
       if (this.inputTranscript.trim()) {
-        this.bufferedSpeechTask = this.handleDelegation(null);
+        this.startDelegation(null);
         return;
       }
       this.callbacks.onStatus?.("Nie usłyszałem polecenia");
@@ -234,23 +252,50 @@ export class VoiceAssistantRuntime {
     }, delayMs);
   }
 
-  private async playBufferedSpeech(text: string) {
-    this.callbacks.setState("thinking");
-    this.callbacks.onStatus?.("Przygotowuję odpowiedź…");
-    const pcm = await api.assistant.speechPcm(text);
-    await this.ensureOutputReady();
-    this.outputStarted = true;
-    this.callbacks.setState("speaking");
-    this.callbacks.onStatus?.("Mówię");
-    // The Android WebMessage bridge accepts at most 16 KiB including JSON and
-    // Base64 overhead. Keep raw PCM chunks comfortably below that boundary.
-    const chunkSize = 8_192;
-    for (let offset = 0; offset < pcm.length; offset += chunkSize) {
-      const chunk = pcm.subarray(offset, Math.min(offset + chunkSize, pcm.length));
-      let binary = "";
-      for (let index = 0; index < chunk.length; index += 1) binary += String.fromCharCode(chunk[index]);
-      await nativeBridge.call("assistantAudio.appendOutput", { audio: btoa(binary) });
+  private queueLiveAudio(audio: string) {
+    const padding = audio.endsWith("==") ? 2 : audio.endsWith("=") ? 1 : 0;
+    this.liveAudioChunks.push(audio);
+    this.liveAudioBytes += Math.max(0, Math.floor(audio.length * 3 / 4) - padding);
+    if (this.livePlaybackStarted || this.liveAudioBytes >= LIVE_PREBUFFER_BYTES) {
+      void this.flushLiveAudio();
+      return;
     }
+    if (!this.livePrebufferTimer) {
+      this.livePrebufferTimer = setTimeout(() => {
+        this.livePrebufferTimer = null;
+        void this.flushLiveAudio();
+      }, LIVE_PREBUFFER_MS);
+    }
+  }
+
+  private async flushLiveAudio() {
+    if (this.livePrebufferTimer) clearTimeout(this.livePrebufferTimer);
+    this.livePrebufferTimer = null;
+    const chunks = this.liveAudioChunks.splice(0);
+    this.liveAudioBytes = 0;
+    if (!chunks.length) return;
+    this.livePlaybackStarted = true;
+    this.audioWriteChain = this.audioWriteChain.then(async () => {
+      await this.ensureOutputReady();
+      for (const audio of chunks) {
+        for (const bridgeChunk of this.bridgeSizedAudioChunks(audio)) {
+          await nativeBridge.call("assistantAudio.appendOutput", { audio: bridgeChunk });
+        }
+      }
+    }).catch(error => {
+      this.callbacks.onStatus?.(error instanceof Error ? error.message : String(error));
+    });
+    await this.audioWriteChain;
+  }
+
+  private bridgeSizedAudioChunks(audio: string) {
+    if (audio.length <= 10_000) return [audio];
+    const binary = atob(audio);
+    const chunks: string[] = [];
+    for (let offset = 0; offset < binary.length; offset += 8_192) {
+      chunks.push(btoa(binary.slice(offset, offset + 8_192)));
+    }
+    return chunks;
   }
 
   private async ensureOutputReady() {
@@ -264,13 +309,15 @@ export class VoiceAssistantRuntime {
     this.socket = null;
     this.pendingAudio = [];
     this.sessionReady = false;
-    if (this.outputResumeTimer) clearTimeout(this.outputResumeTimer);
-    this.outputResumeTimer = null;
+    if (this.livePrebufferTimer) clearTimeout(this.livePrebufferTimer);
+    this.livePrebufferTimer = null;
     if (this.delegationFallbackTimer) clearTimeout(this.delegationFallbackTimer);
     this.delegationFallbackTimer = null;
     this.inputActive = false;
     await nativeBridge.call("assistantAudio.stopInput").catch(() => undefined);
     if (this.bufferedSpeechTask) await this.bufferedSpeechTask.catch(() => undefined);
+    await this.flushLiveAudio();
+    await this.audioWriteChain;
     await this.finishOutput();
     if (!this.disposed) {
       this.callbacks.setState("success");
@@ -299,9 +346,9 @@ export class VoiceAssistantRuntime {
 
   private async waitForTranscriptToSettle() {
     const started = Date.now();
-    while (Date.now() - started < 8_000) {
+    while (Date.now() - started < 3_000) {
       const quietFor = this.lastTranscriptAt ? Date.now() - this.lastTranscriptAt : 0;
-      if (this.inputTranscript.trim() && quietFor >= 3_000) return;
+      if (this.inputTranscript.trim() && quietFor >= 700) return;
       await new Promise(resolve => setTimeout(resolve, 100));
     }
   }
@@ -330,16 +377,4 @@ export class VoiceAssistantRuntime {
     }
   }
 
-  private scheduleCloseAfterPlayback(base64Audio: string) {
-    const padding = base64Audio.endsWith("==") ? 2 : base64Audio.endsWith("=") ? 1 : 0;
-    const byteCount = Math.max(0, Math.floor(base64Audio.length * 3 / 4) - padding);
-    const durationMs = byteCount / (24_000 * 2) * 1_000;
-    this.outputPlaybackUntil = Math.max(Date.now(), this.outputPlaybackUntil) + durationMs;
-    if (this.outputResumeTimer) clearTimeout(this.outputResumeTimer);
-    this.outputResumeTimer = setTimeout(() => {
-      this.outputResumeTimer = null;
-      this.callbacks.onStatus?.("Kończę rozmowę");
-      this.socket?.send(JSON.stringify({ type: "close" }));
-    }, Math.max(0, this.outputPlaybackUntil - Date.now()) + OUTPUT_GENERATION_GRACE_MS);
-  }
 }

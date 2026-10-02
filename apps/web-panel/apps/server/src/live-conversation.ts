@@ -18,8 +18,8 @@ type ClientMessage =
 
 const PCM_RATE = 24_000;
 const OUTPUT_GENERATION_GRACE_MS = 2_500;
-const SILENCE_FRAME_MS = 100;
 const NATURAL_PAUSE_MS = 500;
+const FOLLOW_UP_WINDOW_MS = 12_000;
 
 function containsAudiblePcm(pcm: Buffer): boolean {
   if (pcm.length < 2) return false;
@@ -78,8 +78,6 @@ export function registerLiveConversation(app: FastifyInstance, deps: Dependencie
     let outputPlaybackUntil = 0;
     let idleTimer: ReturnType<typeof setTimeout> | undefined;
     let hardTimer: ReturnType<typeof setTimeout> | undefined;
-    let outputClockTimer: ReturnType<typeof setInterval> | undefined;
-    const silenceFrame = Buffer.alloc(PCM_RATE * SILENCE_FRAME_MS / 1_000 * 2).toString("base64");
 
     const send = (message: unknown) => {
       if (socket.readyState === 1) socket.send(JSON.stringify(message));
@@ -101,7 +99,7 @@ export function registerLiveConversation(app: FastifyInstance, deps: Dependencie
       // to avoid closing a session in the middle of a sentence.
       idleTimer = setTimeout(
         () => requestClose("output-idle"),
-        Math.max(OUTPUT_GENERATION_GRACE_MS, queuedPlaybackMs + settings.voice.live.idleCloseMs),
+        Math.max(OUTPUT_GENERATION_GRACE_MS, queuedPlaybackMs + Math.max(settings.voice.live.idleCloseMs, FOLLOW_UP_WINDOW_MS)),
       );
     };
 
@@ -110,7 +108,6 @@ export function registerLiveConversation(app: FastifyInstance, deps: Dependencie
       try {
         const message = JSON.parse(raw.toString()) as ClientMessage;
         if (message.type === "audio" && typeof message.audio === "string" && message.audio.length <= 160_000 && !closeRequested) {
-          if (idleTimer) clearTimeout(idleTimer);
           if (sessionStarted) {
             live.send({ type: "session.input_audio.append", event_id: `audio_${Date.now()}`, audio: message.audio });
           } else {
@@ -120,7 +117,7 @@ export function registerLiveConversation(app: FastifyInstance, deps: Dependencie
         } else if (message.type === "delegation.result" && typeof message.content === "string" && message.content.length <= 4_000 && !closeRequested) {
           live.send({ type: "session.commentary.append", event_id: `result_${Date.now()}`, delegation_id: message.delegationId, content: message.content });
         } else if (message.type === "context" && typeof message.content === "string" && message.content.length <= 2_000 && !closeRequested) {
-          live.send({ type: "session.thinking.append", event_id: `context_${Date.now()}`, delegation_id: null, content: message.content });
+          live.send({ type: "session.instructions.append", event_id: `context_${Date.now()}`, delegation_id: null, content: message.content });
         } else if (message.type === "close") requestClose("client-playback-complete");
       } catch { /* Ignore malformed audio transport messages. */ }
     });
@@ -137,7 +134,11 @@ export function registerLiveConversation(app: FastifyInstance, deps: Dependencie
             session: {
               model: settings.voice.live.model,
               store: false,
-              instructions: `${settings.voice.instructions} Rozmawiaj wyłącznie po polsku. Jesteś wejściem głosowym domowego asystenta WallDeck. Pozwól użytkownikowi dokończyć całe zdanie i nie deleguj po pierwszej krótkiej pauzie. Zlecaj do klienta każdą wypowiedź użytkownika. Nie odpowiadaj głosem, nie potwierdzaj i nie ogłaszaj wykonania — aplikacja odtworzy gotową odpowiedź osobnym, buforowanym kanałem.`,
+              instructions: `${settings.voice.instructions}
+Język i styl: Rozmawiaj wyłącznie po polsku, naturalnie i zwięźle. Odpowiadaj głosem bezpośrednio na zwykłe pytania i swobodną rozmowę.
+Backchannel policy: Nie deleguj prostych odpowiedzi, powitań, krótkich wyjaśnień ani wiedzy, którą znasz. Możesz krótko powiedzieć, że sprawdzasz, gdy backend rzeczywiście pracuje.
+Interruption policy: Słuchaj także podczas mówienia. Gdy użytkownik zacznie mówić lub Cię poprawi, przerwij obecną wypowiedź, wysłuchaj go i odpowiedz na najnowszą intencję.
+Delegation policy: Deleguj do klienta tylko zadania wymagające narzędzi WallDeck/MCP, Spotify, Home Assistant, aktualnych danych, działania w systemie, pamięci albo wyraźnie trudniejszego rozumowania. Po otrzymaniu wyniku delegacji przedstaw go naturalnie użytkownikowi.`,
               audio: { format: { type: "audio/pcm", rate: PCM_RATE }, output: { voice: settings.voice.live.voice } },
               delegation: { type: "client" },
             },
@@ -174,16 +175,6 @@ export function registerLiveConversation(app: FastifyInstance, deps: Dependencie
           } else {
             droppedSilenceBytes += pcm.length;
           }
-          // The tablet stops its microphone as soon as playback begins to avoid
-          // acoustic feedback. GPT-Live still needs input-time progression while it
-          // speaks, so advance the media timeline with server-generated silence.
-          if (!outputClockTimer) {
-            outputClockTimer = setInterval(() => {
-              if (sessionStarted && !closeRequested) {
-                live.send({ type: "session.input_audio.append", event_id: `output_clock_${Date.now()}`, audio: silenceFrame });
-              }
-            }, SILENCE_FRAME_MS);
-          }
         } else if (event.type === "session.delegation.created") {
           send({ type: "delegation", delegationId: event.delegation.id, offsetMs: event.offset_ms });
         } else if (event.type === "session.usage.updated") {
@@ -203,7 +194,6 @@ export function registerLiveConversation(app: FastifyInstance, deps: Dependencie
     } finally {
       if (idleTimer) clearTimeout(idleTimer);
       if (hardTimer) clearTimeout(hardTimer);
-      if (outputClockTimer) clearInterval(outputClockTimer);
       live.close({ code: 1000, reason: "WallDeck conversation finished" });
       if (sessionStarted) {
         finalUsage = finalUsage || Math.max(0, (Date.now() - startedAt) / 1_000);
