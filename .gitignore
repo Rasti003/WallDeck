@@ -24,6 +24,10 @@ photo-sync.config.json
 **/.env.*
 !**/.env.example
 
+# Python
+**/__pycache__/
+**/*.py[cod]
+
 # CAD exports and temporary files
 **/*.bak
 **/*.autosave
