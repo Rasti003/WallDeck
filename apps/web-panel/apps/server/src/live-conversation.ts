@@ -150,6 +150,7 @@ export function registerLiveConversation(app: FastifyInstance, deps: Dependencie
           if (message.delegationId) pendingDelegations.delete(message.delegationId);
           lastTurnActivityAt = Date.now();
           waitForDelegation();
+          app.log.info({ delegationId: message.delegationId, resultLength: message.content.length }, "GPT-Live delegation result received");
           live.send({ type: "session.commentary.append", event_id: `result_${Date.now()}`, delegation_id: message.delegationId, content: message.content });
         } else if (message.type === "context" && typeof message.content === "string" && message.content.length <= 2_000 && !closeRequested) {
           live.send({ type: "session.instructions.append", event_id: `context_${Date.now()}`, delegation_id: null, content: message.content });
@@ -176,7 +177,7 @@ Język i styl: Rozmawiaj wyłącznie po polsku, naturalnie i zwięźle. Odpowiad
 Backchannel policy: Nie deleguj prostych odpowiedzi, powitań, krótkich wyjaśnień ani wiedzy, którą znasz. Możesz krótko powiedzieć, że sprawdzasz, gdy backend rzeczywiście pracuje.
 Interruption policy: Słuchaj także podczas mówienia. Gdy użytkownik zacznie mówić lub Cię poprawi, przerwij obecną wypowiedź, wysłuchaj go i odpowiedz na najnowszą intencję.
 Delegation policy: Deleguj do klienta tylko zadania wymagające narzędzi WallDeck/MCP, Spotify, Home Assistant, aktualnych danych, działania w systemie, pamięci albo wyraźnie trudniejszego rozumowania. Po otrzymaniu wyniku delegacji przedstaw go naturalnie użytkownikowi.
-Music policy: Prośba typu „wybierz mi muzykę do nauki i puść” jest kompletna: deleguj wybór oraz uruchomienie Spotify bez pytania o konkretną playlistę.`,
+Music policy: Prośba typu „wybierz mi muzykę do nauki i puść” jest kompletna: deleguj wybór oraz uruchomienie Spotify bez pytania o konkretną playlistę. Nigdy nie twierdź, że wykonujesz lub wykonałeś akcję, jeśli nie utworzyłeś delegacji i nie otrzymałeś jej wyniku.`,
               input: initialCommand ? [{ type: "message", role: "user", content: [{ type: "input_text", text: initialCommand }] }] : [],
               audio: { format: { type: "audio/pcm", rate: PCM_RATE }, output: { voice: settings.voice.live.voice } },
               delegation: { type: "client" },
@@ -221,6 +222,7 @@ Music policy: Prośba typu „wybierz mi muzykę do nauki i puść” jest kompl
           }
         } else if (event.type === "session.delegation.created") {
           waitForDelegation(event.delegation.id);
+          app.log.info({ delegationId: event.delegation.id, offsetMs: event.offset_ms }, "GPT-Live delegation created");
           send({ type: "delegation", delegationId: event.delegation.id, offsetMs: event.offset_ms });
         } else if (event.type === "session.usage.updated") {
           finalUsage = Math.max(finalUsage, event.usage.seconds);

@@ -1,6 +1,7 @@
 import type { AiAssistantSettings, AssistantState } from "@walldeck/contracts";
 import { api } from "./api";
 import { nativeBridge } from "./native";
+import { delegatedCommandWithContext } from "./voice-delegation";
 
 type Callbacks = {
   setState(state: AssistantState): void;
@@ -214,7 +215,10 @@ export class VoiceAssistantRuntime {
     this.pendingDelegations.add(delegationKey);
     this.callbacks.setState("thinking");
     if (!commandOverride) await this.waitForTranscriptToSettle();
-    const command = commandOverride?.trim() || this.inputTranscript.slice(this.handledTranscriptLength).trim();
+    const latestTurn = this.inputTranscript.slice(this.handledTranscriptLength).trim();
+    const fullTranscript = this.inputTranscript.trim();
+    const command = commandOverride?.trim()
+      || (delegationId && fullTranscript ? delegatedCommandWithContext(fullTranscript) : latestTurn);
     const socket = this.socket;
     if (!socket || socket.readyState !== WebSocket.OPEN) return;
     if (!command) {
