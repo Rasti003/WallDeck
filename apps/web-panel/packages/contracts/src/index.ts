@@ -150,7 +150,17 @@ export interface SpeakerObserverStatus { available: boolean; engine: "silero-eca
 export interface ElevenLabsVoice { voiceId: string; name: string; category?: string; labels: Record<string, string>; verifiedLanguages: string[]; }
 export interface AiAssistantStatus { configured: boolean; elevenLabsConfigured: boolean; enabled: boolean; mcpReady: boolean; busy: boolean; voiceUsage: AiVoiceUsageStatus; speakerObservation: SpeakerObservation | null; speakerObserver: SpeakerObserverStatus; }
 export interface AiAssistantToolTrace { name: string; arguments: unknown; output?: unknown; }
-export interface AiAssistantRunResult { text: string; model: string; escalated: boolean; toolCalls: AiAssistantToolTrace[]; durationMs: number; }
+export interface AiAssistantModelTurn { model: string; input: string; instructions: string; output?: string; error?: string; toolCalls: AiAssistantToolTrace[]; }
+export interface AiAssistantRunResult { text: string; model: string; escalated: boolean; toolCalls: AiAssistantToolTrace[]; modelTurns: AiAssistantModelTurn[]; durationMs: number; }
+export interface AiAssistantConversationEntry {
+  id: string;
+  source: "tablet-voice" | "admin-text";
+  startedAt: string;
+  completedAt: string;
+  transcript: string;
+  result?: AiAssistantRunResult;
+  error?: string;
+}
 
 export const ambientSleepSchema = z.object({
   enabled: z.boolean(),

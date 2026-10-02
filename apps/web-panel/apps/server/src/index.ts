@@ -33,6 +33,7 @@ import { registerLiveConversation } from "./live-conversation.js";
 import { registerLunaConversation } from "./luna-conversation.js";
 import { SpeakerObserverClient } from "./speaker-observer.js";
 import { listElevenLabsVoices, renderElevenLabsSpeech } from "./elevenlabs.js";
+import { AssistantHistoryStore } from "./assistant-history.js";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const webRoot = path.resolve(here, "../../client/dist");
@@ -115,6 +116,7 @@ const assistant = new AssistantService({
   mcpToken,
   getApiKey: () => openAiKeyStore.load(),
 });
+const assistantHistory = new AssistantHistoryStore(path.join(runtimeRoot, "assistant-history.json"));
 let voiceBusy = false;
 let lastSpeakerObservation: SpeakerObservation | null = null;
 
@@ -168,6 +170,8 @@ async function renderOpenAiTts(apiKey: string, text: string, settings: WallDeckS
 }
 
 app.get("/api/assistant/config", async () => ({ settings: (await readSettings()).aiAssistant, status: await assistantStatus() }));
+app.get("/api/assistant/history", async () => assistantHistory.list());
+app.delete("/api/assistant/history", async () => { await assistantHistory.clear(); return { ok: true as const }; });
 app.put("/api/assistant/config", async (request, reply) => {
   const parsed = aiAssistantConfigInputSchema.safeParse(request.body);
   if (!parsed.success) return reply.code(400).send({ error: "Nieprawidłowa konfiguracja asystenta", details: parsed.error.issues });
@@ -182,10 +186,15 @@ app.post("/api/assistant/run", async (request, reply) => {
   if (!parsed.success) return reply.code(400).send({ error: "Wpisz poprawne polecenie", details: parsed.error.issues });
   const settings = await readSettings();
   if (!settings.mcp.enabled) return reply.code(409).send({ error: "Najpierw włącz MCP w sekcji MCP · AI" });
+  const startedAt = new Date().toISOString();
   try {
-    return await assistant.execute(parsed.data.message, settings.aiAssistant, parsed.data.forceFallback);
+    const result = await assistant.execute(parsed.data.message, settings.aiAssistant, parsed.data.forceFallback);
+    await assistantHistory.add({ source: "admin-text", startedAt, transcript: parsed.data.message, result });
+    return result;
   } catch (error) {
-    return reply.code(502).send({ error: error instanceof Error ? error.message : String(error) });
+    const message = error instanceof Error ? error.message : String(error);
+    await assistantHistory.add({ source: "admin-text", startedAt, transcript: parsed.data.message, error: message }).catch(() => undefined);
+    return reply.code(502).send({ error: message });
   }
 });
 app.post("/api/assistant/speech", async (request, reply) => {
@@ -321,6 +330,7 @@ registerLunaConversation(app, {
     lastSpeakerObservation = observation;
     broadcast({ type: "assistant.speakerObserved", observation });
   },
+  recordConversation: value => assistantHistory.add(value).then(() => undefined),
   renderSpeechPcm: async (apiKey, text, settings) => {
     if (settings.voice.provider === "elevenlabs") {
       const elevenLabsApiKey = await elevenLabsKeyStore.load();

@@ -12,6 +12,7 @@ type Dependencies = {
   speakerObserver: SpeakerObserverClient;
   onSpeakerObservation(observation: SpeakerObservation): void;
   renderSpeechPcm(apiKey: string, text: string, settings: AiAssistantSettings): Promise<Buffer>;
+  recordConversation(value: { source: "tablet-voice"; startedAt: string; transcript: string; result?: AiAssistantRunResult; error?: string }): Promise<void>;
 };
 
 type ClientMessage = { type: "audio"; audio: string } | { type: "close" };
@@ -86,6 +87,8 @@ export function registerLunaConversation(app: FastifyInstance, deps: Dependencie
     let lastAudibleAt = 0;
     let analysisRunning = false;
     const startedAt = Date.now();
+    let transcript = "";
+    let assistantResult: AiAssistantRunResult | undefined;
     const maxTimer = setTimeout(() => void finishTurn("maximum-duration"), settings.voice.pipeline.maxInputSeconds * 1_000);
     const analysisTimer = setInterval(() => void analyzeRecentAudio(), ANALYSIS_INTERVAL_MS);
 
@@ -166,19 +169,22 @@ export function registerLunaConversation(app: FastifyInstance, deps: Dependencie
           language: "pl",
           prompt: "Polecenie do domowego asystenta Waldek. Nazwy: WallDeck, Spotify, Home Assistant.",
         });
-        const transcript = transcription.text.trim();
+        transcript = transcription.text.trim();
         if (!transcript) throw new Error("Nie udało się rozpoznać polecenia");
         send({ type: "inputTranscript", transcript });
-        const result: AiAssistantRunResult = await deps.assistant.execute(transcript, settings, false);
-        send({ type: "answer", text: result.text, model: result.model, toolCalls: result.toolCalls.length });
-        const speech = await deps.renderSpeechPcm(openAiApiKey, result.text, settings);
+        assistantResult = await deps.assistant.execute(transcript, settings, false);
+        send({ type: "answer", text: assistantResult.text, model: assistantResult.model, toolCalls: assistantResult.toolCalls.length });
+        const speech = await deps.renderSpeechPcm(openAiApiKey, assistantResult.text, settings);
+        await deps.recordConversation({ source: "tablet-voice", startedAt: new Date(startedAt).toISOString(), transcript, result: assistantResult });
         const chunkBytes = 8_192;
         for (let offset = 0; offset < speech.length; offset += chunkBytes) {
           send({ type: "audio", audio: speech.subarray(offset, offset + chunkBytes).toString("base64") });
         }
         send({ type: "closed", reason: "completed" });
       } catch (error) {
-        send({ type: "error", error: error instanceof Error ? error.message : String(error) });
+        const message = error instanceof Error ? error.message : String(error);
+        await deps.recordConversation({ source: "tablet-voice", startedAt: new Date(startedAt).toISOString(), transcript, result: assistantResult, error: message }).catch(() => undefined);
+        send({ type: "error", error: message });
       } finally {
         app.log.info({ reason, durationMs: Date.now() - startedAt, inputBytes: bytes }, "Luna voice turn completed");
         active = false;

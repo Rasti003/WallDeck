@@ -1,5 +1,5 @@
 import { Agent, MCPServerStreamableHttp, OpenAIProvider, Runner, type RunItem } from "@openai/agents";
-import type { AiAssistantRunResult, AiAssistantSettings, AiAssistantToolTrace } from "@walldeck/contracts";
+import type { AiAssistantModelTurn, AiAssistantRunResult, AiAssistantSettings, AiAssistantToolTrace } from "@walldeck/contracts";
 
 const escalationMarker = /^\s*ESCALATE\s*:\s*/i;
 
@@ -50,14 +50,15 @@ export class AssistantService {
         const requestsEscalation = escalationMarker.test(first.text);
         if (!forceFallback && requestsEscalation && settings.escalationEnabled) {
           const second = await this.runOnce(`${message}\n\nModel podstawowy poprosił o eskalację. Rozwiąż polecenie samodzielnie.`, settings, apiKey, settings.fallbackModel, settings.fallbackReasoning);
-          return { ...second, escalated: true, durationMs: Date.now() - started };
+          return { ...second, modelTurns: [...first.modelTurns, ...second.modelTurns], escalated: true, durationMs: Date.now() - started };
         }
         return { ...first, text: first.text.replace(escalationMarker, ""), escalated: forceFallback, durationMs: Date.now() - started };
       } catch (error) {
         if (forceFallback || !settings.escalationEnabled) throw error;
         const reason = error instanceof Error ? error.message : String(error);
         const second = await this.runOnce(`${message}\n\nModel podstawowy nie ukończył zadania: ${reason}. Spróbuj je wykonać.`, settings, apiKey, settings.fallbackModel, settings.fallbackReasoning);
-        return { ...second, escalated: true, durationMs: Date.now() - started };
+        const failedTurn: AiAssistantModelTurn = { model: primaryModel, input: message, instructions: settings.systemPrompt, error: reason, toolCalls: [] };
+        return { ...second, modelTurns: [failedTurn, ...second.modelTurns], escalated: true, durationMs: Date.now() - started };
       }
     } finally {
       this.running = false;
@@ -89,7 +90,8 @@ export class AssistantService {
       });
       const text = typeof result.finalOutput === "string" ? result.finalOutput.trim() : "";
       if (!text) throw new Error("Model nie zwrócił odpowiedzi");
-      return { text, model, escalated: false, toolCalls: collectToolTrace(result.newItems), durationMs: 0 };
+      const toolCalls = collectToolTrace(result.newItems);
+      return { text, model, escalated: false, toolCalls, modelTurns: [{ model, input: message, instructions: settings.systemPrompt, output: text, toolCalls }], durationMs: 0 };
     } finally {
       await mcp.close().catch(() => undefined);
       await provider.close().catch(() => undefined);

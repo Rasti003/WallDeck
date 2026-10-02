@@ -2,6 +2,7 @@ import type {
   AiAssistantConfigInput,
   AiAssistantRunInput,
   AiAssistantRunResult,
+  AiAssistantConversationEntry,
   AiAssistantSettings,
   AiAssistantStatus,
   ElevenLabsVoice,
@@ -90,6 +91,8 @@ export const api = {
     run: (input: AiAssistantRunInput) => json<AiAssistantRunResult>("/api/assistant/run", {
       method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(input),
     }),
+    history: () => json<AiAssistantConversationEntry[]>("/api/assistant/history", { cache: "no-store" }),
+    clearHistory: () => json<{ ok: true }>("/api/assistant/history", { method: "DELETE" }),
     speech: async (text: string) => {
       const response = await fetch("/api/assistant/speech", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ text }) });
       if (!response.ok) {

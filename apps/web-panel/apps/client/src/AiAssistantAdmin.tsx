@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { openAiVoiceSchema, type AiAssistantRunResult, type AiAssistantStatus, type ElevenLabsVoice, type WallDeckSettings } from "@walldeck/contracts";
+import { openAiVoiceSchema, type AiAssistantConversationEntry, type AiAssistantRunResult, type AiAssistantStatus, type ElevenLabsVoice, type WallDeckSettings } from "@walldeck/contracts";
 import { api } from "./api";
 
 type Props = { settings: WallDeckSettings; setSettings(value: WallDeckSettings): void };
@@ -23,6 +23,7 @@ export function AiAssistantAdmin({ settings, setSettings }: Props) {
   const [result, setResult] = useState<AiAssistantRunResult | null>(null);
   const [state, setState] = useState("Ładowanie…");
   const [running, setRunning] = useState(false);
+  const [history, setHistory] = useState<AiAssistantConversationEntry[]>([]);
   const config = settings.aiAssistant;
 
   useEffect(() => {
@@ -34,6 +35,14 @@ export function AiAssistantAdmin({ settings, setSettings }: Props) {
     }).catch((error) => setState(error instanceof Error ? error.message : String(error)));
   // Initial synchronization only; settings is deliberately not a dependency.
   // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    const refresh = () => api.assistant.history().then((entries) => { if (active) setHistory(entries); }).catch(() => undefined);
+    void refresh();
+    const timer = setInterval(refresh, 3_000);
+    return () => { active = false; clearInterval(timer); };
   }, []);
 
   function update(patch: Partial<WallDeckSettings["aiAssistant"]>) {
@@ -70,7 +79,7 @@ export function AiAssistantAdmin({ settings, setSettings }: Props) {
     setRunning(true); setResult(null); setState("Asystent pracuje…");
     try {
       const next = await api.assistant.run({ message: message.trim(), forceFallback });
-      setResult(next); setState(`Gotowe · ${next.durationMs} ms`);
+      setResult(next); setState(`Gotowe · ${next.durationMs} ms`); setHistory(await api.assistant.history());
     } catch (error) { setState(`Błąd: ${error instanceof Error ? error.message : String(error)}`); }
     finally { setRunning(false); }
   }
@@ -88,6 +97,12 @@ export function AiAssistantAdmin({ settings, setSettings }: Props) {
       const provider = sample.provider === "openai-live" ? "GPT-Live" : sample.provider === "openai-tts-fallback" ? "TTS · fallback" : sample.provider === "elevenlabs" ? "ElevenLabs" : "OpenAI TTS";
       setState(`Odtwarzam próbkę · ${provider}${sample.liveSeconds ? ` · ${sample.liveSeconds.toFixed(1)} s sesji` : ""}`);
     } catch (error) { setState(`Błąd: ${error instanceof Error ? error.message : String(error)}`); }
+  }
+
+  async function clearHistory() {
+    await api.assistant.clearHistory();
+    setHistory([]);
+    setState("Historia rozmów wyczyszczona");
   }
 
   return <section className="ai-admin">
@@ -183,5 +198,30 @@ export function AiAssistantAdmin({ settings, setSettings }: Props) {
       <div className="ai-console-actions"><label className="switch-row"><input type="checkbox" checked={forceFallback} onChange={(e) => setForceFallback(e.target.checked)} /><span><strong>Od razu użyj mocniejszego modelu</strong></span></label><button disabled={running || !config.enabled || !connection.configured || !connection.mcpReady}>{running ? "Pracuję…" : "Wykonaj"}</button></div>
       {result && <div className="ai-result"><header><strong>{result.model}</strong><span>{result.escalated ? "eskalacja" : "model podstawowy"}</span></header><p>{result.text}</p>{result.toolCalls.length > 0 && <details><summary>Wywołania MCP ({result.toolCalls.length})</summary>{result.toolCalls.map((tool, index) => <article key={`${tool.name}-${index}`}><strong>{tool.name}</strong><code>{JSON.stringify(tool.arguments, null, 2)}</code>{tool.output !== undefined && <code>{JSON.stringify(tool.output, null, 2)}</code>}</article>)}</details>}</div>}
     </form>
+
+    <section className="admin-card ai-history">
+      <header><div><span className="admin-kicker">HISTORIA</span><h2>Rozmowy i działania</h2><p>Ostatnie 100 tur z tabletu i konsoli. Audio i klucze API nie są zapisywane.</p></div><button type="button" className="secondary" disabled={!history.length} onClick={() => void clearHistory()}>Wyczyść historię</button></header>
+      {!history.length && <p className="admin-note">Brak zapisanych rozmów. Następne polecenie „Ej Waldek…” pojawi się tutaj automatycznie.</p>}
+      <div className="ai-history-list">{history.map((entry) => <ConversationEntry key={entry.id} entry={entry} />)}</div>
+    </section>
   </section>;
+}
+
+function ConversationEntry({ entry }: { entry: AiAssistantConversationEntry }) {
+  return <article className="ai-history-entry">
+    <header><div><strong>{entry.source === "tablet-voice" ? "Tablet · głos" : "Admin · tekst"}</strong><time>{new Date(entry.startedAt).toLocaleString("pl-PL")}</time></div><span className={entry.error ? "is-error" : "is-ok"}>{entry.error ? "błąd" : `${entry.result?.durationMs ?? 0} ms`}</span></header>
+    <div className="ai-history-message"><small>Rozpoznano / wpisano</small><p>{entry.transcript || "Nie uzyskano transkrypcji"}</p></div>
+    {entry.result?.modelTurns.map((turn, turnIndex) => <details key={`${entry.id}-${turnIndex}`} open={turnIndex === entry.result!.modelTurns.length - 1}>
+      <summary>{turn.model} · wejście, odpowiedź i narzędzia ({turn.toolCalls.length})</summary>
+      <div className="ai-history-turn">
+        <section><small>Instrukcja systemowa</small><pre>{turn.instructions}</pre></section>
+        <section><small>Dokładne wejście do modelu</small><pre>{turn.input}</pre></section>
+        {turn.output && <section><small>Odpowiedź modelu</small><pre>{turn.output}</pre></section>}
+        {turn.error && <section className="is-error"><small>Błąd modelu</small><pre>{turn.error}</pre></section>}
+        {turn.toolCalls.map((tool, index) => <section className="ai-history-tool" key={`${tool.name}-${index}`}><small>Narzędzie MCP · {tool.name}</small><label>Argumenty</label><pre>{JSON.stringify(tool.arguments, null, 2)}</pre>{tool.output !== undefined && <><label>Wynik</label><pre>{JSON.stringify(tool.output, null, 2)}</pre></>}</section>)}
+      </div>
+    </details>)}
+    {entry.result && <div className="ai-history-message ai-history-final"><small>Tekst końcowy przekazany do głosu</small><p>{entry.result.text}</p></div>}
+    {entry.error && <p className="ai-history-error">{entry.error}</p>}
+  </article>;
 }
