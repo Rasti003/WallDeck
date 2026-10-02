@@ -29,6 +29,7 @@ export class VoiceAssistantRuntime {
   private sessionReady = false;
   private bufferedSpeechTask: Promise<void> | null = null;
   private preservedCommandActive = false;
+  private nativeOutputReady = false;
 
   constructor(private settings: AiAssistantSettings, private callbacks: Callbacks) {}
 
@@ -111,6 +112,7 @@ export class VoiceAssistantRuntime {
     this.pendingDelegations.clear();
     this.bufferedSpeechTask = null;
     this.preservedCommandActive = remainder.length >= 2;
+    this.nativeOutputReady = false;
     void nativeBridge.call("haptics").catch(() => undefined);
     await nativeBridge.call("wakeWord.pause").catch(() => undefined);
     const protocol = location.protocol === "https:" ? "wss:" : "ws:";
@@ -119,7 +121,6 @@ export class VoiceAssistantRuntime {
     socket.addEventListener("message", (message) => { void this.handleMessage(JSON.parse(String(message.data)) as Record<string, unknown>, remainder); });
     socket.addEventListener("close", () => { void this.finish(); });
     socket.addEventListener("error", () => this.callbacks.onStatus?.("Błąd połączenia GPT-Live"));
-    await nativeBridge.call("assistantAudio.startOutput").catch(() => undefined);
     await this.startInput();
   }
 
@@ -145,6 +146,7 @@ export class VoiceAssistantRuntime {
         this.outputStarted = true;
         this.callbacks.setState("speaking");
         await this.stopInput();
+        await this.ensureOutputReady();
       }
       await nativeBridge.call("assistantAudio.appendOutput", { audio: message.audio }).catch(() => undefined);
       this.scheduleCloseAfterPlayback(message.audio);
@@ -173,8 +175,11 @@ export class VoiceAssistantRuntime {
       speechText = `Nie udało się wykonać polecenia: ${error instanceof Error ? error.message : String(error)}`;
     }
     await this.stopInput();
-    await this.playBufferedSpeech(speechText);
-    if (socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify({ type: "close" }));
+    try {
+      await this.playBufferedSpeech(speechText);
+    } finally {
+      if (socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify({ type: "close" }));
+    }
   }
 
   private async handleDelegation(delegationId: string) {
@@ -197,24 +202,36 @@ export class VoiceAssistantRuntime {
       speechText = `Zadanie nie zostało wykonane: ${error instanceof Error ? error.message : String(error)}`;
     }
     await this.stopInput();
-    await this.playBufferedSpeech(speechText);
-    if (socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify({ type: "close" }));
+    try {
+      await this.playBufferedSpeech(speechText);
+    } finally {
+      if (socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify({ type: "close" }));
+    }
   }
 
   private async playBufferedSpeech(text: string) {
     this.callbacks.setState("thinking");
     this.callbacks.onStatus?.("Przygotowuję odpowiedź…");
     const pcm = await api.assistant.speechPcm(text);
+    await this.ensureOutputReady();
     this.outputStarted = true;
     this.callbacks.setState("speaking");
     this.callbacks.onStatus?.("Mówię");
-    const chunkSize = 48_000;
+    // The Android WebMessage bridge accepts at most 16 KiB including JSON and
+    // Base64 overhead. Keep raw PCM chunks comfortably below that boundary.
+    const chunkSize = 8_192;
     for (let offset = 0; offset < pcm.length; offset += chunkSize) {
       const chunk = pcm.subarray(offset, Math.min(offset + chunkSize, pcm.length));
       let binary = "";
       for (let index = 0; index < chunk.length; index += 1) binary += String.fromCharCode(chunk[index]);
       await nativeBridge.call("assistantAudio.appendOutput", { audio: btoa(binary) });
     }
+  }
+
+  private async ensureOutputReady() {
+    if (this.nativeOutputReady) return;
+    await nativeBridge.call("assistantAudio.startOutput");
+    this.nativeOutputReady = true;
   }
 
   private async finish() {
@@ -280,6 +297,7 @@ export class VoiceAssistantRuntime {
     } catch {
       await nativeBridge.call("assistantAudio.stopOutput").catch(() => undefined);
     } finally {
+      this.nativeOutputReady = false;
       if (timeout) clearTimeout(timeout);
       if (listener) window.removeEventListener("wallpanel:assistantOutputDrained", listener);
     }
