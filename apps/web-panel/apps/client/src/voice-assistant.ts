@@ -28,6 +28,7 @@ export class VoiceAssistantRuntime {
   private pendingAudio: string[] = [];
   private sessionReady = false;
   private bufferedSpeechTask: Promise<void> | null = null;
+  private preservedCommandActive = false;
 
   constructor(private settings: AiAssistantSettings, private callbacks: Callbacks) {}
 
@@ -109,6 +110,7 @@ export class VoiceAssistantRuntime {
     this.sessionReady = false;
     this.pendingDelegations.clear();
     this.bufferedSpeechTask = null;
+    this.preservedCommandActive = remainder.length >= 2;
     void nativeBridge.call("haptics").catch(() => undefined);
     await nativeBridge.call("wakeWord.pause").catch(() => undefined);
     const protocol = location.protocol === "https:" ? "wss:" : "ws:";
@@ -131,7 +133,7 @@ export class VoiceAssistantRuntime {
         if (this.socket?.readyState !== WebSocket.OPEN) break;
         this.socket.send(JSON.stringify({ type: "audio", audio }));
       }
-      if (remainder.length >= 2) void this.executePreservedCommand(remainder);
+      if (remainder.length >= 2) this.bufferedSpeechTask = this.executePreservedCommand(remainder);
     } else if (message.type === "inputTranscript" && typeof message.delta === "string") {
       this.inputTranscript += message.delta;
       this.lastTranscriptAt = Date.now();
@@ -147,6 +149,7 @@ export class VoiceAssistantRuntime {
       await nativeBridge.call("assistantAudio.appendOutput", { audio: message.audio }).catch(() => undefined);
       this.scheduleCloseAfterPlayback(message.audio);
     } else if (message.type === "delegation" && typeof message.delegationId === "string") {
+      if (this.preservedCommandActive) return;
       this.bufferedSpeechTask = this.handleDelegation(message.delegationId);
     } else if (message.type === "closed") {
       this.socket?.close();

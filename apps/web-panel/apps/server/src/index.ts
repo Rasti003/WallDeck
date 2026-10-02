@@ -146,11 +146,11 @@ async function assistantStatus() {
   };
 }
 
-async function renderOpenAiTts(apiKey: string, text: string, settings: WallDeckSettings["aiAssistant"]["voice"]) {
+async function renderOpenAiTts(apiKey: string, text: string, settings: WallDeckSettings["aiAssistant"]["voice"], responseFormat: "mp3" | "pcm" = "mp3") {
   const response = await fetch("https://api.openai.com/v1/audio/speech", {
     method: "POST",
     headers: { authorization: `Bearer ${apiKey}`, "content-type": "application/json" },
-    body: JSON.stringify({ model: settings.model, voice: settings.voice, input: text, instructions: settings.instructions, response_format: "mp3" }),
+    body: JSON.stringify({ model: settings.model, voice: settings.voice, input: text, instructions: settings.instructions, response_format: responseFormat }),
     signal: AbortSignal.timeout(30_000),
   });
   if (!response.ok) {
@@ -233,17 +233,18 @@ app.post("/api/assistant/speech-pcm", async (request, reply) => {
   }
   const apiKey = await openAiKeyStore.load();
   if (!apiKey) return reply.code(409).send({ error: "Brak klucza OpenAI API" });
-  const usage = await liveVoiceUsage.status(settings);
-  if (usage.exhausted) return reply.code(429).send({ error: "Miesięczny limit GPT-Live został osiągnięty" });
   if (voiceBusy) return reply.code(409).send({ error: "Inna odpowiedź głosowa jest jeszcze generowana" });
   voiceBusy = true;
   try {
-    const live = await renderLiveSpeech(apiKey, parsed.data.text, settings.voice, seconds => liveVoiceUsage.add(seconds));
+    const pcm = await renderOpenAiTts(apiKey, parsed.data.text, {
+      ...settings.voice,
+      voice: settings.voice.live.voice,
+    }, "pcm");
     return reply
       .header("content-type", "application/octet-stream")
       .header("cache-control", "no-store")
       .header("x-walldeck-pcm-rate", "24000")
-      .send(live.pcm);
+      .send(pcm);
   } catch (error) {
     return reply.code(502).send({ error: error instanceof Error ? error.message : String(error) });
   } finally {
