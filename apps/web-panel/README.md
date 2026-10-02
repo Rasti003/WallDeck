@@ -27,7 +27,7 @@ Sekcja **Music · Spotify** w `/admin` zapisuje publiczny Client ID oraz jasnoś
 
 `MusicController` jest oddzielony od Reacta i używa zaufanego bridge. Nie ma jeszcze zdalnego transportu MCP/server→tablet. Up Next i playlisty pokazują jawny stan niedostępności. Szczegóły konfiguracji i pozostałe testy: [Music / Spotify](../../docs/music-spotify.md).
 
-Panel, admin, album i widok HA automatycznie wznawiają WebSocket po rozłączeniu (od 1 do 15 sekund między próbami, z niewielką losową zwłoką). Snapshot przywraca aktualny widok i stan HA; panel oraz album ponownie pobierają ustawienia. Po wdrożeniu tej poprawki starsze, już otwarte karty trzeba jednorazowo odświeżyć.
+Panel, admin, album i widok HA automatycznie wznawiają WebSocket po rozłączeniu (od 1 do 15 sekund między próbami, z niewielką losową zwłoką). Snapshot przywraca aktualny widok i stan HA; panel oraz album ponownie pobierają ustawienia. Po każdym połączeniu klient porównuje nazwę załadowanego, hashowanego bundla z bieżącym HTML-em serwera i przeładowuje się tylko po wykryciu nowego wdrożenia.
 
 Serwer rozpoznaje pliki frontendu przy każdym żądaniu, dzięki czemu nowe nazwy assetów po buildzie nie wymagają restartu backendu. HTML wymaga rewalidacji cache. Brakujący plik JS/CSS zwraca 404, a fallback SPA dotyczy wyłącznie tras ekranów. Test `apps/server/test/client.test.mjs` odtwarza publikację assetu po uruchomieniu serwera.
 

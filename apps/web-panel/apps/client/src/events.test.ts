@@ -1,5 +1,12 @@
 import { afterEach, expect, it, vi } from "vitest";
-import { connectEvents } from "./events";
+import { clientEntryPathFromHtml, connectEvents, shouldReloadClient } from "./events";
+
+it("detects when the deployed hashed client bundle changed", () => {
+  const html = '<script type="module" crossorigin src="/assets/index-new123.js"></script>';
+  expect(clientEntryPathFromHtml(html, "http://panel.test/panel")).toBe("/assets/index-new123.js");
+  expect(shouldReloadClient("http://panel.test/assets/index-old456.js", html, "http://panel.test/panel")).toBe(true);
+  expect(shouldReloadClient("http://panel.test/assets/index-new123.js", html, "http://panel.test/panel")).toBe(false);
+});
 
 it("reconnects after disconnect, delivers the new snapshot and stops retrying on cleanup", () => {
   vi.useFakeTimers();
