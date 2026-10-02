@@ -203,3 +203,9 @@ Xiaomi 2603ARP14G, Android 16, bridge v5. Android `assembleDebug`, testy jednost
 - Pierwsza próba ujawniła sprzężenie głośnik–mikrofon i została przerwana; po poprawce półdupleksowej nie wystąpiła kolejna automatyczna tura. Łączny koszt prób widoczny w panelu wzrósł o około 0,046 USD.
 - Test 2,6 s z włączoną obserwacją mówcy zapisał eksperymentalną etykietę `Głos 3` i flagę w statusie admina. Wynik potwierdza transport funkcji, ale nie jej zdolność do identyfikacji osoby; podczas testu nie wykonano kontrolowanej próbki mowy.
 - NIE TESTOWANO jeszcze rzeczywistego wypowiedzenia frazy przez użytkownika ani porównania jakości anonimowych klastrów mówców. Klaster jest diagnostyczny i nie wpływa na uprawnienia.
+
+### Poprawka ciągłości wake wordu
+
+- Po zgłoszeniu braku reakcji diagnostyka wykazała `enabled=true`, `permission=true`, lecz `listening=false`: lokalny recognizer zakończył nasłuch i nie zwrócił ani wyniku, ani błędu.
+- Dodano watchdog wyniku po zakończeniu mowy, odświeżanie maksymalnie co 12 s, szybsze progi ciszy i bias dla „Ej/Hej Waldek” oraz wariantów `Valdek`.
+- APK przebudowano, zainstalowano przez USB i przywrócono kiosk. Obserwacja fizycznego WebView przez 28 s potwierdziła dwa pełne cykle `listening → session-refresh → listening`; recognizer nie pozostał już w stanie zatrzymanym. Android `assembleDebug`, `testDebugUnitTest` i `lintDebug`: PASS.

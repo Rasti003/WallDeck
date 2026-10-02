@@ -29,7 +29,21 @@ class WakeWordRecognizer(
     private var listening = false
     private var detected = false
     private var phrase = "ej waldek"
+    private var lastState = "idle"
     private val restart = Runnable { if (enabled && !listening) beginListening() }
+    private val resultWatchdog = Runnable {
+        if (enabled && !detected && !listening) {
+            recognizer?.cancel()
+            scheduleRestart("result-timeout")
+        }
+    }
+    private val sessionWatchdog = Runnable {
+        if (enabled && !detected) {
+            listening = false
+            recognizer?.cancel()
+            scheduleRestart("session-refresh")
+        }
+    }
 
     fun configure(shouldEnable: Boolean, wakePhrase: String): JSONObject {
         phrase = normalize(wakePhrase)
@@ -40,8 +54,11 @@ class WakeWordRecognizer(
 
     fun pause() {
         handler.removeCallbacks(restart)
+        handler.removeCallbacks(resultWatchdog)
+        handler.removeCallbacks(sessionWatchdog)
         listening = false
         recognizer?.cancel()
+        publishStatus("paused")
     }
 
     fun resume() {
@@ -51,6 +68,8 @@ class WakeWordRecognizer(
     fun stop() {
         enabled = false
         handler.removeCallbacks(restart)
+        handler.removeCallbacks(resultWatchdog)
+        handler.removeCallbacks(sessionWatchdog)
         listening = false
         recognizer?.cancel()
     }
@@ -67,6 +86,7 @@ class WakeWordRecognizer(
         .put("localAvailable", localAvailable())
         .put("permission", hasPermission())
         .put("phrase", phrase)
+        .put("state", lastState)
 
     private fun localAvailable(): Boolean = Build.VERSION.SDK_INT >= 31 && SpeechRecognizer.isOnDeviceRecognitionAvailable(context)
     private fun hasPermission(): Boolean = ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
@@ -74,6 +94,8 @@ class WakeWordRecognizer(
     @SuppressLint("NewApi") // localAvailable() guards createOnDeviceSpeechRecognizer behind API 31.
     private fun beginListening() {
         handler.removeCallbacks(restart)
+        handler.removeCallbacks(resultWatchdog)
+        handler.removeCallbacks(sessionWatchdog)
         if (!enabled || listening) return
         if (!hasPermission()) {
             publishStatus("permission-required")
@@ -94,10 +116,22 @@ class WakeWordRecognizer(
             putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
             putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE, true)
             putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 5)
+            putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_MINIMUM_LENGTH_MILLIS, 250L)
+            putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS, 500L)
+            putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, 900L)
+            if (Build.VERSION.SDK_INT >= 33) {
+                putStringArrayListExtra(
+                    RecognizerIntent.EXTRA_BIASING_STRINGS,
+                    arrayListOf(wakePhraseForRecognizer(), "Hej Waldek", "Ej Valdek", "Hej Valdek"),
+                )
+            }
         }
         runCatching { recognizer?.startListening(intent) }
             .onFailure { listening = false; scheduleRestart("start-failed") }
-        publishStatus("listening")
+        if (listening) {
+            handler.postDelayed(sessionWatchdog, 12_000)
+            publishStatus("listening")
+        }
     }
 
     private fun inspect(results: Bundle?) {
@@ -105,6 +139,8 @@ class WakeWordRecognizer(
         val candidates = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION).orEmpty()
         val match = candidates.firstOrNull { containsWake(it) } ?: return
         detected = true
+        handler.removeCallbacks(resultWatchdog)
+        handler.removeCallbacks(sessionWatchdog)
         listening = false
         recognizer?.cancel()
         val normalized = normalize(match)
@@ -126,21 +162,46 @@ class WakeWordRecognizer(
         .replace("\\s+".toRegex(), " ")
         .trim()
 
+    private fun wakePhraseForRecognizer(): String = phrase.split(' ').joinToString(" ") { word ->
+        word.replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale("pl", "PL")) else it.toString() }
+    }
+
     private fun scheduleRestart(reason: String) {
         publishStatus(reason)
         handler.removeCallbacks(restart)
+        handler.removeCallbacks(resultWatchdog)
+        handler.removeCallbacks(sessionWatchdog)
         if (enabled && !detected) handler.postDelayed(restart, 900)
     }
 
-    private fun publishStatus(state: String) = onStatus(status().put("state", state))
+    private fun publishStatus(state: String) {
+        lastState = state
+        onStatus(status())
+    }
 
     override fun onReadyForSpeech(params: Bundle?) { publishStatus("listening") }
     override fun onBeginningOfSpeech() { publishStatus("speech") }
     override fun onRmsChanged(rmsdB: Float) = Unit
     override fun onBufferReceived(buffer: ByteArray?) = Unit
-    override fun onEndOfSpeech() { listening = false }
-    override fun onError(error: Int) { listening = false; if (!detected) scheduleRestart("error-$error") }
-    override fun onResults(results: Bundle?) { listening = false; inspect(results); if (!detected) scheduleRestart("no-wake") }
+    override fun onEndOfSpeech() {
+        listening = false
+        publishStatus("processing")
+        handler.removeCallbacks(sessionWatchdog)
+        handler.postDelayed(resultWatchdog, 1_500)
+    }
+    override fun onError(error: Int) {
+        listening = false
+        handler.removeCallbacks(resultWatchdog)
+        handler.removeCallbacks(sessionWatchdog)
+        if (!detected) scheduleRestart("error-$error")
+    }
+    override fun onResults(results: Bundle?) {
+        listening = false
+        handler.removeCallbacks(resultWatchdog)
+        handler.removeCallbacks(sessionWatchdog)
+        inspect(results)
+        if (!detected) scheduleRestart("no-wake")
+    }
     override fun onPartialResults(partialResults: Bundle?) = inspect(partialResults)
     override fun onEvent(eventType: Int, params: Bundle?) = Unit
 }
