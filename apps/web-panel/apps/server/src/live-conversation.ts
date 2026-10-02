@@ -17,6 +17,7 @@ type ClientMessage =
   | { type: "close" };
 
 const PCM_RATE = 24_000;
+const OUTPUT_GENERATION_GRACE_MS = 10_000;
 
 export function registerLiveConversation(app: FastifyInstance, deps: Dependencies) {
   let active = false;
@@ -52,7 +53,11 @@ export function registerLiveConversation(app: FastifyInstance, deps: Dependencie
     let startedAt = Date.now();
     let sessionStarted = false;
     let closeRequested = false;
+    let closeReason = "transport-ended";
     let finalUsage = 0;
+    let inputTranscript = "";
+    let outputTranscript = "";
+    let outputAudioBytes = 0;
     const pendingAudio: string[] = [];
     let outputPlaybackUntil = 0;
     let idleTimer: ReturnType<typeof setTimeout> | undefined;
@@ -61,9 +66,10 @@ export function registerLiveConversation(app: FastifyInstance, deps: Dependencie
     const send = (message: unknown) => {
       if (socket.readyState === 1) socket.send(JSON.stringify(message));
     };
-    const requestClose = () => {
+    const requestClose = (reason = "requested") => {
       if (closeRequested) return;
       closeRequested = true;
+      closeReason = reason;
       if (sessionStarted) live.send({ type: "session.close", event_id: `close_${Date.now()}` });
       else live.close({ code: 1000, reason: "WallDeck closed before start" });
     };
@@ -74,7 +80,13 @@ export function registerLiveConversation(app: FastifyInstance, deps: Dependencie
       outputPlaybackUntil = Math.max(Date.now(), outputPlaybackUntil) + durationMs;
       if (idleTimer) clearTimeout(idleTimer);
       const queuedPlaybackMs = Math.max(0, outputPlaybackUntil - Date.now());
-      idleTimer = setTimeout(requestClose, Math.max(5_000, queuedPlaybackMs + settings.voice.live.idleCloseMs));
+      // GPT-Live has no event marking the end of a spoken response. A pause between
+      // audio deltas is not an end-of-turn signal, so keep enough generation grace
+      // to avoid closing a session in the middle of a sentence.
+      idleTimer = setTimeout(
+        () => requestClose("output-idle"),
+        Math.max(OUTPUT_GENERATION_GRACE_MS, queuedPlaybackMs + settings.voice.live.idleCloseMs),
+      );
     };
 
     socket.on("message", (raw: Buffer) => {
@@ -93,16 +105,16 @@ export function registerLiveConversation(app: FastifyInstance, deps: Dependencie
           live.send({ type: "session.commentary.append", event_id: `result_${Date.now()}`, delegation_id: message.delegationId, content: message.content });
         } else if (message.type === "context" && typeof message.content === "string" && message.content.length <= 2_000 && !closeRequested) {
           live.send({ type: "session.thinking.append", event_id: `context_${Date.now()}`, delegation_id: null, content: message.content });
-        } else if (message.type === "close") requestClose();
+        } else if (message.type === "close") requestClose("client-playback-complete");
       } catch { /* Ignore malformed audio transport messages. */ }
     });
-    socket.on("close", requestClose);
+    socket.on("close", () => requestClose("client-socket-closed"));
 
     try {
       for await (const envelope of live) {
         if (envelope.type === "open") {
           startedAt = Date.now();
-          hardTimer = setTimeout(requestClose, settings.voice.live.hardLimitSeconds * 1_000);
+          hardTimer = setTimeout(() => requestClose("hard-limit"), settings.voice.live.hardLimitSeconds * 1_000);
           live.send({
             type: "session.start",
             event_id: `start_${Date.now()}`,
@@ -127,10 +139,13 @@ export function registerLiveConversation(app: FastifyInstance, deps: Dependencie
           send({ type: "ready", sessionId: event.session.id, sampleRate: PCM_RATE });
         } else if (event.type === "session.input_transcript.delta") {
           if (idleTimer) clearTimeout(idleTimer);
+          inputTranscript += event.delta;
           send({ type: "inputTranscript", delta: event.delta, startMs: event.start_ms, endMs: event.end_ms });
         } else if (event.type === "session.output_transcript.delta") {
+          outputTranscript += event.delta;
           send({ type: "outputTranscript", delta: event.delta, startMs: event.start_ms, endMs: event.end_ms });
         } else if (event.type === "session.output_audio.delta") {
+          outputAudioBytes += Math.max(0, Math.floor(event.delta.length * 3 / 4) - (event.delta.endsWith("==") ? 2 : event.delta.endsWith("=") ? 1 : 0));
           send({ type: "audio", audio: event.delta });
           postponeIdleClose(event.delta);
         } else if (event.type === "session.delegation.created") {
@@ -157,6 +172,14 @@ export function registerLiveConversation(app: FastifyInstance, deps: Dependencie
         finalUsage = finalUsage || Math.max(0, (Date.now() - startedAt) / 1_000);
         await deps.usage.add(finalUsage);
       }
+      app.log.info({
+        closeReason,
+        durationMs: Date.now() - startedAt,
+        inputTranscript,
+        outputTranscript,
+        outputAudioBytes,
+        usageSeconds: finalUsage,
+      }, "GPT-Live conversation summary");
       active = false;
       if (socket.readyState === 1) socket.close();
     }

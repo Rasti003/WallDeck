@@ -13,6 +13,8 @@ type WakeEvent = { transcript?: string; remainder?: string };
 type AudioChunkEvent = { audio?: string };
 type SpeakerEvent = { label?: string; confidence?: number; experimental?: boolean };
 
+const OUTPUT_GENERATION_GRACE_MS = 10_000;
+
 export class VoiceAssistantRuntime {
   private socket: WebSocket | null = null;
   private inputTranscript = "";
@@ -223,9 +225,9 @@ export class VoiceAssistantRuntime {
 
   private async waitForTranscriptToSettle() {
     const started = Date.now();
-    while (Date.now() - started < 5_000) {
+    while (Date.now() - started < 8_000) {
       const quietFor = this.lastTranscriptAt ? Date.now() - this.lastTranscriptAt : 0;
-      if (this.inputTranscript.trim() && quietFor >= 1_600) return;
+      if (this.inputTranscript.trim() && quietFor >= 3_000) return;
       await new Promise(resolve => setTimeout(resolve, 100));
     }
   }
@@ -263,6 +265,6 @@ export class VoiceAssistantRuntime {
       this.outputResumeTimer = null;
       this.callbacks.onStatus?.("Kończę rozmowę");
       this.socket?.send(JSON.stringify({ type: "close" }));
-    }, Math.max(0, this.outputPlaybackUntil - Date.now()) + 1_200);
+    }, Math.max(0, this.outputPlaybackUntil - Date.now()) + OUTPUT_GENERATION_GRACE_MS);
   }
 }
