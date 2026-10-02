@@ -44,6 +44,7 @@ export const assistantBrightnessSchema = z.object({
 
 export const openAiReasoningSchema = z.enum(["low", "medium", "high"]);
 export const openAiVoiceSchema = z.enum(["alloy", "ash", "ballad", "coral", "echo", "fable", "nova", "onyx", "sage", "shimmer", "verse", "marin", "cedar"]);
+export const assistantVoiceProviderSchema = z.enum(["openai-live", "openai-tts", "elevenlabs"]);
 export const aiAssistantSettingsSchema = z.object({
   enabled: z.boolean().default(false),
   primaryModel: z.string().trim().min(1).max(80).default("gpt-6-luna"),
@@ -55,10 +56,31 @@ export const aiAssistantSettingsSchema = z.object({
   systemPrompt: z.string().trim().min(1).max(4_000).default("Jesteś domowym asystentem WallDeck. Odpowiadaj po polsku, krótko i konkretnie. Korzystaj z narzędzi MCP, gdy użytkownik prosi o działanie lub aktualny stan. Nie zgaduj wyniku narzędzia i nie ogłaszaj sukcesu, zanim narzędzie go nie potwierdzi. Jeżeli polecenie jest niejasne albo nie potrafisz go bezpiecznie wykonać, rozpocznij odpowiedź od ESCALATE:."),
   voice: z.object({
     enabled: z.boolean().default(false),
+    provider: assistantVoiceProviderSchema.default("openai-live"),
     model: z.string().trim().min(1).max(80).default("gpt-4o-mini-tts"),
     voice: openAiVoiceSchema.default("coral"),
     instructions: z.string().trim().max(500).default("Mów spokojnie, naturalnie i ciepło po polsku."),
-  }).default({ enabled: false, model: "gpt-4o-mini-tts", voice: "coral", instructions: "Mów spokojnie, naturalnie i ciepło po polsku." }),
+    live: z.object({
+      model: z.string().trim().min(1).max(80).default("gpt-live-1"),
+      voice: openAiVoiceSchema.default("marin"),
+      monthlyBudgetUsd: z.number().min(1).max(500).default(15),
+      idleCloseMs: z.number().int().min(750).max(10_000).default(2_000),
+      hardLimitSeconds: z.number().int().min(10).max(120).default(30),
+      fallbackToTts: z.boolean().default(true),
+    }).default({ model: "gpt-live-1", voice: "marin", monthlyBudgetUsd: 15, idleCloseMs: 2_000, hardLimitSeconds: 30, fallbackToTts: true }),
+    elevenLabs: z.object({
+      model: z.string().trim().min(1).max(100).default("eleven_v3_conversational"),
+      voiceId: z.string().trim().max(200).default(""),
+    }).default({ model: "eleven_v3_conversational", voiceId: "" }),
+  }).default({
+    enabled: false,
+    provider: "openai-live",
+    model: "gpt-4o-mini-tts",
+    voice: "coral",
+    instructions: "Mów spokojnie, naturalnie i ciepło po polsku.",
+    live: { model: "gpt-live-1", voice: "marin", monthlyBudgetUsd: 15, idleCloseMs: 2_000, hardLimitSeconds: 30, fallbackToTts: true },
+    elevenLabs: { model: "eleven_v3_conversational", voiceId: "" },
+  }),
 }).default({
   enabled: false,
   primaryModel: "gpt-6-luna",
@@ -68,7 +90,15 @@ export const aiAssistantSettingsSchema = z.object({
   fallbackReasoning: "medium",
   maxTurns: 6,
   systemPrompt: "Jesteś domowym asystentem WallDeck. Odpowiadaj po polsku, krótko i konkretnie. Korzystaj z narzędzi MCP, gdy użytkownik prosi o działanie lub aktualny stan. Nie zgaduj wyniku narzędzia i nie ogłaszaj sukcesu, zanim narzędzie go nie potwierdzi. Jeżeli polecenie jest niejasne albo nie potrafisz go bezpiecznie wykonać, rozpocznij odpowiedź od ESCALATE:.",
-  voice: { enabled: false, model: "gpt-4o-mini-tts", voice: "coral", instructions: "Mów spokojnie, naturalnie i ciepło po polsku." },
+  voice: {
+    enabled: false,
+    provider: "openai-live",
+    model: "gpt-4o-mini-tts",
+    voice: "coral",
+    instructions: "Mów spokojnie, naturalnie i ciepło po polsku.",
+    live: { model: "gpt-live-1", voice: "marin", monthlyBudgetUsd: 15, idleCloseMs: 2_000, hardLimitSeconds: 30, fallbackToTts: true },
+    elevenLabs: { model: "eleven_v3_conversational", voiceId: "" },
+  },
 });
 export type AiAssistantSettings = z.infer<typeof aiAssistantSettingsSchema>;
 export const aiAssistantConfigInputSchema = z.object({ settings: aiAssistantSettingsSchema, apiKey: z.string().trim().min(20).max(300).optional() });
@@ -76,7 +106,16 @@ export type AiAssistantConfigInput = z.infer<typeof aiAssistantConfigInputSchema
 export const aiAssistantRunInputSchema = z.object({ message: z.string().trim().min(1).max(2_000), forceFallback: z.boolean().default(false) });
 export type AiAssistantRunInput = z.infer<typeof aiAssistantRunInputSchema>;
 export const aiAssistantSpeechInputSchema = z.object({ text: z.string().trim().min(1).max(500) });
-export interface AiAssistantStatus { configured: boolean; enabled: boolean; mcpReady: boolean; busy: boolean; }
+export interface AiVoiceUsageStatus {
+  month: string;
+  liveSeconds: number;
+  estimatedUsd: number;
+  budgetUsd: number;
+  remainingUsd: number;
+  exhausted: boolean;
+  fallbackActive: boolean;
+}
+export interface AiAssistantStatus { configured: boolean; enabled: boolean; mcpReady: boolean; busy: boolean; voiceUsage: AiVoiceUsageStatus; }
 export interface AiAssistantToolTrace { name: string; arguments: unknown; output?: unknown; }
 export interface AiAssistantRunResult { text: string; model: string; escalated: boolean; toolCalls: AiAssistantToolTrace[]; durationMs: number; }
 

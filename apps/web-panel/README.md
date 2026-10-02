@@ -138,6 +138,8 @@ When Music is not playing, 30 seconds without interaction starts assistant idle,
 
 Admin: zakładka „Stany i przejścia” opisuje widoki, Music, Spotify, noc, animacje, album i zasilanie. Czasy/progi pochodzą z formularzy; lista animacji i automatyczne przejścia z reduktora asystenta. To dokumentacja zachowania, nie debugger na żywo.
 
+Zakładka „Asystent AI i MCP” obsługuje tekstowy przepływ Luna → MCP oraz opcjonalny głos. GPT-Live ma miesięczny limit kosztu, twardy limit sesji, kontrolowane zamknięcie po wygenerowaniu odpowiedzi i automatyczny fallback do `gpt-4o-mini-tts`. Wykorzystanie jest zapisywane w runtime bez treści rozmów. Pola ElevenLabs są przygotowane, ale provider pozostaje nieaktywny do czasu dodania osobnego klucza. Próbka gra tylko w przeglądarce administratora; mikrofon i wake word nie są jeszcze podłączone.
+
 Tablet menu: downward swipe in upper 40% or top handle opens a glass-style view selector. Admin > Views and rules > Menu tabletu controls enabled state, ordered visible views (minimum one). Menu overrides the legacy downward-swipe action and suspends inactivity while open. Xiaomi top-edge toolbar remains an OS limitation: start inside the panel or use the handle.
 
 Menu footer now contains a discreet 17px tablet icon (40px touch area) for exitToTablet, shown only when native capabilities advertise it. Desktop preview and older APKs omit it.

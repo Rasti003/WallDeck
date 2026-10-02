@@ -94,7 +94,12 @@ export const api = {
         const body = await response.json().catch(() => null) as { error?: string } | null;
         throw new Error(body?.error ?? `${response.status} ${response.statusText}`);
       }
-      return response.blob();
+      return {
+        blob: await response.blob(),
+        provider: response.headers.get("x-walldeck-voice-provider") ?? "unknown",
+        liveSeconds: Number(response.headers.get("x-walldeck-live-seconds") ?? 0),
+        liveSpendUsd: Number(response.headers.get("x-walldeck-live-spend-usd") ?? 0),
+      };
     },
   },
 };

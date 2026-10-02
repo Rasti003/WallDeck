@@ -67,7 +67,9 @@
 - [ ] audio focus/duck/pause/resume asystenta;
 - [ ] routing audio tablet/Bluetooth;
 - [ ] lokalny wake word, VAD i bufor audio;
-- [ ] STT → LLM → TTS na homelabie;
+- [x] tekstowy Luna/MCP → GPT-Live z budżetem, twardym limitem sesji i fallbackiem OpenAI TTS;
+- [ ] lokalny wake word „Ej Waldek” → mikrofon tabletu → pełna sesja GPT-Live z VAD i barge-in;
+- [ ] provider ElevenLabs z szyfrowanym kluczem i wyborem polskiego Voice ID;
 - [ ] aktualizacja konfiguracji i modeli bez wydawania nowego APK.
 
 - [x] rozróżnienie błędów połączenia Spotify; potwierdzono na tablecie UserNotAuthorizedException, autoryzacja nadal wymaga dokończenia.

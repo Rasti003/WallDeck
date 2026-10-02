@@ -11,7 +11,7 @@ W jednej sekcji **Asystent AI i MCP** można ustawić modele oraz niżej kontrol
 - opcjonalny model mocniejszy oraz całkowite wyłączenie automatycznej eskalacji;
 - limit tur chroniący przed niekontrolowaną pętlą narzędzi;
 - instrukcję systemową;
-- opcjonalny model TTS, głos i sposób mówienia.
+- dostawcę głosu, miesięczny budżet GPT-Live, limity sesji oraz konfigurację awaryjnego TTS.
 
 Domyślna konfiguracja używa `gpt-6-luna` z rozumowaniem `medium`. Model może poprosić o pojedynczą eskalację, zaczynając wynik od `ESCALATE:`; wtedy serwer ponawia polecenie przez skonfigurowany model mocniejszy. Administrator może również wymusić mocniejszy model dla konkretnego polecenia. Eskalacja nigdy nie tworzy dalszego łańcucha.
 
@@ -26,7 +26,21 @@ Każde polecenie otwiera świeże lokalne połączenie MCP, dlatego lista dostę
 
 ## Głos
 
-TTS jest opcjonalny. W tej wersji przycisk próbki generuje dźwięk przez OpenAI i odtwarza go wyłącznie w przeglądarce administratora po ręcznym kliknięciu. Tablet pozostaje cichy. Integracja wake word → STT → asystent → TTS na tablecie jest kolejnym etapem.
+Głos jest opcjonalny. Administrator wybiera `GPT-Live`, oszczędny `gpt-4o-mini-tts` lub przygotowaną, jeszcze nieaktywną konfigurację ElevenLabs. Przycisk próbki odtwarza dźwięk wyłącznie w przeglądarce administratora po ręcznym kliknięciu; tablet pozostaje cichy.
+
+GPT-Live dostaje zweryfikowany tekst odpowiedzi z istniejącego asystenta i zwraca PCM 24 kHz opakowane przez serwer jako WAV. Sesja nie przejmuje jeszcze mikrofonu ani narzędzi — Luna i MCP pozostają dotychczasową warstwą wykonawczą. Serwer:
+
+- zamyka sesję po skonfigurowanej ciszy od ostatniego fragmentu audio;
+- wymusza twardy limit czasu całej sesji;
+- wysyła `session.close`, czeka na `session.closed` i zapisuje końcowe `usage.seconds`;
+- przechowuje miesięczny licznik w prywatnym runtime `assistant-voice-usage.json`;
+- po osiągnięciu budżetu lub błędzie GPT-Live przechodzi na `gpt-4o-mini-tts`, jeżeli fallback jest włączony.
+
+Domyślnie limit wynosi 15 USD miesięcznie, sesja najwyżej 30 sekund, a zamknięcie następuje 2 sekundy po ostatnim fragmencie audio. Limit dotyczy szacowanego kosztu samej sesji Live według stawki 0,05 USD/min; użycie Luny i narzędzi jest rozliczane osobno. Jedna sesja może nieznacznie przekroczyć próg, ponieważ końcowe użycie jest znane dopiero po jej zamknięciu.
+
+Pola modelu i Voice ID ElevenLabs należą już do wspólnego kontraktu ustawień. Endpoint celowo odrzuca tę opcję do czasu dodania osobnego, szyfrowanego klucza i implementacji providera.
+
+Integracja lokalny wake word „Ej Waldek” → mikrofon → rozmowa Live na tablecie jest kolejnym etapem. Dla przyszłej sesji audio timeout ma uwzględniać aktywność mikrofonu, odtwarzanie i trwające narzędzia; sam brak fragmentów transkrypcji nie jest uznawany za ciszę.
 
 ## Bezpieczeństwo i koszty
 
@@ -34,6 +48,7 @@ TTS jest opcjonalny. W tej wersji przycisk próbki generuje dźwięk przez OpenA
 - odpowiedzi Responses API nie są zapisywane (`store: false`);
 - jednocześnie może działać tylko jedno polecenie;
 - długość promptu, liczba tur i pola konfiguracyjne mają limity;
+- GPT-Live ma limit miesięczny, limit pojedynczej sesji i trwały licznik użycia;
 - wyłączenie asystenta lub eskalacji działa natychmiast;
 - MCP pozostaje jedyną warstwą wykonawczą, więc każde narzędzie można osobno wyłączyć.
 

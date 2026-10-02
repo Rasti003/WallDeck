@@ -30,7 +30,7 @@ Komendy mają allowlist, walidowany zakres seek/repeat i wyłącznie URI Spotify
 
 Jasność per mimika używa istniejącego zaufanego bridge i dotyczy wyłącznie okna WallDeck. Nie zapisuje globalnej jasności systemu ani nie wymaga nowych uprawnień. Backend waliduje nazwy min oraz zakres 5–100%; fallback -1 jest wyliczany w kliencie jako powrót do ustawień Androida.
 
-Widok asystenta jest demonstracją grafiki. Suwak i generator lokalny są jedynymi źródłami poziomu audio; nie korzysta z mikrofonu, kamery, zewnętrznego TTS ani nowych uprawnień Androida. Do API aktywacji dodano tylko walidowany identyfikator `assistant-demo`.
+Widok twarzy asystenta nadal nie korzysta z mikrofonu ani nowych uprawnień Androida. Ręczna próbka w adminie może wysłać krótki tekst do GPT-Live lub OpenAI Speech; klucz pozostaje w szyfrowanym storage serwera i nigdy nie trafia do przeglądarki. Odpowiedź audio ma `no-store`. Licznik GPT-Live przechowuje wyłącznie miesiąc i łączną liczbę sekund, bez tekstu i nagrań. Sesje mają `store: false`, twardy limit czasu i kontrolowane zamknięcie. ElevenLabs nie otrzymuje danych, dopóki provider nie zostanie zaimplementowany i jawnie skonfigurowany.
 
 Wszystkie skrypty uruchamiane przez zaufany origin mają dostęp do bridge. Backend i frontend muszą więc zapobiegać XSS, stosować restrykcyjny CSP, aktualizować zależności oraz wydawać krótkie sesje. Weryfikacja HMAC powinna być stałoczasowa, a każde wyzwanie jednorazowe i szybko wygasające.
 

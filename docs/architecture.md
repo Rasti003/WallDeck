@@ -92,6 +92,12 @@ Kontrakt domenowy jest dostępny przez serwer MCP. Endpoint `/mcp` wymaga tokenu
 
 MCP pozostaje oddzielone od przyszłego „mózgu” opartego o OpenAI API. Serwer rejestruje tylko włączone, zadaniowe narzędzia do odczytu stanu, zmiany widoku i mimiki, sterowania muzyką/głośnością, powiadomień, jasności oraz bezpiecznego odczytu HA. Nie ma ogólnego narzędzia do edycji konfiguracji ani dowolnego wywołania usług HA. Szczegóły kontraktu i transportu opisuje [mcp.md](mcp.md).
 
+## Pipeline głosu asystenta
+
+Warstwa rozumowania pozostaje niezależna od syntezy: `polecenie tekstowe → Luna/eskalator → MCP → zweryfikowana odpowiedź tekstowa → provider głosu`. Pierwszy provider GPT-Live służy obecnie do naturalnego odczytania gotowej odpowiedzi przez krótką serwerową sesję WebSocket. Fallback używa istniejącego endpointu OpenAI Speech. Kontrakt przewiduje ElevenLabs bez aktywnego transportu i sekretu.
+
+Sesje Live są krótkotrwałe. Serwer zbiera `session.output_audio.delta`, śledzi kumulacyjne `session.usage.updated`, kończy przez `session.close` i czeka na `session.closed`. Miesięczny licznik w runtime wybiera fallback po przekroczeniu budżetu. Przyszła ścieżka mikrofonu ma uruchamiać sesję dopiero po lokalnym wake wordzie i zamykać ją po zakończeniu odtwarzania oraz braku aktywności, z osobnym twardym limitem.
+
 ### Aktywność klientów
 
 Obecny prototyp ma wspólny aktywny widok dla podłączonych paneli. Komunikat WebSocket `panel.activity` synchronizuje reset licznika bezczynności, aby dodatkowa karta panelu nie przełączała aktywnie używanego tabletu. Reguły dotyku i bezczynności są wyłączone w wymuszonym podglądzie `/ha`. Docelowe profile wielu urządzeń powinny rozdzielać widoki i aktywność per Device ID.

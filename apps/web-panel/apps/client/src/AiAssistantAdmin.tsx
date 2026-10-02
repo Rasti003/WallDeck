@@ -6,7 +6,13 @@ type Props = { settings: WallDeckSettings; setSettings(value: WallDeckSettings):
 
 export function AiAssistantAdmin({ settings, setSettings }: Props) {
   const [apiKey, setApiKey] = useState("");
-  const [connection, setConnection] = useState<AiAssistantStatus>({ configured: false, enabled: false, mcpReady: false, busy: false });
+  const [connection, setConnection] = useState<AiAssistantStatus>({
+    configured: false,
+    enabled: false,
+    mcpReady: false,
+    busy: false,
+    voiceUsage: { month: "", liveSeconds: 0, estimatedUsd: 0, budgetUsd: 15, remainingUsd: 15, exhausted: false, fallbackActive: false },
+  });
   const [message, setMessage] = useState("");
   const [forceFallback, setForceFallback] = useState(false);
   const [result, setResult] = useState<AiAssistantRunResult | null>(null);
@@ -54,12 +60,15 @@ export function AiAssistantAdmin({ settings, setSettings }: Props) {
   async function testVoice() {
     setState("Generowanie próbki głosu…");
     try {
-      const blob = await api.assistant.speech("Dzień dobry. Tu asystent WallDeck.");
-      const url = URL.createObjectURL(blob);
+      const sample = await api.assistant.speech("Dzień dobry. Tu Waldek. Jestem gotowy pomóc w domu.");
+      const url = URL.createObjectURL(sample.blob);
       const audio = new Audio(url);
       audio.onended = () => URL.revokeObjectURL(url);
       await audio.play();
-      setState("Odtwarzam próbkę w tej przeglądarce");
+      const refreshed = await api.assistant.config();
+      setConnection(refreshed.status);
+      const provider = sample.provider === "openai-live" ? "GPT-Live" : sample.provider === "openai-tts-fallback" ? "TTS · fallback" : "OpenAI TTS";
+      setState(`Odtwarzam próbkę · ${provider}${sample.liveSeconds ? ` · ${sample.liveSeconds.toFixed(1)} s sesji` : ""}`);
     } catch (error) { setState(`Błąd: ${error instanceof Error ? error.message : String(error)}`); }
   }
 
@@ -88,12 +97,32 @@ export function AiAssistantAdmin({ settings, setSettings }: Props) {
       <label>Klucz OpenAI API<input type="password" autoComplete="off" placeholder={connection.configured ? "Zapisany — pozostaw puste, aby go zachować" : "sk-…"} value={apiKey} onChange={(e) => setApiKey(e.target.value)} /><small>Klucz jest szyfrowany na serwerze i nie wraca do przeglądarki.</small></label>
       <fieldset className="ai-voice-settings"><legend>Opcjonalny głos</legend>
         <label className="switch-row"><input type="checkbox" checked={config.voice.enabled} onChange={(e) => update({ voice: { ...config.voice, enabled: e.target.checked } })} /><span><strong>Włącz generowanie mowy</strong><small>Na tym etapie próbka gra wyłącznie w przeglądarce administratora.</small></span></label>
+        <label>Dostawca głosu<select value={config.voice.provider} onChange={(e) => update({ voice: { ...config.voice, provider: e.target.value as typeof config.voice.provider } })}>
+          <option value="openai-live">GPT-Live · naturalna rozmowa</option>
+          <option value="openai-tts">OpenAI TTS · oszczędny</option>
+          <option value="elevenlabs">ElevenLabs · przygotowane, jeszcze nieaktywne</option>
+        </select></label>
+        {config.voice.provider === "openai-live" && <div className="ai-live-settings">
+          <div className="ai-usage-meter"><header><strong>Budżet GPT-Live · {connection.voiceUsage.month || "bieżący miesiąc"}</strong><span>${connection.voiceUsage.estimatedUsd.toFixed(3)} / ${config.voice.live.monthlyBudgetUsd.toFixed(2)}</span></header><progress max={config.voice.live.monthlyBudgetUsd} value={Math.min(connection.voiceUsage.estimatedUsd, config.voice.live.monthlyBudgetUsd)} /><small>{connection.voiceUsage.exhausted ? "Limit osiągnięty — aktywny jest fallback TTS." : `Pozostało około $${connection.voiceUsage.remainingUsd.toFixed(2)} · ${connection.voiceUsage.liveSeconds.toFixed(1)} s sesji Live.`}</small></div>
+          <div className="ai-model-grid">
+            <label>Model Live<input value={config.voice.live.model} onChange={(e) => update({ voice: { ...config.voice, live: { ...config.voice.live, model: e.target.value } } })} /></label>
+            <label>Głos Live<select value={config.voice.live.voice} onChange={(e) => update({ voice: { ...config.voice, live: { ...config.voice.live, voice: e.target.value as typeof config.voice.live.voice } } })}>{openAiVoiceSchema.options.map((voice) => <option key={voice} value={voice}>{voice}</option>)}</select></label>
+            <label>Limit miesięczny (USD)<input type="number" min="1" max="500" step="1" value={config.voice.live.monthlyBudgetUsd} onChange={(e) => update({ voice: { ...config.voice, live: { ...config.voice.live, monthlyBudgetUsd: Number(e.target.value) } } })} /></label>
+            <label>Twardy limit sesji<input type="number" min="10" max="120" step="1" value={config.voice.live.hardLimitSeconds} onChange={(e) => update({ voice: { ...config.voice, live: { ...config.voice.live, hardLimitSeconds: Number(e.target.value) } } })} /><small>sekund</small></label>
+            <label>Zamknięcie po ciszy<input type="number" min="750" max="10000" step="250" value={config.voice.live.idleCloseMs} onChange={(e) => update({ voice: { ...config.voice, live: { ...config.voice.live, idleCloseMs: Number(e.target.value) } } })} /><small>ms po ostatnim fragmencie audio</small></label>
+          </div>
+          <label className="switch-row"><input type="checkbox" checked={config.voice.live.fallbackToTts} onChange={(e) => update({ voice: { ...config.voice, live: { ...config.voice.live, fallbackToTts: e.target.checked } } })} /><span><strong>Po limicie lub błędzie przejdź na OpenAI TTS</strong><small>Próbka i przyszłe odpowiedzi nadal będą działały z modelem ustawionym niżej.</small></span></label>
+        </div>}
+        {config.voice.provider === "elevenlabs" && <div className="ai-live-settings">
+          <p className="admin-note">Konfiguracja jest zachowana w kontrakcie, ale połączenie pozostaje nieaktywne do czasu dodania klucza ElevenLabs.</p>
+          <div className="ai-model-grid"><label>Model ElevenLabs<input value={config.voice.elevenLabs.model} onChange={(e) => update({ voice: { ...config.voice, elevenLabs: { ...config.voice.elevenLabs, model: e.target.value } } })} /></label><label>Voice ID<input placeholder="Po wyborze polskiego głosu" value={config.voice.elevenLabs.voiceId} onChange={(e) => update({ voice: { ...config.voice, elevenLabs: { ...config.voice.elevenLabs, voiceId: e.target.value } } })} /></label></div>
+        </div>}
         <div className="ai-model-grid">
-          <label>Model<input value={config.voice.model} onChange={(e) => update({ voice: { ...config.voice, model: e.target.value } })} /></label>
-          <label>Głos<select value={config.voice.voice} onChange={(e) => update({ voice: { ...config.voice, voice: e.target.value as typeof config.voice.voice } })}>{openAiVoiceSchema.options.map((voice) => <option key={voice} value={voice}>{voice}</option>)}</select></label>
+          <label>Model fallback TTS<input value={config.voice.model} onChange={(e) => update({ voice: { ...config.voice, model: e.target.value } })} /></label>
+          <label>Głos fallback TTS<select value={config.voice.voice} onChange={(e) => update({ voice: { ...config.voice, voice: e.target.value as typeof config.voice.voice } })}>{openAiVoiceSchema.options.map((voice) => <option key={voice} value={voice}>{voice}</option>)}</select></label>
         </div>
         <label>Sposób mówienia<input value={config.voice.instructions} onChange={(e) => update({ voice: { ...config.voice, instructions: e.target.value } })} /></label>
-        <button type="button" className="secondary" disabled={!config.voice.enabled || !connection.configured} onClick={testVoice}>Odtwórz próbkę tutaj</button>
+        <button type="button" className="secondary" disabled={!config.voice.enabled || !connection.configured || config.voice.provider === "elevenlabs"} onClick={testVoice}>Odtwórz próbkę tutaj</button>
       </fieldset>
       <footer><button type="submit">Zapisz konfigurację</button><span>{state}</span></footer>
     </form>

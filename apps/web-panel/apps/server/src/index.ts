@@ -27,6 +27,7 @@ import { registerMcpEndpoint } from "./mcp.js";
 import { SpotifyConnector } from "./spotify.js";
 import { AssistantService } from "./assistant.js";
 import { EncryptedSecretStore } from "./secret-store.js";
+import { LiveVoiceUsageStore, renderLiveSpeech } from "./live-voice.js";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const webRoot = path.resolve(here, "../../client/dist");
@@ -100,12 +101,14 @@ const spotify = new SpotifyConnector(runtimeRoot);
 const initialSettings = await readSettings();
 await spotify.load(initialSettings.music.clientId);
 const openAiKeyStore = new EncryptedSecretStore(runtimeRoot, "openai-api-key");
+const liveVoiceUsage = new LiveVoiceUsageStore(runtimeRoot);
 const mcpToken = process.env.WALLDECK_MCP_TOKEN ?? "";
 const assistant = new AssistantService({
   mcpUrl: `http://127.0.0.1:${port}/mcp`,
   mcpToken,
   getApiKey: () => openAiKeyStore.load(),
 });
+let voiceBusy = false;
 
 const app = Fastify({ logger: true });
 await app.register(websocket);
@@ -130,7 +133,27 @@ app.put("/api/settings", async (request, reply) => {
 
 async function assistantStatus() {
   const settings = await readSettings();
-  return { configured: Boolean(await openAiKeyStore.load()), enabled: settings.aiAssistant.enabled, mcpReady: settings.mcp.enabled && Boolean(mcpToken), busy: assistant.busy };
+  return {
+    configured: Boolean(await openAiKeyStore.load()),
+    enabled: settings.aiAssistant.enabled,
+    mcpReady: settings.mcp.enabled && Boolean(mcpToken),
+    busy: assistant.busy,
+    voiceUsage: await liveVoiceUsage.status(settings.aiAssistant),
+  };
+}
+
+async function renderOpenAiTts(apiKey: string, text: string, settings: WallDeckSettings["aiAssistant"]["voice"]) {
+  const response = await fetch("https://api.openai.com/v1/audio/speech", {
+    method: "POST",
+    headers: { authorization: `Bearer ${apiKey}`, "content-type": "application/json" },
+    body: JSON.stringify({ model: settings.model, voice: settings.voice, input: text, instructions: settings.instructions, response_format: "mp3" }),
+    signal: AbortSignal.timeout(30_000),
+  });
+  if (!response.ok) {
+    const body = await response.json().catch(() => null) as { error?: { message?: string } } | null;
+    throw new Error(body?.error?.message ?? `OpenAI TTS zwróciło ${response.status}`);
+  }
+  return Buffer.from(await response.arrayBuffer());
 }
 
 app.get("/api/assistant/config", async () => ({ settings: (await readSettings()).aiAssistant, status: await assistantStatus() }));
@@ -160,21 +183,41 @@ app.post("/api/assistant/speech", async (request, reply) => {
   if (!settings.voice.enabled) return reply.code(409).send({ error: "Model głosowy jest wyłączony" });
   const apiKey = await openAiKeyStore.load();
   if (!apiKey) return reply.code(409).send({ error: "Najpierw zapisz klucz OpenAI API" });
+  if (voiceBusy) return reply.code(409).send({ error: "Inna próbka głosu jest jeszcze generowana" });
+  voiceBusy = true;
   try {
-    const response = await fetch("https://api.openai.com/v1/audio/speech", {
-      method: "POST",
-      headers: { authorization: `Bearer ${apiKey}`, "content-type": "application/json" },
-      body: JSON.stringify({ model: settings.voice.model, voice: settings.voice.voice, input: parsed.data.text, instructions: settings.voice.instructions, response_format: "mp3" }),
-      signal: AbortSignal.timeout(30_000),
-    });
-    if (!response.ok) {
-      const body = await response.json().catch(() => null) as { error?: { message?: string } } | null;
-      throw new Error(body?.error?.message ?? `OpenAI TTS zwróciło ${response.status}`);
+    if (settings.voice.provider === "elevenlabs") {
+      return reply.code(409).send({ error: "ElevenLabs jest przygotowane konfiguracyjnie, ale wymaga jeszcze klucza API i wyboru głosu" });
     }
-    const audio = Buffer.from(await response.arrayBuffer());
-    return reply.header("content-type", "audio/mpeg").header("cache-control", "no-store").send(audio);
+    const usageBefore = await liveVoiceUsage.status(settings);
+    if (settings.voice.provider === "openai-live" && !usageBefore.exhausted) {
+      try {
+        const live = await renderLiveSpeech(apiKey, parsed.data.text, settings.voice, seconds => liveVoiceUsage.add(seconds));
+        const usageAfter = await liveVoiceUsage.status(settings);
+        return reply
+          .header("content-type", "audio/wav")
+          .header("cache-control", "no-store")
+          .header("x-walldeck-voice-provider", "openai-live")
+          .header("x-walldeck-live-seconds", String(live.usageSeconds))
+          .header("x-walldeck-live-spend-usd", String(usageAfter.estimatedUsd))
+          .send(live.audio);
+      } catch (error) {
+        if (!settings.voice.live.fallbackToTts) throw error;
+        app.log.warn({ err: error }, "GPT-Live speech failed; falling back to OpenAI TTS");
+      }
+    } else if (settings.voice.provider === "openai-live" && !settings.voice.live.fallbackToTts) {
+      return reply.code(429).send({ error: "Miesięczny limit GPT-Live został osiągnięty" });
+    }
+    const audio = await renderOpenAiTts(apiKey, parsed.data.text, settings.voice);
+    return reply
+      .header("content-type", "audio/mpeg")
+      .header("cache-control", "no-store")
+      .header("x-walldeck-voice-provider", settings.voice.provider === "openai-live" ? "openai-tts-fallback" : "openai-tts")
+      .send(audio);
   } catch (error) {
     return reply.code(502).send({ error: error instanceof Error ? error.message : String(error) });
+  } finally {
+    voiceBusy = false;
   }
 });
 
