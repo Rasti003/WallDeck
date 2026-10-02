@@ -2,7 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { Client, InMemoryTransport } from "@modelcontextprotocol/client";
 import { defaultSettings } from "@walldeck/contracts";
-import { createWallDeckMcpServer, currentTimeSnapshot } from "../dist/mcp.js";
+import { createWallDeckMcpServer } from "../dist/mcp.js";
+import { currentTimeSnapshot } from "../dist/current-time.js";
 
 function readText(result) {
   return JSON.parse(result.content.find(item => item.type === "text").text);

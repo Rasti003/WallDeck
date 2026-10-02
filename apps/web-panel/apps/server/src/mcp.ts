@@ -14,6 +14,7 @@ import {
   type SpotifyQueue,
   type SpotifyStatus,
 } from "@walldeck/contracts";
+import { currentTimeSnapshot } from "./current-time.js";
 
 type HomeEntity = { entityId: string; friendlyName: string; state: string; unit?: string | null; deviceClass?: string | null; lastChanged?: string | null };
 
@@ -35,23 +36,6 @@ export interface WallDeckMcpDependencies {
 }
 
 const textResult = (value: unknown) => ({ content: [{ type: "text" as const, text: JSON.stringify(value) }] });
-
-export function currentTimeSnapshot(now = new Date(), timeZone = "Europe/Warsaw") {
-  const parts = Object.fromEntries(new Intl.DateTimeFormat("en-CA", {
-    timeZone, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23",
-  }).formatToParts(now).filter(part => part.type !== "literal").map(part => [part.type, part.value]));
-  const utcOffset = new Intl.DateTimeFormat("en", { timeZone, timeZoneName: "longOffset" }).formatToParts(now).find(part => part.type === "timeZoneName")?.value ?? "GMT";
-  return {
-    timeZone,
-    localDate: `${parts.year}-${parts.month}-${parts.day}`,
-    localTime: `${parts.hour}:${parts.minute}:${parts.second}`,
-    weekday: new Intl.DateTimeFormat("pl-PL", { timeZone, weekday: "long" }).format(now),
-    formatted: new Intl.DateTimeFormat("pl-PL", { timeZone, dateStyle: "full", timeStyle: "medium" }).format(now),
-    utcOffset,
-    isoUtc: now.toISOString(),
-    unixMs: now.getTime(),
-  };
-}
 
 function registerIf(server: McpServer, enabled: Record<McpToolId, boolean>, id: McpToolId, config: any, handler: any) {
   if (enabled[id]) server.registerTool(id, config, handler);

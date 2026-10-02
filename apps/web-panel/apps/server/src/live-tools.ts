@@ -1,6 +1,7 @@
 import { z } from "zod";
 import type { DeviceStatus, McpToolId, SpotifyItem, SpotifyStatus } from "@walldeck/contracts";
 import type { FunctionTool } from "openai/resources/live/live";
+import { currentTimeSnapshot } from "./current-time.js";
 
 export type LiveToolDependencies = {
   currentView(): string;
@@ -13,6 +14,7 @@ export type LiveToolDependencies = {
 
 const definitions: Record<string, FunctionTool> = {
   get_status: { type: "function", name: "get_status", description: "Odczytuje aktywny widok, tablet i stan Spotify.", strict: true, parameters: { type: "object", properties: {}, required: [], additionalProperties: false } },
+  get_current_time: { type: "function", name: "get_current_time", description: "Zwraca dokładną bieżącą datę, godzinę, dzień tygodnia i przesunięcie UTC dla domu w strefie Europe/Warsaw. Użyj zawsze, gdy odpowiedź lub działanie zależy od słów: teraz, dziś, jutro, godzina, data albo termin.", strict: true, parameters: { type: "object", properties: {}, required: [], additionalProperties: false } },
   show_view: { type: "function", name: "show_view", description: "Przełącza widok WallDeck.", strict: true, parameters: { type: "object", properties: { view: { type: "string", enum: ["photos", "ha", "assistant-expressive", "music"] } }, required: ["view"], additionalProperties: false } },
   control_music: { type: "function", name: "control_music", description: "Steruje aktualnym odtwarzaniem Spotify.", strict: true, parameters: { type: "object", properties: { action: { type: "string", enum: ["play", "pause", "next", "previous"] } }, required: ["action"], additionalProperties: false } },
   search_spotify: { type: "function", name: "search_spotify", description: "Wyszukuje Spotify. Użyj przed wybraniem muzyki, gdy użytkownik nie podał URI.", strict: true, parameters: { type: "object", properties: { query: { type: "string" }, types: { type: "array", items: { type: "string", enum: ["track", "album", "artist", "playlist", "episode"] } } }, required: ["query", "types"], additionalProperties: false } },
@@ -30,6 +32,7 @@ const spotifyTypes = z.array(z.enum(["track", "album", "artist", "playlist", "ep
 export async function executeLiveTool(name: string, rawArguments: string, deps: LiveToolDependencies): Promise<unknown> {
   const raw = JSON.parse(rawArguments) as unknown;
   if (name === "get_status") return { currentView: deps.currentView(), devices: deps.devices(), spotify: deps.spotifyStatus() };
+  if (name === "get_current_time") return currentTimeSnapshot();
   if (name === "show_view") {
     const { view } = z.object({ view: z.enum(["photos", "ha", "assistant-expressive", "music"]) }).parse(raw);
     deps.activateView(view); return { ok: true, view };

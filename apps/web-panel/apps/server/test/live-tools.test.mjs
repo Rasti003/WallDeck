@@ -24,3 +24,14 @@ test("Live tools respect their switches and adjust volume relatively", async () 
   await executeLiveTool("adjust_tablet_volume", JSON.stringify({ deltaPercent: 10 }), dependencies(calls));
   assert.deepEqual(calls, [["tablet.volume.adjust", { delta: 0.1 }]]);
 });
+
+test("GPT-Live exposes and executes the current time tool", async () => {
+  const enabled = structuredClone(defaultSettings.mcp.tools);
+  assert.ok(liveTools(enabled).some(tool => tool.name === "get_current_time"));
+
+  const result = await executeLiveTool("get_current_time", "{}", dependencies([]));
+  assert.equal(result.timeZone, "Europe/Warsaw");
+  assert.match(result.localDate, /^\d{4}-\d{2}-\d{2}$/);
+  assert.match(result.localTime, /^\d{2}:\d{2}:\d{2}$/);
+  assert.match(result.isoUtc, /^\d{4}-\d{2}-\d{2}T/);
+});
