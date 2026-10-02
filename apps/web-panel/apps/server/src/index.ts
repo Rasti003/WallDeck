@@ -30,6 +30,7 @@ import { AssistantService } from "./assistant.js";
 import { EncryptedSecretStore } from "./secret-store.js";
 import { LiveVoiceUsageStore, renderLiveSpeech } from "./live-voice.js";
 import { registerLiveConversation } from "./live-conversation.js";
+import { SpeakerObserverClient } from "./speaker-observer.js";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const webRoot = path.resolve(here, "../../client/dist");
@@ -104,6 +105,7 @@ const initialSettings = await readSettings();
 await spotify.load(initialSettings.music.clientId);
 const openAiKeyStore = new EncryptedSecretStore(runtimeRoot, "openai-api-key");
 const liveVoiceUsage = new LiveVoiceUsageStore(runtimeRoot);
+const speakerObserver = new SpeakerObserverClient();
 const mcpToken = process.env.WALLDECK_MCP_TOKEN ?? "";
 const assistant = new AssistantService({
   mcpUrl: `http://127.0.0.1:${port}/mcp`,
@@ -143,6 +145,7 @@ async function assistantStatus() {
     busy: assistant.busy,
     voiceUsage: await liveVoiceUsage.status(settings.aiAssistant),
     speakerObservation: lastSpeakerObservation,
+    speakerObserver: await speakerObserver.health(),
   };
 }
 
@@ -273,6 +276,11 @@ registerLiveConversation(app, {
   getSettings: async () => (await readSettings()).aiAssistant,
   getEnabledTools: async () => (await readSettings()).mcp.tools,
   usage: liveVoiceUsage,
+  speakerObserver,
+  onSpeakerObservation: observation => {
+    lastSpeakerObservation = observation;
+    broadcast({ type: "assistant.speakerObserved", observation });
+  },
   currentView: () => currentView,
   devices: deviceStatuses,
   spotifyStatus: () => spotify.status(),

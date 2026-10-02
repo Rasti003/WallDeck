@@ -15,6 +15,7 @@ services:
       WALLDECK_DATA_PATH: /var/lib/walldeck
       PHOTO_STORAGE_PATH: /var/lib/walldeck/photos
       WALLDECK_MCP_TOKEN: ${WALLDECK_MCP_TOKEN:-}
+      SPEAKER_SERVICE_URL: http://speaker-service:8091
       TZ: ${TZ:-Europe/Warsaw}
     volumes:
       - type: bind
@@ -42,3 +43,40 @@ services:
       timeout: 5s
       start_period: 15s
       retries: 3
+
+  speaker-service:
+    build:
+      context: ./apps/speaker-service
+    image: walldeck-speaker:local
+    container_name: walldeck-speaker
+    restart: unless-stopped
+    init: true
+    cpus: 2.0
+    mem_limit: 2g
+    environment:
+      SPEAKER_TORCH_THREADS: 2
+      TZ: ${TZ:-Europe/Warsaw}
+    volumes:
+      - speaker-models:/models
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8091/health', timeout=2)"
+      interval: 15s
+      timeout: 3s
+      start_period: 180s
+      retries: 5
+
+volumes:
+  speaker-models:

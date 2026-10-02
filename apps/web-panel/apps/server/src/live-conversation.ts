@@ -4,12 +4,16 @@ import type { FastifyInstance } from "fastify";
 import type { AiAssistantSettings, McpToolId } from "@walldeck/contracts";
 import type { LiveVoiceUsageStore } from "./live-voice.js";
 import { executeLiveTool, liveTools, type LiveToolDependencies } from "./live-tools.js";
+import type { SpeakerObservation } from "@walldeck/contracts";
+import type { SpeakerObserverClient, SpeakerObservationSession } from "./speaker-observer.js";
 
 type Dependencies = LiveToolDependencies & {
   getApiKey(): Promise<string | null>;
   getSettings(): Promise<AiAssistantSettings>;
   getEnabledTools(): Promise<Record<McpToolId, boolean>>;
   usage: LiveVoiceUsageStore;
+  speakerObserver: SpeakerObserverClient;
+  onSpeakerObservation(observation: SpeakerObservation): void;
 };
 
 type ClientMessage =
@@ -92,6 +96,12 @@ export function registerLiveConversation(app: FastifyInstance, deps: Dependencie
     let awaitingDelegationResponse = false;
     const pendingDelegations = new Set<string>();
     const delegationsNeedingContinuation = new Set<string>();
+    let speakerSession: SpeakerObservationSession | null = settings.voice.live.speakerObservationEnabled
+      ? deps.speakerObserver.session(
+        observation => deps.onSpeakerObservation(observation),
+        error => app.log.warn({ err: error }, "Local speaker observation failed"),
+      )
+      : null;
 
     const send = (message: unknown) => {
       if (socket.readyState === 1) socket.send(JSON.stringify(message));
@@ -144,6 +154,8 @@ export function registerLiveConversation(app: FastifyInstance, deps: Dependencie
       try {
         const message = JSON.parse(raw.toString()) as ClientMessage;
         if (message.type === "audio" && typeof message.audio === "string" && message.audio.length <= 160_000 && !closeRequested) {
+          const pcm = speakerSession ? Buffer.from(message.audio, "base64") : null;
+          if (pcm?.length) speakerSession?.append(pcm);
           if (sessionStarted) {
             live.send({ type: "session.input_audio.append", event_id: `audio_${Date.now()}`, audio: message.audio });
           } else {
@@ -287,6 +299,9 @@ Music policy: Prośba typu „wybierz mi muzykę do nauki i puść” jest kompl
       if (idleTimer) clearTimeout(idleTimer);
       if (hardTimer) clearTimeout(hardTimer);
       if (delegationTimer) clearTimeout(delegationTimer);
+      const finalSpeakerSession = speakerSession;
+      speakerSession = null;
+      if (finalSpeakerSession) await finalSpeakerSession.finish();
       live.close({ code: 1000, reason: "WallDeck conversation finished" });
       if (sessionStarted) {
         finalUsage = finalUsage || Math.max(0, (Date.now() - startedAt) / 1_000);

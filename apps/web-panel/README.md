@@ -2,6 +2,8 @@
 
 Aplikacja WWW panelu ściennego. Pierwszy widok prezentuje lokalną kopię albumu zdjęć i automatycznie dopasowuje układ do orientacji ekranu oraz fotografii.
 
+Rozmowa głosowa może równolegle korzystać z lokalnego `speaker-service`: Silero VAD odrzuca ciszę, a ECAPA-TDNN porównuje kolejne fragmenty z pierwszym głosem sesji. Analiza jest opcjonalna, nie blokuje GPT-Live, nie zapisuje audio i pozostaje diagnostyczna. `pyannote.audio` nie należy do domyślnego obrazu. Szczegóły: [apps/speaker-service/README.md](apps/speaker-service/README.md).
+
 ## Dostępne ekrany
 
 - `/music` — Music z odtwarzaniem przez APK oraz wyszukiwaniem, playlistami i kolejką przez Spotify Web API (PKCE).

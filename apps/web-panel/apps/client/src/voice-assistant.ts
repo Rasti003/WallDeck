@@ -335,7 +335,9 @@ export class VoiceAssistantRuntime {
     if (this.inputActive || !this.socket || this.socket.readyState === WebSocket.CLOSED) return;
     this.inputActive = true;
     try {
-      await nativeBridge.call("assistantAudio.startInput", { speakerObservation: this.settings.voice.live.speakerObservationEnabled });
+      // Speaker observation runs on the homelab over the same PCM stream. Keep the
+      // legacy tablet heuristic disabled so it cannot overwrite the ECAPA result.
+      await nativeBridge.call("assistantAudio.startInput", { speakerObservation: false });
     } catch (error) {
       this.inputActive = false;
       throw error;

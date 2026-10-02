@@ -120,8 +120,19 @@ export interface AiVoiceUsageStatus {
   exhausted: boolean;
   fallbackActive: boolean;
 }
-export interface SpeakerObservation { label: string; confidence: number; observedAt: string; experimental: true; }
-export interface AiAssistantStatus { configured: boolean; enabled: boolean; mcpReady: boolean; busy: boolean; voiceUsage: AiVoiceUsageStatus; speakerObservation: SpeakerObservation | null; }
+export interface SpeakerObservation {
+  label: string;
+  confidence: number;
+  observedAt: string;
+  experimental: true;
+  engine?: "tablet-heuristic" | "silero-ecapa";
+  relation?: "anchor" | "same" | "different";
+  similarity?: number;
+  speechSeconds?: number;
+  processingMs?: number;
+}
+export interface SpeakerObserverStatus { available: boolean; engine: "silero-ecapa"; modelReady: boolean; detail?: string; }
+export interface AiAssistantStatus { configured: boolean; enabled: boolean; mcpReady: boolean; busy: boolean; voiceUsage: AiVoiceUsageStatus; speakerObservation: SpeakerObservation | null; speakerObserver: SpeakerObserverStatus; }
 export interface AiAssistantToolTrace { name: string; arguments: unknown; output?: unknown; }
 export interface AiAssistantRunResult { text: string; model: string; escalated: boolean; toolCalls: AiAssistantToolTrace[]; durationMs: number; }
 

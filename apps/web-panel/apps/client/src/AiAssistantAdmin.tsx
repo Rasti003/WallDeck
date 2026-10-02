@@ -13,6 +13,7 @@ export function AiAssistantAdmin({ settings, setSettings }: Props) {
     busy: false,
     voiceUsage: { month: "", liveSeconds: 0, estimatedUsd: 0, budgetUsd: 15, remainingUsd: 15, exhausted: false, fallbackActive: false },
     speakerObservation: null,
+    speakerObserver: { available: false, engine: "silero-ecapa", modelReady: false },
   });
   const [message, setMessage] = useState("");
   const [forceFallback, setForceFallback] = useState(false);
@@ -120,8 +121,9 @@ export function AiAssistantAdmin({ settings, setSettings }: Props) {
           <label className="switch-row"><input type="checkbox" checked={config.voice.live.conversationEnabled} onChange={(e) => update({ voice: { ...config.voice, live: { ...config.voice.live, conversationEnabled: e.target.checked } } })} /><span><strong>Włącz rozmowę GPT-Live na tablecie</strong><small>Uruchamia natywny tor mikrofon → WallDeck Server → GPT-Live → głośnik tabletu.</small></span></label>
           <label className="switch-row"><input type="checkbox" checked={config.voice.live.wakeWordEnabled} onChange={(e) => update({ voice: { ...config.voice, live: { ...config.voice.live, wakeWordEnabled: e.target.checked } } })} /><span><strong>Nasłuchuj lokalnego wake wordu</strong><small>Android używa wyłącznie lokalnego recognizera; brak lokalnego silnika nie uruchamia wariantu chmurowego.</small></span></label>
           <label>Fraza wybudzająca<input value={config.voice.live.wakePhrase} onChange={(e) => update({ voice: { ...config.voice, live: { ...config.voice.live, wakePhrase: e.target.value } } })} /></label>
-          <label className="switch-row"><input type="checkbox" checked={config.voice.live.speakerObservationEnabled} onChange={(e) => update({ voice: { ...config.voice, live: { ...config.voice.live, speakerObservationEnabled: e.target.checked } } })} /><span><strong>Eksperymentalnie obserwuj mówcę</strong><small>Lokalny klaster głosu zapisuje wyłącznie etykietę diagnostyczną i pewność. Wynik nie wpływa na pamięć, uprawnienia ani narzędzia.</small></span></label>
-          {connection.speakerObservation && <p className="admin-note"><strong>Ostatnia obserwacja:</strong> {connection.speakerObservation.label} · {(connection.speakerObservation.confidence * 100).toFixed(0)}% · {new Date(connection.speakerObservation.observedAt).toLocaleString("pl-PL")}</p>}
+          <label className="switch-row"><input type="checkbox" checked={config.voice.live.speakerObservationEnabled} onChange={(e) => update({ voice: { ...config.voice, live: { ...config.voice.live, speakerObservationEnabled: e.target.checked } } })} /><span><strong>Eksperymentalnie obserwuj mówcę</strong><small>Homelab używa Silero VAD i ECAPA-TDNN. Wynik pozostaje diagnostyczny i nie wpływa jeszcze na pamięć, uprawnienia ani narzędzia.</small></span></label>
+          <p className="admin-note"><strong>Silnik mówcy:</strong> {connection.speakerObserver.available && connection.speakerObserver.modelReady ? "Silero + ECAPA gotowy" : "niedostępny"}{connection.speakerObserver.detail ? ` · ${connection.speakerObserver.detail}` : ""}</p>
+          {connection.speakerObservation && <p className="admin-note"><strong>Ostatnia obserwacja:</strong> {connection.speakerObservation.label} · {(connection.speakerObservation.confidence * 100).toFixed(0)}%{typeof connection.speakerObservation.similarity === "number" ? ` · podobieństwo ${(connection.speakerObservation.similarity * 100).toFixed(0)}%` : ""}{typeof connection.speakerObservation.processingMs === "number" ? ` · ${connection.speakerObservation.processingMs.toFixed(0)} ms` : ""} · {new Date(connection.speakerObservation.observedAt).toLocaleString("pl-PL")}</p>}
         </div>}
         {config.voice.provider === "elevenlabs" && <div className="ai-live-settings">
           <p className="admin-note">Konfiguracja jest zachowana w kontrakcie, ale połączenie pozostaje nieaktywne do czasu dodania klucza ElevenLabs.</p>

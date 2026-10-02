@@ -125,3 +125,12 @@
 - [x] Opcjonalne lokalne dźwięki oraz regulacja ich głośności.
 - [x] Próbki zwykłego powiadomienia i alarmu w adminie.
 - [ ] TTS z ciszą nocną, wyborem głosu i audio focus.
+
+## Rozpoznawanie mówcy
+
+- [x] Lokalny, obserwacyjny tor Silero VAD + ECAPA-TDNN z limitami 2 vCPU/2 GB RAM.
+- [x] Równoległa analiza istniejącego PCM bez blokowania rozmowy GPT-Live; status i ostatnia obserwacja w adminie.
+- [ ] Bufor wake wordu jako dokładniejsza kotwica głosu zamiast pierwszego okna polecenia.
+- [ ] Rejestracja nazwanych profili domowników i test progów na rzeczywistych głosach.
+- [ ] Dopiero po walidacji: bramka profilu dla kalendarza, pamięci i innych prywatnych narzędzi.
+- [ ] Opcjonalny benchmark `pyannote.audio`; pozostaje poza domyślnym obrazem i torem wykonawczym.
