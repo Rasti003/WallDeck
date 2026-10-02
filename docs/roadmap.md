@@ -11,6 +11,7 @@
 - [x] obsługa podłączenia i odłączenia zasilania;
 - [x] strona diagnostyczna bridge;
 - [x] test na Xiaomi z Androidem 16 przez ADB Wi-Fi.
+- [x] natywny ekran braku połączenia z automatycznym powrotem po restarcie serwera;
 - [x] diagnostyka urządzenia w `/admin`: bateria, ekran, uprawnienia i pełny katalog sensorów przez bridge v2;
 - [x] reguła wybrana encja HA / sensor / kamera → `sleep` z histerezą oraz dotknięcie `sleep` → Home Assistant;
 - [x] opcjonalny fallback jasności z przedniej kamery dla HyperOS blokującego SensorManager;

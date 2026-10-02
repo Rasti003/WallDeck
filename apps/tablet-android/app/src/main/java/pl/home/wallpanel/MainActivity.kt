@@ -5,6 +5,7 @@ import android.app.AlertDialog
 import android.content.*
 import android.content.pm.PackageManager
 import android.graphics.Color
+import android.graphics.drawable.GradientDrawable
 import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
@@ -34,6 +35,15 @@ class MainActivity : ComponentActivity() {
     private var leavingKiosk = false
     private val emergencyHandler = Handler(Looper.getMainLooper())
     private val emergencyExit = Runnable { exitToTablet() }
+    private val connectionHandler = Handler(Looper.getMainLooper())
+    private var connectionRetry: Runnable? = null
+    private var connectionTimeout: Runnable? = null
+    private var connectionOverlay: View? = null
+    private var connectionTitle: TextView? = null
+    private var connectionMessage: TextView? = null
+    private var connectionProgress: ProgressBar? = null
+    private var panelReady = false
+    private var mainFrameFailed = false
     private var web: WebView? = null
     private var config: PanelConfig? = null
     private var dialog: AlertDialog? = null
@@ -231,10 +241,19 @@ class MainActivity : ComponentActivity() {
         dialog!!.show()
     }
     private fun showPanel(cfg: PanelConfig) {
+        cancelConnectionTimers()
+        connectionOverlay?.let { root.removeView(it) }
+        connectionOverlay = null
+        panelReady = false
+        mainFrameFailed = false
         reply = null
         web?.let { root.removeView(it); it.destroy() }
         trusted = PanelPolicy.origin(cfg.url)
-        val view = WebView(this); web = view; root.addView(view)
+        val view = WebView(this).apply { setBackgroundColor(Color.rgb(11, 17, 27)) }
+        web = view
+        root.addView(view, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT))
+        createConnectionOverlay(cfg)
+        showConnecting("Łączenie z lokalnym serwerem…")
         WebView.setWebContentsDebuggingEnabled(BuildConfig.DEBUG)
         view.settings.apply {
             javaScriptEnabled = true; domStorageEnabled = true
@@ -252,15 +271,30 @@ class MainActivity : ComponentActivity() {
                 request.url.scheme !in setOf("http", "https") || (request.isForMainFrame && !PanelPolicy.sameOrigin(request.url.toString(), trusted))
             override fun onPageStarted(view: WebView, url: String, favicon: android.graphics.Bitmap?) {
                 reply = null
+                mainFrameFailed = false
+                if (!panelReady) showConnecting("Łączenie z lokalnym serwerem…")
                 if (!PanelPolicy.sameOrigin(url, trusted)) { view.stopLoading(); toast("Zablokowano obcy origin") }
             }
             override fun onPageFinished(view: WebView, url: String) {
-                if (PanelPolicy.sameOrigin(url, trusted)) view.settings.cacheMode = WebSettings.LOAD_DEFAULT
+                if (PanelPolicy.sameOrigin(url, trusted) && !mainFrameFailed) {
+                    view.settings.cacheMode = WebSettings.LOAD_DEFAULT
+                    panelReady = true
+                    cancelConnectionTimers()
+                    connectionOverlay?.visibility = View.GONE
+                }
             }
             override fun onReceivedError(view: WebView, request: WebResourceRequest, error: WebResourceError) {
-                if (request.isForMainFrame) toast("Panel niedostępny. Sprawdź serwer lub URL w konfiguratorze.")
+                if (request.isForMainFrame) panelUnavailable(cfg, "Serwer WallDeck jest teraz niedostępny.")
             }
-            override fun onReceivedSslError(view: WebView, handler: android.webkit.SslErrorHandler, error: android.net.http.SslError) { handler.cancel(); toast("Nieprawidłowy certyfikat HTTPS") }
+            override fun onReceivedHttpError(view: WebView, request: WebResourceRequest, errorResponse: WebResourceResponse) {
+                if (request.isForMainFrame && errorResponse.statusCode >= 400) {
+                    panelUnavailable(cfg, "Serwer odpowiedział błędem ${errorResponse.statusCode}.")
+                }
+            }
+            override fun onReceivedSslError(view: WebView, handler: android.webkit.SslErrorHandler, error: android.net.http.SslError) {
+                handler.cancel()
+                panelUnavailable(cfg, "Nie udało się zweryfikować certyfikatu serwera.")
+            }
         }
         view.webChromeClient = object : WebChromeClient() {
             override fun onPermissionRequest(request: PermissionRequest) { request.deny() }
@@ -273,9 +307,110 @@ class MainActivity : ComponentActivity() {
             }
         }
         if (cfg.dock) startForegroundService(Intent(this, PowerService::class.java)) else stopService(Intent(this, PowerService::class.java))
-        view.loadUrl(cfg.url)
+        loadPanel(cfg)
         updateKiosk()
     }
+
+    private fun createConnectionOverlay(cfg: PanelConfig) {
+        val card = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER_HORIZONTAL
+            setPadding(dp(42), dp(36), dp(42), dp(34))
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.RECTANGLE
+                cornerRadius = dp(28).toFloat()
+                setColor(Color.argb(225, 23, 37, 56))
+                setStroke(dp(1), Color.argb(80, 148, 203, 255))
+            }
+            elevation = dp(18).toFloat()
+        }
+        card.addView(ImageView(this).apply {
+            setImageResource(android.R.drawable.stat_notify_error)
+            imageTintList = android.content.res.ColorStateList.valueOf(Color.rgb(125, 211, 252))
+        }, LinearLayout.LayoutParams(dp(48), dp(48)).apply { bottomMargin = dp(18); gravity = Gravity.CENTER_HORIZONTAL })
+        connectionTitle = TextView(this).apply {
+            text = "Łączenie z WallDeck"
+            textSize = 26f
+            setTextColor(Color.WHITE)
+            gravity = Gravity.CENTER
+            setTypeface(typeface, android.graphics.Typeface.BOLD)
+        }.also { card.addView(it) }
+        connectionMessage = TextView(this).apply {
+            text = "Sprawdzam dostępność lokalnego panelu."
+            textSize = 15f
+            setTextColor(Color.rgb(187, 205, 224))
+            gravity = Gravity.CENTER
+            setPadding(0, dp(12), 0, dp(20))
+        }.also { card.addView(it, LinearLayout.LayoutParams(dp(430), LinearLayout.LayoutParams.WRAP_CONTENT)) }
+        connectionProgress = ProgressBar(this).also {
+            it.indeterminateTintList = android.content.res.ColorStateList.valueOf(Color.rgb(125, 211, 252))
+            card.addView(it, LinearLayout.LayoutParams(dp(32), dp(32)).apply { gravity = Gravity.CENTER_HORIZONTAL; bottomMargin = dp(18) })
+        }
+        card.addView(Button(this).apply {
+            text = "Spróbuj teraz"
+            isAllCaps = false
+            setOnClickListener { loadPanel(cfg) }
+        }, LinearLayout.LayoutParams(dp(190), dp(48)).apply { gravity = Gravity.CENTER_HORIZONTAL })
+        card.addView(TextView(this).apply {
+            text = "Połączenie wróci automatycznie, gdy serwer będzie dostępny."
+            textSize = 12f
+            setTextColor(Color.rgb(128, 153, 178))
+            gravity = Gravity.CENTER
+            setPadding(0, dp(16), 0, 0)
+        }, LinearLayout.LayoutParams(dp(430), LinearLayout.LayoutParams.WRAP_CONTENT))
+        connectionOverlay = FrameLayout(this).apply {
+            background = GradientDrawable(
+                GradientDrawable.Orientation.TL_BR,
+                intArrayOf(Color.rgb(8, 14, 24), Color.rgb(18, 31, 49), Color.rgb(10, 20, 34)),
+            )
+            addView(card, FrameLayout.LayoutParams(dp(540), FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.CENTER))
+        }.also {
+            root.addView(it, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT))
+        }
+    }
+
+    private fun showConnecting(message: String) {
+        connectionOverlay?.visibility = View.VISIBLE
+        connectionTitle?.text = "Łączenie z WallDeck"
+        connectionMessage?.text = message
+        connectionProgress?.visibility = View.VISIBLE
+    }
+
+    private fun panelUnavailable(cfg: PanelConfig, message: String) {
+        mainFrameFailed = true
+        panelReady = false
+        web?.stopLoading()
+        connectionOverlay?.visibility = View.VISIBLE
+        connectionTitle?.text = "Brak połączenia"
+        connectionMessage?.text = "$message\nPonawiam automatycznie co 5 sekund."
+        connectionProgress?.visibility = View.GONE
+        connectionTimeout?.let(connectionHandler::removeCallbacks)
+        connectionTimeout = null
+        connectionRetry?.let(connectionHandler::removeCallbacks)
+        connectionRetry = Runnable { loadPanel(cfg) }.also { connectionHandler.postDelayed(it, PANEL_RETRY_MS) }
+    }
+
+    private fun loadPanel(cfg: PanelConfig) {
+        connectionRetry?.let(connectionHandler::removeCallbacks)
+        connectionRetry = null
+        connectionTimeout?.let(connectionHandler::removeCallbacks)
+        showConnecting("Łączenie z lokalnym serwerem…")
+        mainFrameFailed = false
+        panelReady = false
+        web?.loadUrl(cfg.url)
+        connectionTimeout = Runnable {
+            if (!panelReady) panelUnavailable(cfg, "Serwer nie odpowiedział w wymaganym czasie.")
+        }.also { connectionHandler.postDelayed(it, PANEL_LOAD_TIMEOUT_MS) }
+    }
+
+    private fun cancelConnectionTimers() {
+        connectionRetry?.let(connectionHandler::removeCallbacks)
+        connectionTimeout?.let(connectionHandler::removeCallbacks)
+        connectionRetry = null
+        connectionTimeout = null
+    }
+
+    private fun dp(value: Int) = (value * resources.displayMetrics.density + 0.5f).toInt()
     private fun kioskActive() = getSystemService(android.app.ActivityManager::class.java).lockTaskModeState != android.app.ActivityManager.LOCK_TASK_MODE_NONE
 
     private fun updateKiosk() {
@@ -481,9 +616,11 @@ class MainActivity : ComponentActivity() {
         }
     }
     private fun toast(text: String) = Toast.makeText(this, text, Toast.LENGTH_LONG).show()
-    override fun onDestroy() { music.disconnect(); wakeWord.destroy(); assistantAudio.destroy(); cameraLightSampler.destroy(); sensorManager.unregisterListener(lightListener); unregisterReceiver(batteryReceiver); dialog?.dismiss(); web?.destroy(); web = null; reply = null; super.onDestroy() }
+    override fun onDestroy() { cancelConnectionTimers(); music.disconnect(); wakeWord.destroy(); assistantAudio.destroy(); cameraLightSampler.destroy(); sensorManager.unregisterListener(lightListener); unregisterReceiver(batteryReceiver); dialog?.dismiss(); web?.destroy(); web = null; reply = null; super.onDestroy() }
 
     private companion object {
+        const val PANEL_RETRY_MS = 5_000L
+        const val PANEL_LOAD_TIMEOUT_MS = 12_000L
         const val DEBUG_PANEL_URL_EXTRA = "pl.home.wallpanel.DEBUG_PANEL_URL"
         const val CAMERA_LIGHT_PERMISSION_REQUEST = 2
         const val MICROPHONE_PERMISSION_REQUEST = 3

@@ -251,3 +251,10 @@ Xiaomi 2603ARP14G, Android 16, bridge v5. Android `assembleDebug`, testy jednost
 - Ciągłe ciche ramki ujawniły drugi problem: końcowa cisza trafiała do `AudioTrack`, sesja dochodziła do sztywnego limitu 30 s, a Android rejestrował underrun i ponowne uruchomienie ścieżki. Serwer rozpoznaje teraz słyszalny PCM, zachowuje krótkie naturalne pauzy i odrzuca długą ciszę.
 - Końcowy test na fizycznym tablecie zwrócił pełną, dwuzdaniową ciekawostkę, zakończył się przez `output-idle` po `15 600` ms zamiast przez `hard-limit`, przekazał `446 400` słyszalnych bajtów i odrzucił `174 720` bajtów ciszy. W świeżym logu nie wystąpił restart `AudioTrack` ani ostrzeżenie `RenderInspector`; aplikacja pozostała aktywna i `LOCKED`.
 - Pełna próba użytkownika została rozpoznana jako `Opowiedz ciekawostkę historyczną o Polsce`, a transkrypt odpowiedzi zakończył się pełnym zdaniem. WebPanel `typecheck`, 2 testy synchronizatora, 39 testów klienta, 12 testów serwera i build produkcyjny: PASS.
+
+## 2026-10-02 — natywny ekran braku połączenia
+
+- Android `assembleDebug`, `testDebugUnitTest` i `lintDebug`: PASS. Poprawione APK zainstalowano na fizycznym Xiaomi `2603ARP14G`, Android 16 / API 36.
+- Kontener WebPanelu zatrzymano, a główną stronę WebView przeładowano przez debugger. Zamiast systemowej białej strony błędu pojawił się natywny ekran `Brak połączenia` z informacją o ponawianiu co 5 sekund i przyciskiem `Spróbuj teraz`. PASS.
+- Po ponownym uruchomieniu kontenera aplikacja bez dotykania ekranu połączyła się z `http://192.168.31.153:8080/panel`. Ekran offline zniknął, zawartość panelu wróciła, a urządzenie ponownie zgłosiło się online w `/api/devices`. PASS.
+- Zrzut ekranu przez ADB był czarny z powodu aktywnego `FLAG_SECURE`; treść i geometrię natywnego ekranu potwierdzono przez hierarchię UI urządzenia (pełny ekran 2048×1280, centralna karta 945×564 px).
