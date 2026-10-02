@@ -19,6 +19,7 @@ import { AssistantAdmin } from "./assistant/AssistantAdmin";
 import { createOverlayItemId } from "./overlay-item-id";
 import { McpAdmin } from "./McpAdmin";
 import { MusicAdmin } from "./MusicAdmin";
+import { AiAssistantAdmin } from "./AiAssistantAdmin";
 
 const positions: { value: WallDeckSettings["overlay"]["position"]; label: string }[] = [
   { value: "top-left", label: "Góra — lewo" }, { value: "top-center", label: "Góra — środek" },
@@ -45,7 +46,7 @@ export function AdminApp() {
   const [entityDraft, setEntityDraft] = useState<{ entityId: string; label: string; position: WallDeckSettings["overlay"]["position"] }>({ entityId: "", label: "", position: "bottom-right" });
   const [haMessage, setHaMessage] = useState("Nie skonfigurowano");
   const [devices, setDevices] = useState<DeviceStatus[]>([]);
-  const [section, setSection] = useState<"overview" | "views" | "photos" | "notifications" | "ha" | "assistant" | "mcp" | "device" | "music" | "states">("overview");
+  const [section, setSection] = useState<"overview" | "views" | "photos" | "notifications" | "ha" | "assistant" | "ai" | "mcp" | "device" | "music" | "states">("overview");
   useEffect(() => { const open = () => setSection("photos"); window.addEventListener("walldeck:openAdminPhotos", open); return () => window.removeEventListener("walldeck:openAdminPhotos", open); }, []);
 
   useEffect(() => {
@@ -171,7 +172,8 @@ export function AdminApp() {
             ["notifications", "◈", "Powiadomienia"],
             ["music", "♫", "Music · Spotify"],
             ["ha", "◉", "Home Assistant"],
-            ["assistant", "◌", "Asystent"],
+            ["assistant", "◌", "Twarz asystenta"],
+            ["ai", "✦", "Asystent AI"],
             ["mcp", "◇", "MCP · AI"],
             ["device", "▣", "Urządzenie"],
           ] as const).map(([id, icon, label]) => (
@@ -183,7 +185,7 @@ export function AdminApp() {
 
       <div className="admin-workspace">
         <header className="admin-topbar">
-          <div><span className="admin-eyebrow">WALLDECK / ADMIN</span><h1>{section === "states" ? "Stany i przejścia" : section === "overview" ? "Pulpit" : section === "views" ? "Widoki i reguły" : section === "photos" ? "Album zdjęć" : section === "notifications" ? "Powiadomienia" : section === "assistant" ? "Asystent" : section === "mcp" ? "MCP · AI" : section === "device" ? "Urządzenie" : section === "music" ? "Music · Spotify" : "Home Assistant"}</h1></div>
+          <div><span className="admin-eyebrow">WALLDECK / ADMIN</span><h1>{section === "states" ? "Stany i przejścia" : section === "overview" ? "Pulpit" : section === "views" ? "Widoki i reguły" : section === "photos" ? "Album zdjęć" : section === "notifications" ? "Powiadomienia" : section === "assistant" ? "Twarz asystenta" : section === "ai" ? "Asystent AI" : section === "mcp" ? "MCP · AI" : section === "device" ? "Urządzenie" : section === "music" ? "Music · Spotify" : "Home Assistant"}</h1></div>
           <span className="admin-save-state">{status}</span>
         </header>
 
@@ -207,6 +209,8 @@ export function AdminApp() {
         </section>}
 
         {section === "assistant" && <AssistantAdmin settings={settings} setSettings={setSettings} save={save} status={status} />}
+
+        {section === "ai" && <AiAssistantAdmin settings={settings} setSettings={setSettings} />}
 
         {section === "mcp" && <McpAdmin settings={settings} setSettings={setSettings} save={save} status={status} />}
 

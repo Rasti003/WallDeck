@@ -8,6 +8,9 @@ import { registerClient } from "./client.js";
 import websocket from "@fastify/websocket";
 import {
   defaultSettings,
+  aiAssistantConfigInputSchema,
+  aiAssistantRunInputSchema,
+  aiAssistantSpeechInputSchema,
   deviceReportSchema,
   homeAssistantConfigInputSchema,
   notificationPreviewSchema,
@@ -22,6 +25,8 @@ import {
 import { HomeAssistantClient, HomeAssistantConfigStore } from "./home-assistant.js";
 import { registerMcpEndpoint } from "./mcp.js";
 import { SpotifyConnector } from "./spotify.js";
+import { AssistantService } from "./assistant.js";
+import { EncryptedSecretStore } from "./secret-store.js";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const webRoot = path.resolve(here, "../../client/dist");
@@ -94,6 +99,13 @@ if (storedHaConfig) void homeAssistant.configure(storedHaConfig);
 const spotify = new SpotifyConnector(runtimeRoot);
 const initialSettings = await readSettings();
 await spotify.load(initialSettings.music.clientId);
+const openAiKeyStore = new EncryptedSecretStore(runtimeRoot, "openai-api-key");
+const mcpToken = process.env.WALLDECK_MCP_TOKEN ?? "";
+const assistant = new AssistantService({
+  mcpUrl: `http://127.0.0.1:${port}/mcp`,
+  mcpToken,
+  getApiKey: () => openAiKeyStore.load(),
+});
 
 const app = Fastify({ logger: true });
 await app.register(websocket);
@@ -114,6 +126,56 @@ app.put("/api/settings", async (request, reply) => {
   if (!parsed.success) return reply.code(400).send({ error: "Nieprawidłowe ustawienia", details: parsed.error.issues });
   spotify.configure(parsed.data.music.clientId);
   return writeSettingsValue(parsed.data);
+});
+
+async function assistantStatus() {
+  const settings = await readSettings();
+  return { configured: Boolean(await openAiKeyStore.load()), enabled: settings.aiAssistant.enabled, mcpReady: settings.mcp.enabled && Boolean(mcpToken), busy: assistant.busy };
+}
+
+app.get("/api/assistant/config", async () => ({ settings: (await readSettings()).aiAssistant, status: await assistantStatus() }));
+app.put("/api/assistant/config", async (request, reply) => {
+  const parsed = aiAssistantConfigInputSchema.safeParse(request.body);
+  if (!parsed.success) return reply.code(400).send({ error: "Nieprawidłowa konfiguracja asystenta", details: parsed.error.issues });
+  if (parsed.data.apiKey) await openAiKeyStore.save(parsed.data.apiKey);
+  const current = await readSettings();
+  const saved = await writeSettingsValue({ ...current, aiAssistant: parsed.data.settings });
+  return { settings: saved.aiAssistant, status: await assistantStatus() };
+});
+app.post("/api/assistant/run", async (request, reply) => {
+  const parsed = aiAssistantRunInputSchema.safeParse(request.body);
+  if (!parsed.success) return reply.code(400).send({ error: "Wpisz poprawne polecenie", details: parsed.error.issues });
+  const settings = await readSettings();
+  if (!settings.mcp.enabled) return reply.code(409).send({ error: "Najpierw włącz MCP w sekcji MCP · AI" });
+  try {
+    return await assistant.execute(parsed.data.message, settings.aiAssistant, parsed.data.forceFallback);
+  } catch (error) {
+    return reply.code(502).send({ error: error instanceof Error ? error.message : String(error) });
+  }
+});
+app.post("/api/assistant/speech", async (request, reply) => {
+  const parsed = aiAssistantSpeechInputSchema.safeParse(request.body);
+  if (!parsed.success) return reply.code(400).send({ error: "Nieprawidłowy tekst próbki" });
+  const settings = (await readSettings()).aiAssistant;
+  if (!settings.voice.enabled) return reply.code(409).send({ error: "Model głosowy jest wyłączony" });
+  const apiKey = await openAiKeyStore.load();
+  if (!apiKey) return reply.code(409).send({ error: "Najpierw zapisz klucz OpenAI API" });
+  try {
+    const response = await fetch("https://api.openai.com/v1/audio/speech", {
+      method: "POST",
+      headers: { authorization: `Bearer ${apiKey}`, "content-type": "application/json" },
+      body: JSON.stringify({ model: settings.voice.model, voice: settings.voice.voice, input: parsed.data.text, instructions: settings.voice.instructions, response_format: "mp3" }),
+      signal: AbortSignal.timeout(30_000),
+    });
+    if (!response.ok) {
+      const body = await response.json().catch(() => null) as { error?: { message?: string } } | null;
+      throw new Error(body?.error?.message ?? `OpenAI TTS zwróciło ${response.status}`);
+    }
+    const audio = Buffer.from(await response.arrayBuffer());
+    return reply.header("content-type", "audio/mpeg").header("cache-control", "no-store").send(audio);
+  } catch (error) {
+    return reply.code(502).send({ error: error instanceof Error ? error.message : String(error) });
+  }
 });
 
 app.get("/api/spotify/status", async () => spotify.status());
@@ -252,7 +314,7 @@ registerMcpEndpoint(app, {
   activateView,
   notify: notification => broadcast({ type: "notification", notification }),
   panelCommand,
-}, process.env.WALLDECK_MCP_TOKEN);
+}, mcpToken);
 
 app.get("/api/events", { websocket: true }, (socket) => {
   sockets.add(socket);

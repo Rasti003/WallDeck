@@ -29,6 +29,7 @@ APK pozostaje cienką warstwą sprzętową. Interfejs rozwijamy jako aplikację 
 - [Bezpieczeństwo](docs/security.md)
 - [Plan rozwoju](docs/roadmap.md)
 - [Wdrożenie na serwerze](docs/deployment.md)
+- [Asystent AI](docs/ai-assistant.md)
 - [Serwer MCP dla asystenta](docs/mcp.md)
 - [Zasady pracy z repozytorium](CONTRIBUTING.md)
 - [Raport testów aplikacji Android](apps/tablet-android/TEST_REPORT.md)

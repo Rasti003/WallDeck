@@ -1,4 +1,9 @@
 import type {
+  AiAssistantConfigInput,
+  AiAssistantRunInput,
+  AiAssistantRunResult,
+  AiAssistantSettings,
+  AiAssistantStatus,
   DeviceStatus,
   HomeAssistantConfigInput,
   HomeAssistantEntity,
@@ -74,6 +79,23 @@ export const api = {
     queue: () => json<SpotifyQueue>("/api/spotify/queue", { cache: "no-store" }),
     playlists: () => json<{ items: SpotifyItem[] }>("/api/spotify/playlists"),
     action: (uri: string, action: "play" | "queue") => json<unknown>("/api/spotify/action", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ uri, action }) }),
+  },
+  assistant: {
+    config: () => json<{ settings: AiAssistantSettings; status: AiAssistantStatus }>("/api/assistant/config"),
+    save: (config: AiAssistantConfigInput) => json<{ settings: AiAssistantSettings; status: AiAssistantStatus }>("/api/assistant/config", {
+      method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify(config),
+    }),
+    run: (input: AiAssistantRunInput) => json<AiAssistantRunResult>("/api/assistant/run", {
+      method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(input),
+    }),
+    speech: async (text: string) => {
+      const response = await fetch("/api/assistant/speech", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ text }) });
+      if (!response.ok) {
+        const body = await response.json().catch(() => null) as { error?: string } | null;
+        throw new Error(body?.error ?? `${response.status} ${response.statusText}`);
+      }
+      return response.blob();
+    },
   },
 };
 

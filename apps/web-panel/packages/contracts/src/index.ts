@@ -42,6 +42,44 @@ export const assistantBrightnessSchema = z.object({
   overrides: z.partialRecord(assistantStateSchema, z.number().min(.05).max(1).nullable()).default({ sleep: .05 }),
 }).default({ globalEnabled: true, overrides: { sleep: .05 } });
 
+export const openAiReasoningSchema = z.enum(["low", "medium", "high"]);
+export const openAiVoiceSchema = z.enum(["alloy", "ash", "ballad", "coral", "echo", "fable", "nova", "onyx", "sage", "shimmer", "verse", "marin", "cedar"]);
+export const aiAssistantSettingsSchema = z.object({
+  enabled: z.boolean().default(false),
+  primaryModel: z.string().trim().min(1).max(80).default("gpt-6-luna"),
+  primaryReasoning: openAiReasoningSchema.default("medium"),
+  escalationEnabled: z.boolean().default(true),
+  fallbackModel: z.string().trim().min(1).max(80).default("gpt-6.1-sol"),
+  fallbackReasoning: openAiReasoningSchema.default("medium"),
+  maxTurns: z.number().int().min(2).max(12).default(6),
+  systemPrompt: z.string().trim().min(1).max(4_000).default("Jesteś domowym asystentem WallDeck. Odpowiadaj po polsku, krótko i konkretnie. Korzystaj z narzędzi MCP, gdy użytkownik prosi o działanie lub aktualny stan. Nie zgaduj wyniku narzędzia i nie ogłaszaj sukcesu, zanim narzędzie go nie potwierdzi. Jeżeli polecenie jest niejasne albo nie potrafisz go bezpiecznie wykonać, rozpocznij odpowiedź od ESCALATE:."),
+  voice: z.object({
+    enabled: z.boolean().default(false),
+    model: z.string().trim().min(1).max(80).default("gpt-4o-mini-tts"),
+    voice: openAiVoiceSchema.default("coral"),
+    instructions: z.string().trim().max(500).default("Mów spokojnie, naturalnie i ciepło po polsku."),
+  }).default({ enabled: false, model: "gpt-4o-mini-tts", voice: "coral", instructions: "Mów spokojnie, naturalnie i ciepło po polsku." }),
+}).default({
+  enabled: false,
+  primaryModel: "gpt-6-luna",
+  primaryReasoning: "medium",
+  escalationEnabled: true,
+  fallbackModel: "gpt-6.1-sol",
+  fallbackReasoning: "medium",
+  maxTurns: 6,
+  systemPrompt: "Jesteś domowym asystentem WallDeck. Odpowiadaj po polsku, krótko i konkretnie. Korzystaj z narzędzi MCP, gdy użytkownik prosi o działanie lub aktualny stan. Nie zgaduj wyniku narzędzia i nie ogłaszaj sukcesu, zanim narzędzie go nie potwierdzi. Jeżeli polecenie jest niejasne albo nie potrafisz go bezpiecznie wykonać, rozpocznij odpowiedź od ESCALATE:.",
+  voice: { enabled: false, model: "gpt-4o-mini-tts", voice: "coral", instructions: "Mów spokojnie, naturalnie i ciepło po polsku." },
+});
+export type AiAssistantSettings = z.infer<typeof aiAssistantSettingsSchema>;
+export const aiAssistantConfigInputSchema = z.object({ settings: aiAssistantSettingsSchema, apiKey: z.string().trim().min(20).max(300).optional() });
+export type AiAssistantConfigInput = z.infer<typeof aiAssistantConfigInputSchema>;
+export const aiAssistantRunInputSchema = z.object({ message: z.string().trim().min(1).max(2_000), forceFallback: z.boolean().default(false) });
+export type AiAssistantRunInput = z.infer<typeof aiAssistantRunInputSchema>;
+export const aiAssistantSpeechInputSchema = z.object({ text: z.string().trim().min(1).max(500) });
+export interface AiAssistantStatus { configured: boolean; enabled: boolean; mcpReady: boolean; busy: boolean; }
+export interface AiAssistantToolTrace { name: string; arguments: unknown; output?: unknown; }
+export interface AiAssistantRunResult { text: string; model: string; escalated: boolean; toolCalls: AiAssistantToolTrace[]; durationMs: number; }
+
 export const ambientSleepSchema = z.object({
   enabled: z.boolean(),
   source: z.enum(["home-assistant", "android-sensor", "camera"]).default("home-assistant"),
@@ -107,6 +145,7 @@ export const settingsSchema = z.object({
     ttsEnabled: z.literal(false).default(false),
   }).default({ normal: { durationSeconds: 5, sound: "none" }, alarm: { persistent: true, durationSeconds: 30, sound: "alarm" }, volume: .35, ttsEnabled: false }),
   mcp: mcpSettingsSchema,
+  aiAssistant: aiAssistantSettingsSchema,
   tabletMenu: z.object({ enabled: z.boolean().default(true), views: z.array(z.enum(["photos", "ha", "music", "assistant-expressive"])).min(1).max(4).refine(v => new Set(v).size === v.length).default(["photos", "ha", "music", "assistant-expressive"]) }).default({ enabled: true, views: ["photos", "ha", "music", "assistant-expressive"] }),
   music: z.object({ clientId: z.string().trim().regex(/^([a-fA-F0-9]{32})?$/).default("") }).default({ clientId: "" }),
   photoIntervalSeconds: z.number().int().min(10).max(3600),
@@ -140,6 +179,7 @@ export const defaultSettings: WallDeckSettings = {
   gallery: { holdMilliseconds: 600, notifyNewPhotos: true },
   notifications: { normal: { durationSeconds: 5, sound: "none" }, alarm: { persistent: true, durationSeconds: 30, sound: "alarm" }, volume: .35, ttsEnabled: false },
   mcp: { enabled: false, tools: { get_status: true, show_view: true, show_assistant_mood: true, control_music: true, search_spotify: true, get_spotify_queue: true, list_spotify_playlists: true, play_spotify_item: true, add_spotify_to_queue: true, set_tablet_volume: true, send_notification: true, set_view_brightness: true, search_home_entities: true, get_home_entity: true } },
+  aiAssistant: aiAssistantSettingsSchema.parse(undefined),
   tabletMenu: { enabled: true, views: ["photos", "ha", "music", "assistant-expressive"] },
   music: { clientId: "" },
   photoIntervalSeconds: 30,
