@@ -237,3 +237,10 @@ Xiaomi 2603ARP14G, Android 16, bridge v5. Android `assembleDebug`, testy jednost
 - Użytkownik potwierdził, że odpowiedź zaczynała się, lecz była ucinana przed końcem. Serwer zamykał Live po stałym czasie od ostatniego szybko wygenerowanego delta, podczas gdy dłuższy PCM nadal czekał w kolejce `AudioTrack`.
 - Timeout serwera uwzględnia teraz skumulowany czas odtwarzania wyliczony z liczby bajtów PCM 16-bit/24 kHz oraz skonfigurowany zapas. Server typecheck, 12 testów i pełny build WebPanel: PASS.
 - Po wdrożeniu wykonano na fizycznym tablecie dłuższą kontrolowaną odpowiedź bez Spotify. Przepływ zakończył się `Łączenie → Słucham → Kończę rozmowę → Rozmowa zakończona`, wrócił do `photos`, wykonał `POST /api/assistant/run`, a serwer nie zapisał błędu GPT-Live.
+
+### Oczekiwanie na pełną wypowiedź i opróżnienie natywnego audio
+
+- Po zgłoszeniu ucinania końcówek odpowiedzi oraz pomijania końcowego określenia w poleceniu dodano stabilizację transkrypcji przed delegacją do Luny/MCP. Bezchmurowy test na fizycznym WebView podał najpierw `opowiedz ciekawostkę `, a po 700 ms `historyczną`; przechwycony request zawierał dokładnie `opowiedz ciekawostkę historyczną`. PASS.
+- Bridge v7 kończy rozmowę dopiero po opróżnieniu natywnego `AudioTrack`, zamiast po samym wysłaniu ostatniego fragmentu PCM. Kontrolowana długa odpowiedź na fizycznym Xiaomi zapisała `91 200` ramek i potwierdziła odtworzenie `91 200` ramek; `timedOut=false`. Dopiero potem wznowiono Vosk i przywrócono widok `photos`. PASS.
+- Przebieg statusów: `Łączenie z GPT-Live… → Słucham → Kończę rozmowę → Rozmowa zakończona`. Serwer nie zapisał błędu GPT-Live, aplikacja pozostała aktywna, a kiosk miał stan `LOCKED`. Spotify nie uruchamiano.
+- Android `assembleDebug`, `testDebugUnitTest`, `lintDebug`: PASS. WebPanel `typecheck`, 2 testy synchronizatora, 39 testów klienta, 12 testów serwera i build produkcyjny: PASS.
