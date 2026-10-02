@@ -303,7 +303,25 @@ app.post("/api/assistant/speaker-observation", async (request, reply) => {
   return lastSpeakerObservation;
 });
 
+const assistantToolDependencies = {
+  readSettings,
+  writeSettings: writeSettingsValue,
+  currentView: () => currentView,
+  devices: deviceStatuses,
+  homeAssistantStatus: () => homeAssistant.status(),
+  searchHomeEntities: (query?: string) => homeAssistant.searchEntities(query),
+  homeEntity: (entityId: string) => homeAssistant.entity(entityId),
+  spotifyStatus: () => spotify.status(),
+  searchSpotify: (query: string, types?: import("@walldeck/contracts").SpotifyItem["type"][]) => spotify.search(query, types),
+  spotifyQueue: () => spotify.queue(),
+  spotifyPlaylists: () => spotify.playlists(),
+  activateView,
+  notify: (notification: Record<string, unknown>) => broadcast({ type: "notification", notification }),
+  panelCommand,
+};
+
 registerLiveConversation(app, {
+  ...assistantToolDependencies,
   getApiKey: () => openAiKeyStore.load(),
   getSettings: async () => (await readSettings()).aiAssistant,
   getEnabledTools: async () => (await readSettings()).mcp.tools,
@@ -313,12 +331,6 @@ registerLiveConversation(app, {
     lastSpeakerObservation = observation;
     broadcast({ type: "assistant.speakerObserved", observation });
   },
-  currentView: () => currentView,
-  devices: deviceStatuses,
-  spotifyStatus: () => spotify.status(),
-  searchSpotify: (query, types) => spotify.search(query, types),
-  activateView,
-  panelCommand,
 });
 
 registerLunaConversation(app, {
@@ -462,22 +474,7 @@ app.get<{ Params: { entityId: string } }>("/api/ha/entities/:entityId", async (r
 });
 app.get("/api/ha/overlay", async () => homeAssistant.selectedStates());
 
-registerMcpEndpoint(app, {
-  readSettings,
-  writeSettings: writeSettingsValue,
-  currentView: () => currentView,
-  devices: deviceStatuses,
-  homeAssistantStatus: () => homeAssistant.status(),
-  searchHomeEntities: query => homeAssistant.searchEntities(query),
-  homeEntity: entityId => homeAssistant.entity(entityId),
-  spotifyStatus: () => spotify.status(),
-  searchSpotify: (query, types) => spotify.search(query, types),
-  spotifyQueue: () => spotify.queue(),
-  spotifyPlaylists: () => spotify.playlists(),
-  activateView,
-  notify: notification => broadcast({ type: "notification", notification }),
-  panelCommand,
-}, mcpToken);
+registerMcpEndpoint(app, assistantToolDependencies, mcpToken);
 
 app.get("/api/events", { websocket: true }, (socket) => {
   sockets.add(socket);

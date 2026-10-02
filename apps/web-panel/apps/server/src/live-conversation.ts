@@ -224,7 +224,7 @@ Music policy: Prośba typu „wybierz mi muzykę do nauki i puść” jest kompl
             waitForDelegation(delegationId);
             let output: unknown;
             try {
-              output = await executeLiveTool(nested.item.name, nested.item.arguments, deps);
+              output = await executeLiveTool(nested.item.name, nested.item.arguments, deps, enabledTools);
               app.log.info({ delegationId, tool: nested.item.name }, "GPT-Live tool completed");
             } catch (error) {
               output = { ok: false, error: error instanceof Error ? error.message : String(error) };

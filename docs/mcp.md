@@ -11,13 +11,19 @@ WallDeck udostępnia kontrolowany interfejs Model Context Protocol pod adresem `
 | `show_view` | akcja | zdjęcia, Dom, Music lub twarz asystenta |
 | `show_assistant_mood` | akcja | jedna z walidowanych animacji/nastrojów twarzy |
 | `control_music` | akcja | play, pauza, następny, poprzedni, seek, shuffle, repeat |
+| `search_spotify` | odczyt | wyszukiwanie utworów, albumów, artystów, playlist i podcastów |
+| `get_spotify_queue` | odczyt | aktualnie odtwarzany element i kolejka Spotify |
+| `list_spotify_playlists` | odczyt | playlisty zalogowanego konta Spotify |
+| `play_spotify_item` | akcja | odtworzenie wskazanego URI Spotify |
+| `add_spotify_to_queue` | akcja | dodanie utworu lub podcastu do kolejki |
 | `set_tablet_volume` | akcja | głośność multimediów 0–100% |
+| `adjust_tablet_volume` | akcja | względna zmiana głośności multimediów |
 | `send_notification` | akcja | komunikat zwykły lub alarm z opcjonalnym dźwiękiem |
 | `set_view_brightness` | akcja | zapisana jasność konkretnego widoku |
 | `search_home_entities` | odczyt | wyszukanie encji Home Assistant |
 | `get_home_entity` | odczyt | stan wskazanej encji Home Assistant |
 
-W `/admin` sekcja **MCP · AI** zawiera wyłącznik całego serwera i osobny wyłącznik każdego narzędzia. Wyłączona funkcja nie pojawia się w `tools/list`, więc klient MCP nie może jej wywołać.
+W `/admin` sekcja **Asystent AI i MCP** pokazuje jeden katalog narzędzi używany przez GPT‑Live, Lunę i endpoint MCP. Definicja zawiera jeden identyfikator, opis, schemat parametrów i handler wykonawczy; dodanie nowego narzędzia nie wymaga osobnej implementacji dla każdego toru. Wyłączenie funkcji usuwa ją ze wszystkich list przekazywanych modelom. Osobny przełącznik steruje wyłącznie dostępnością zewnętrznego endpointu `/mcp`.
 
 ## Bezpieczeństwo
 

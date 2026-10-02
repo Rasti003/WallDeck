@@ -88,7 +88,7 @@ Wspólny kontrakt znajduje się w `packages/contracts/src/music.ts`. Stan obejmu
 
 Odczyt rzeczywistej kolejki wymaga dodatkowej integracji, ponieważ App Remote ma tylko operację dodawania do kolejki. Diagnostyka Androida pokazuje dostępne wyjścia, nie deklaruje aktywnej trasy innej aplikacji. Fallback otwiera ustawienia Bluetooth. Sterowanie audio focus i rozróżnianie pauzy użytkownika od przerwania przez asystenta pozostają osobnym etapem; obecny adapter nie przejmuje fokusu ani mikrofonu.
 
-Kontrakt domenowy jest dostępny przez serwer MCP. Endpoint `/mcp` wymaga tokenu z konfiguracji procesu, a każde narzędzie można osobno ukryć w ustawieniach. Akcje sprzętowe i muzyczne trafiają z serwera do aktywnego panelu przez dwukierunkowy command bus WebSocket, który zwraca wynik lub błąd. Client ID jest wspólnym ustawieniem aplikacji, a każda instalacja tabletu autoryzuje lokalne Spotify.
+Kontrakt domenowy jest zdefiniowany w jednym rejestrze narzędzi asystenta i wystawiany do GPT‑Live, Luny oraz serwera MCP. Rejestr współdzieli identyfikatory, opisy, schematy parametrów, przełączniki i handlery, dzięki czemu tory nie rozchodzą się wraz z rozbudową funkcji. Endpoint `/mcp` wymaga tokenu z konfiguracji procesu i ma niezależny przełącznik dostępności. Akcje sprzętowe i muzyczne trafiają z serwera do aktywnego panelu przez dwukierunkowy command bus WebSocket, który zwraca wynik lub błąd. Client ID jest wspólnym ustawieniem aplikacji, a każda instalacja tabletu autoryzuje lokalne Spotify.
 
 ## Warstwa MCP asystenta
 
@@ -98,7 +98,7 @@ MCP pozostaje oddzielone od przyszłego „mózgu” opartego o OpenAI API. Serw
 
 Warstwa rozumowania pozostaje niezależna od syntezy. Admin przełącza dwa kompletne tory bez usuwania ustawień drugiego:
 
-- `gpt-live`: `wake word → PCM 24 kHz → GPT-Live → audio`, z delegacją działań do Luny i MCP;
+- `gpt-live`: `wake word → PCM 24 kHz → GPT-Live → delegacja Responses ze wspólnymi narzędziami → audio`;
 - `luna-pipeline`: `wake word → PCM 24 kHz → Silero/ECAPA → OpenAI transcription → Luna/eskalator → MCP → OpenAI TTS → głośnik tabletu`.
 
 Tryb Luna wysyła dźwięk do `/api/assistant/luna`, analizuje przesuwne trzysekundowe okna lokalnie i kończy turę po zniknięciu głosu zakotwiczonego na początku polecenia. Ma konfigurowalny czas końca tury oraz twardy limit nagrania. Awaria lokalnego modelu przełącza detekcję na prosty próg audio, ale nie omija limitu. Po ustaleniu tury serwer zatrzymuje mikrofon klienta, transkrybuje całe polecenie, uruchamia ten sam `AssistantService` co konsola tekstowa i odsyła PCM 24 kHz z OpenAI TTS albo ElevenLabs. Provider jest wybierany niezależnie od trybu rozmowy. Adapter ElevenLabs używa strumieniowego endpointu TTS, a lista głosów pochodzi z `/v2/voices`; do klienta trafiają tylko nazwa, ID, kategoria, etykiety i zweryfikowane języki.

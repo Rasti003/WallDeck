@@ -1,15 +1,24 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { defaultSettings } from "@walldeck/contracts";
+import { defaultSettings, mcpToolIds } from "@walldeck/contracts";
 import { executeLiveTool, liveTools } from "../dist/live-tools.js";
 
 function dependencies(calls) {
+  let settings = structuredClone(defaultSettings);
   return {
+    readSettings: async () => settings,
+    writeSettings: async next => (settings = next),
     currentView: () => "photos",
     devices: () => [{ deviceId: "wall-tablet", connected: true }],
+    homeAssistantStatus: () => ({ connected: true }),
+    searchHomeEntities: query => [{ entityId: "sensor.salon", friendlyName: "Salon", state: "22" }].filter(entity => entity.friendlyName.toLowerCase().includes((query ?? "").toLowerCase())),
+    homeEntity: entityId => entityId === "sensor.salon" ? { entityId, friendlyName: "Salon", state: "22" } : null,
     spotifyStatus: () => ({ configured: true, connected: true, account: "Test", lastError: null, redirectUri: "http://127.0.0.1/callback" }),
     searchSpotify: async () => [],
+    spotifyQueue: async () => ({ currentlyPlaying: null, items: [] }),
+    spotifyPlaylists: async () => [],
     activateView: view => calls.push(["view", view]),
+    notify: notification => calls.push(["notification", notification]),
     panelCommand: async (name, args) => { calls.push([name, args]); return { ok: true }; },
   };
 }
@@ -34,4 +43,14 @@ test("GPT-Live exposes and executes the current time tool", async () => {
   assert.match(result.localDate, /^\d{4}-\d{2}-\d{2}$/);
   assert.match(result.localTime, /^\d{2}:\d{2}:\d{2}$/);
   assert.match(result.isoUtc, /^\d{4}-\d{2}-\d{2}T/);
+});
+
+test("GPT-Live derives its complete tool list from the shared assistant registry", () => {
+  const names = liveTools(structuredClone(defaultSettings.mcp.tools)).map(tool => tool.name);
+  assert.deepEqual(names, [...mcpToolIds]);
+});
+
+test("GPT-Live executes tools that were previously available only through MCP", async () => {
+  const result = await executeLiveTool("get_home_entity", JSON.stringify({ entityId: "sensor.salon" }), dependencies([]), structuredClone(defaultSettings.mcp.tools));
+  assert.equal(result.state, "22");
 });

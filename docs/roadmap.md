@@ -64,6 +64,7 @@
 - [ ] like/favorite, animacje prawdziwej kolejki/shared element i długotrwały test 60 fps;
 - [x] transport MusicController dla MCP/automatyzacji przez command bus WebSocket;
 - [x] chroniony tokenem serwer MCP z osobnymi przełącznikami narzędzi w panelu administratora;
+- [x] wspólny rejestr definicji, schematów, przełączników i wykonania narzędzi dla GPT‑Live, Luny i MCP;
 - [ ] połączenie MCP z OpenAI Responses API przez Secure MCP Tunnel/HTTPS;
 - [ ] audio focus/duck/pause/resume asystenta;
 - [ ] routing audio tablet/Bluetooth;

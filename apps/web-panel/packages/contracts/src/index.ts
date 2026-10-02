@@ -7,6 +7,24 @@ export type AssistantState = z.infer<typeof assistantStateSchema>;
 export const mcpToolIds = ["get_status", "get_current_time", "show_view", "show_assistant_mood", "control_music", "search_spotify", "get_spotify_queue", "list_spotify_playlists", "play_spotify_item", "add_spotify_to_queue", "set_tablet_volume", "adjust_tablet_volume", "send_notification", "set_view_brightness", "search_home_entities", "get_home_entity"] as const;
 export const mcpToolIdSchema = z.enum(mcpToolIds);
 export type McpToolId = z.infer<typeof mcpToolIdSchema>;
+export const assistantToolCatalog = {
+  get_status: { label: "Stan WallDeck", summary: "Aktywny widok, tablet, Home Assistant i dostępne narzędzia.", kind: "odczyt" },
+  get_current_time: { label: "Aktualna data i godzina", summary: "Dokładny czas lokalny w strefie Europe/Warsaw oraz czas UTC.", kind: "odczyt" },
+  show_view: { label: "Przełączanie widoku", summary: "Zdjęcia, Dom, Music lub ekran asystenta.", kind: "akcja" },
+  show_assistant_mood: { label: "Mimika asystenta", summary: "Pokazanie konkretnego nastroju lub stanu twarzy.", kind: "akcja" },
+  control_music: { label: "Sterowanie muzyką", summary: "Play, pauza, następny, poprzedni, seek, shuffle i repeat.", kind: "akcja" },
+  search_spotify: { label: "Wyszukiwanie Spotify", summary: "Utwory, albumy, artyści, playlisty i podcasty.", kind: "odczyt" },
+  get_spotify_queue: { label: "Kolejka Spotify", summary: "Aktualnie odtwarzany element i kolejne pozycje.", kind: "odczyt" },
+  list_spotify_playlists: { label: "Playlisty Spotify", summary: "Lista playlist zalogowanego konta.", kind: "odczyt" },
+  play_spotify_item: { label: "Odtwarzanie wyniku", summary: "Uruchomienie znalezionego elementu na tablecie.", kind: "akcja" },
+  add_spotify_to_queue: { label: "Dodawanie do kolejki", summary: "Dodanie utworu lub podcastu do kolejki tabletu.", kind: "akcja" },
+  set_tablet_volume: { label: "Głośność tabletu", summary: "Zmiana poziomu multimediów aktywnego wyjścia audio.", kind: "akcja" },
+  adjust_tablet_volume: { label: "Względna głośność", summary: "Podgłaśnianie i ściszanie względem obecnego poziomu.", kind: "akcja" },
+  send_notification: { label: "Powiadomienia i alarmy", summary: "Komunikaty globalne z czasem, priorytetem i dźwiękiem.", kind: "akcja" },
+  set_view_brightness: { label: "Jasność widoku", summary: "Trwała zmiana jasności wybranego widoku.", kind: "akcja" },
+  search_home_entities: { label: "Wyszukiwanie encji HA", summary: "Odnajdywanie entity_id po nazwie lub domenie.", kind: "odczyt" },
+  get_home_entity: { label: "Stan encji HA", summary: "Odczyt aktualnego stanu jednej wskazanej encji.", kind: "odczyt" },
+} as const satisfies Record<McpToolId, { label: string; summary: string; kind: "odczyt" | "akcja" }>;
 export const mcpSettingsSchema = z.object({
   enabled: z.boolean().default(false),
   tools: z.object({
