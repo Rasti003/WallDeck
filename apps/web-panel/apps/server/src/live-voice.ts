@@ -164,7 +164,7 @@ export async function renderLiveSpeech(
         audioChunks.push(chunk);
         if (containsAudiblePcm(chunk)) {
           if (idleTimer) clearTimeout(idleTimer);
-          idleTimer = setTimeout(requestClose, settings.live.idleCloseMs);
+          idleTimer = setTimeout(requestClose, Math.max(10_000, settings.live.idleCloseMs));
         }
       } else if (event.type === "session.output_transcript.delta") {
         transcript += event.delta;

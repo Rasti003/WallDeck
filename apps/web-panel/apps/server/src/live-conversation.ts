@@ -18,6 +18,7 @@ type ClientMessage =
 
 const PCM_RATE = 24_000;
 const OUTPUT_GENERATION_GRACE_MS = 10_000;
+const SILENCE_FRAME_MS = 100;
 
 export function registerLiveConversation(app: FastifyInstance, deps: Dependencies) {
   let active = false;
@@ -62,6 +63,8 @@ export function registerLiveConversation(app: FastifyInstance, deps: Dependencie
     let outputPlaybackUntil = 0;
     let idleTimer: ReturnType<typeof setTimeout> | undefined;
     let hardTimer: ReturnType<typeof setTimeout> | undefined;
+    let outputClockTimer: ReturnType<typeof setInterval> | undefined;
+    const silenceFrame = Buffer.alloc(PCM_RATE * SILENCE_FRAME_MS / 1_000 * 2).toString("base64");
 
     const send = (message: unknown) => {
       if (socket.readyState === 1) socket.send(JSON.stringify(message));
@@ -147,6 +150,16 @@ export function registerLiveConversation(app: FastifyInstance, deps: Dependencie
         } else if (event.type === "session.output_audio.delta") {
           outputAudioBytes += Math.max(0, Math.floor(event.delta.length * 3 / 4) - (event.delta.endsWith("==") ? 2 : event.delta.endsWith("=") ? 1 : 0));
           send({ type: "audio", audio: event.delta });
+          // The tablet stops its microphone as soon as playback begins to avoid
+          // acoustic feedback. GPT-Live still needs input-time progression while it
+          // speaks, so advance the media timeline with server-generated silence.
+          if (!outputClockTimer) {
+            outputClockTimer = setInterval(() => {
+              if (sessionStarted && !closeRequested) {
+                live.send({ type: "session.input_audio.append", event_id: `output_clock_${Date.now()}`, audio: silenceFrame });
+              }
+            }, SILENCE_FRAME_MS);
+          }
           postponeIdleClose(event.delta);
         } else if (event.type === "session.delegation.created") {
           send({ type: "delegation", delegationId: event.delegation.id, offsetMs: event.offset_ms });
@@ -167,6 +180,7 @@ export function registerLiveConversation(app: FastifyInstance, deps: Dependencie
     } finally {
       if (idleTimer) clearTimeout(idleTimer);
       if (hardTimer) clearTimeout(hardTimer);
+      if (outputClockTimer) clearInterval(outputClockTimer);
       live.close({ code: 1000, reason: "WallDeck conversation finished" });
       if (sessionStarted) {
         finalUsage = finalUsage || Math.max(0, (Date.now() - startedAt) / 1_000);
