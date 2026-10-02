@@ -46,7 +46,7 @@ export function ClockView() {
 
   const refresh = () => api.schedules.list().then(result => setItems(result.items)).catch(error => setError(String(error)));
   useEffect(() => { void refresh(); const socket = connectEvents(event => { const message = JSON.parse(event.data) as { type?: string; items?: ScheduledItem[]; item?: ScheduledItem }; if (message.type === "schedules.changed" && message.items) setItems(message.items); if (message.type === "schedule.fired") void refresh(); }); return () => socket.close(); }, []);
-  useEffect(() => { const timer = setInterval(() => setNow(Date.now()), 250); return () => clearInterval(timer); }, []);
+  useEffect(() => { const timer = setInterval(() => setNow(Date.now()), 1_000); return () => clearInterval(timer); }, []);
   useEffect(() => {
     if (!ringing.length) return;
     playNotificationSound("alarm", settings.notifications.volume);
@@ -91,7 +91,7 @@ export function ClockView() {
   }
   const setQuickTimer = (minutes: number) => { setTimerParts({ hours: 0, minutes, seconds: 0 }); setComposer("timer"); };
 
-  return <main className={`clock-view${focusedTimer ? " clock-view--timer" : ""}`} onPointerDown={event => event.stopPropagation()} onPointerUp={event => { event.stopPropagation(); if (focusedTimer && !timerFullscreen) setCompactActivity(value => value + 1); window.dispatchEvent(new Event("wallpanel:userInteraction")); }}>
+  return <main className={`clock-view${focusedTimer ? " clock-view--timer" : ""}${focusedTimer && timerFullscreen && !ringing.length ? " clock-view--fullscreen" : ""}`} onPointerDown={event => event.stopPropagation()} onPointerUp={event => { event.stopPropagation(); if (focusedTimer && !timerFullscreen) setCompactActivity(value => value + 1); window.dispatchEvent(new Event("wallpanel:userInteraction")); }}>
     <div className="clock-aurora" aria-hidden="true"><i /><i /><i /></div>
     <motion.header className="clock-hero" initial={reduced ? false : { opacity: 0, y: -18 }} animate={{ opacity: 1, y: 0 }}>
       <div className="clock-brand"><span>WALLDECK</span><strong>Zegar</strong></div>
@@ -150,13 +150,12 @@ function FullscreenTimer({ item, now, reduced, onMinimize, onRemove }: { item: S
   const progress = Math.max(0, Math.min(1, remaining / total));
   const elapsedAngle = (1 - progress) * 360 - 90;
   return <motion.section className="clock-fullscreen-timer" initial={reduced ? false : { opacity: 0, scale: 1.035 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: .97 }} transition={{ duration: reduced ? 0 : .45, ease: [0.2, 0.8, 0.2, 1] }} aria-label={`${item.label}, pozostało ${remainingText(remaining)}`}>
-    <div className="clock-fullscreen-aurora" aria-hidden="true"><i /><i /></div>
     <div className="clock-fullscreen-brand"><small>WALLDECK</small><span>MINUTNIK</span></div>
     <button className="clock-fullscreen-minimize" aria-label="Zmniejsz minutnik" title="Pokaż pozostałe zegary" onClick={onMinimize}><span /><span /></button>
     <div className="clock-fullscreen-ring">
       <svg viewBox="0 0 600 600" aria-hidden="true">
         <circle className="clock-fullscreen-track" cx="300" cy="300" r="274" pathLength="1" />
-        <motion.circle className="clock-fullscreen-progress" cx="300" cy="300" r="274" pathLength="1" initial={false} animate={{ pathLength: progress }} transition={{ duration: reduced ? 0 : .25, ease: "linear" }} />
+        <motion.circle className="clock-fullscreen-progress" cx="300" cy="300" r="274" pathLength="1" initial={false} animate={{ pathLength: progress }} transition={{ duration: reduced ? 0 : 1, ease: "linear" }} />
       </svg>
       <div className="clock-fullscreen-orbit" style={{ transform: `rotate(${elapsedAngle}deg)` }} aria-hidden="true"><i /></div>
       <div className={`clock-fullscreen-time${remaining >= 3_600_000 ? " is-long" : ""}`}><small>POZOSTAŁO</small><strong>{remainingText(remaining)}</strong><h2>{item.label}</h2>{item.automationPrompt && <p>✦ Asystent po zakończeniu</p>}</div>
@@ -174,7 +173,7 @@ function TimerFocus({ item, now, reduced, onRemove }: { item: ScheduledItem; now
     <div className="clock-focus-ring" aria-label={`Pozostało ${remainingText(remaining)}`}>
       <svg viewBox="0 0 240 240" aria-hidden="true">
         <circle className="clock-focus-track" cx="120" cy="120" r="106" pathLength="1" />
-        <motion.circle className="clock-focus-progress" cx="120" cy="120" r="106" pathLength="1" initial={false} animate={{ pathLength: progress }} transition={{ duration: reduced ? 0 : .25, ease: "linear" }} />
+        <motion.circle className="clock-focus-progress" cx="120" cy="120" r="106" pathLength="1" initial={false} animate={{ pathLength: progress }} transition={{ duration: reduced ? 0 : 1, ease: "linear" }} />
       </svg>
       <div className="clock-focus-orbit" style={{ transform: `rotate(${elapsedAngle}deg)` }} aria-hidden="true"><i /></div>
       <div className="clock-focus-time"><small>POZOSTAŁO</small><strong>{remainingText(remaining)}</strong></div>
