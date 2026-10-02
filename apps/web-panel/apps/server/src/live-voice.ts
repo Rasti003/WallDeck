@@ -137,10 +137,10 @@ export async function renderLiveSpeech(
       if (event.type === "session.started") {
         sessionStarted = true;
         connection.send({
-          type: "session.commentary.append",
+          type: "session.instructions.append",
           event_id: `speak_${Date.now()}`,
           delegation_id: null,
-          content: text,
+          content: `Powiedz teraz po polsku dokładnie tę wiadomość i zacznij natychmiast. Po jej wypowiedzeniu zamilknij: ${text}`,
         });
       } else if (event.type === "session.output_audio.delta") {
         audioChunks.push(Buffer.from(event.delta, "base64"));
