@@ -1,4 +1,4 @@
-import { useContext, useEffect, useMemo, useState, type FormEvent } from "react";
+import { useContext, useEffect, useState, type FormEvent } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import type { ScheduledItem } from "@walldeck/contracts";
 import { api } from "../api";
@@ -39,6 +39,8 @@ export function ClockView() {
   const [alarmTime, setAlarmTime] = useState("08:00");
   const [alarmDate, setAlarmDate] = useState(tomorrowDate);
   const [repeatDays, setRepeatDays] = useState([1, 2, 3, 4, 5]);
+  const [timerFullscreen, setTimerFullscreen] = useState(true);
+  const [compactActivity, setCompactActivity] = useState(0);
   const ringing = items.filter(item => item.status === "ringing");
   const scheduled = items.filter(item => item.status === "scheduled");
 
@@ -63,6 +65,14 @@ export function ClockView() {
   const timerCount = scheduled.filter(item => item.kind === "timer").length;
   const alarmCount = scheduled.filter(item => item.kind === "alarm").length;
   const resetComposer = () => { setComposer(null); setLabel(""); setPrompt(""); setError(""); };
+  useEffect(() => { if (focusedTimer) setTimerFullscreen(true); }, [focusedTimer?.id]);
+  useEffect(() => {
+    if (!focusedTimer || timerFullscreen || composer || ringing.length) return;
+    const timer = setTimeout(() => setTimerFullscreen(true), 12_000);
+    const activity = () => setCompactActivity(value => value + 1);
+    window.addEventListener("keydown", activity);
+    return () => { clearTimeout(timer); window.removeEventListener("keydown", activity); };
+  }, [compactActivity, composer, focusedTimer, ringing.length, timerFullscreen]);
 
   async function createTimer(event: FormEvent) {
     event.preventDefault(); const durationSeconds = timerParts.hours * 3600 + timerParts.minutes * 60 + timerParts.seconds;
@@ -81,7 +91,7 @@ export function ClockView() {
   }
   const setQuickTimer = (minutes: number) => { setTimerParts({ hours: 0, minutes, seconds: 0 }); setComposer("timer"); };
 
-  return <main className={`clock-view${focusedTimer ? " clock-view--timer" : ""}`} onPointerDown={event => event.stopPropagation()} onPointerUp={event => { event.stopPropagation(); window.dispatchEvent(new Event("wallpanel:userInteraction")); }}>
+  return <main className={`clock-view${focusedTimer ? " clock-view--timer" : ""}`} onPointerDown={event => event.stopPropagation()} onPointerUp={event => { event.stopPropagation(); if (focusedTimer && !timerFullscreen) setCompactActivity(value => value + 1); window.dispatchEvent(new Event("wallpanel:userInteraction")); }}>
     <div className="clock-aurora" aria-hidden="true"><i /><i /><i /></div>
     <motion.header className="clock-hero" initial={reduced ? false : { opacity: 0, y: -18 }} animate={{ opacity: 1, y: 0 }}>
       <div className="clock-brand"><span>WALLDECK</span><strong>Zegar</strong></div>
@@ -129,8 +139,30 @@ export function ClockView() {
       </motion.form>
     </motion.div>}</AnimatePresence>
 
+    <AnimatePresence>{focusedTimer && timerFullscreen && !ringing.length && <FullscreenTimer item={focusedTimer} now={now} reduced={Boolean(reduced)} onMinimize={() => setTimerFullscreen(false)} onRemove={() => void api.schedules.remove(focusedTimer.id).then(refresh)} />}</AnimatePresence>
     <AnimatePresence>{ringing[0] && <Ringing item={ringing[0]} onDismiss={() => void api.schedules.dismiss(ringing[0].id).then(refresh)} onSnooze={() => void api.schedules.snooze(ringing[0].id, 10).then(refresh)} reduced={Boolean(reduced)} />}</AnimatePresence>
   </main>;
+}
+
+function FullscreenTimer({ item, now, reduced, onMinimize, onRemove }: { item: ScheduledItem; now: number; reduced: boolean; onMinimize(): void; onRemove(): void }) {
+  const remaining = Math.max(0, Date.parse(item.triggerAt) - now);
+  const total = Math.max(1, (item.durationSeconds ?? 1) * 1000);
+  const progress = Math.max(0, Math.min(1, remaining / total));
+  const elapsedAngle = (1 - progress) * 360 - 90;
+  return <motion.section className="clock-fullscreen-timer" initial={reduced ? false : { opacity: 0, scale: 1.035 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: .97 }} transition={{ duration: reduced ? 0 : .45, ease: [0.2, 0.8, 0.2, 1] }} aria-label={`${item.label}, pozostało ${remainingText(remaining)}`}>
+    <div className="clock-fullscreen-aurora" aria-hidden="true"><i /><i /></div>
+    <div className="clock-fullscreen-brand"><small>WALLDECK</small><span>MINUTNIK</span></div>
+    <button className="clock-fullscreen-minimize" aria-label="Zmniejsz minutnik" title="Pokaż pozostałe zegary" onClick={onMinimize}><span /><span /></button>
+    <div className="clock-fullscreen-ring">
+      <svg viewBox="0 0 600 600" aria-hidden="true">
+        <circle className="clock-fullscreen-track" cx="300" cy="300" r="274" pathLength="1" />
+        <motion.circle className="clock-fullscreen-progress" cx="300" cy="300" r="274" pathLength="1" initial={false} animate={{ pathLength: progress }} transition={{ duration: reduced ? 0 : .25, ease: "linear" }} />
+      </svg>
+      <div className="clock-fullscreen-orbit" style={{ transform: `rotate(${elapsedAngle}deg)` }} aria-hidden="true"><i /></div>
+      <div className={`clock-fullscreen-time${remaining >= 3_600_000 ? " is-long" : ""}`}><small>POZOSTAŁO</small><strong>{remainingText(remaining)}</strong><h2>{item.label}</h2>{item.automationPrompt && <p>✦ Asystent po zakończeniu</p>}</div>
+    </div>
+    <button className="clock-fullscreen-cancel" onClick={onRemove}>Anuluj minutnik</button>
+  </motion.section>;
 }
 
 function TimerFocus({ item, now, reduced, onRemove }: { item: ScheduledItem; now: number; reduced: boolean; onRemove(): void }) {
