@@ -42,6 +42,7 @@ class WakeWordRecognizer(
     private var state = "idle"
     private var progress = 0
     private var generation = 0
+    private var lastTranscript = ""
 
     fun configure(shouldEnable: Boolean, wakePhrase: String): JSONObject {
         phrase = normalize(wakePhrase).ifEmpty { "ej waldek" }
@@ -89,6 +90,7 @@ class WakeWordRecognizer(
         .put("state", state)
         .put("progress", progress)
         .put("engine", "vosk-pl")
+        .put("lastTranscript", lastTranscript.takeLast(120))
 
     private fun hasPermission(): Boolean = ContextCompat.checkSelfPermission(
         context,
@@ -131,7 +133,11 @@ class WakeWordRecognizer(
         if (!enabled || suspended || expectedGeneration != generation || listening || !hasPermission()) return
         val loaded = model ?: return
         try {
-            val recognizer = Recognizer(loaded, SAMPLE_RATE)
+            val recognizer = if (phrase == DEFAULT_PHRASE) {
+                Recognizer(loaded, SAMPLE_RATE, DEFAULT_GRAMMAR)
+            } else {
+                Recognizer(loaded, SAMPLE_RATE, "[${JSONObject.quote(phrase)}, \"[unk]\"]")
+            }
             speech = SpeechService(recognizer, SAMPLE_RATE).also { service ->
                 listening = true
                 publish("listening")
@@ -157,7 +163,8 @@ class WakeWordRecognizer(
         if (!enabled || !listening) return
         val transcript = runCatching { JSONObject(hypothesis).optString(key) }.getOrDefault("")
         val normalized = normalize(transcript)
-        val matched = wakeVariants().firstOrNull { normalized.contains(it) } ?: return
+        if (normalized.isNotEmpty()) lastTranscript = normalized
+        val matched = findWakeMatch(normalized) ?: return
         val index = normalized.indexOf(matched)
         val remainder = normalized.substring(index + matched.length).trim(' ', ',', '.', '!', '?')
         generation++
@@ -175,6 +182,37 @@ class WakeWordRecognizer(
     private fun wakeVariants(): List<String> = if (phrase == "ej waldek") {
         listOf("ej waldek", "hej waldek", "ej valdek", "hej valdek", "ej waldku", "hej waldku")
     } else listOf(phrase)
+
+    private fun findWakeMatch(transcript: String): String? {
+        wakeVariants().firstOrNull { transcript.contains(it) }?.let { return it }
+        if (phrase != DEFAULT_PHRASE) return null
+        val words = transcript.split(' ').filter { it.isNotBlank() }
+        for (index in 0 until words.lastIndex) {
+            if (words[index] !in setOf("ej", "hej", "i")) continue
+            val name = words[index + 1]
+            if (name.startsWith("wald") || editDistance(name, "waldek") <= 2) {
+                return "${words[index]} $name"
+            }
+        }
+        return null
+    }
+
+    private fun editDistance(left: String, right: String): Int {
+        var previous = IntArray(right.length + 1) { it }
+        left.forEachIndexed { leftIndex, leftChar ->
+            val current = IntArray(right.length + 1)
+            current[0] = leftIndex + 1
+            right.forEachIndexed { rightIndex, rightChar ->
+                current[rightIndex + 1] = minOf(
+                    current[rightIndex] + 1,
+                    previous[rightIndex + 1] + 1,
+                    previous[rightIndex] + if (leftChar == rightChar) 0 else 1,
+                )
+            }
+            previous = current
+        }
+        return previous[right.length]
+    }
 
     private fun normalize(value: String): String = Normalizer.normalize(
         value.lowercase(Locale("pl", "PL")),
@@ -221,6 +259,8 @@ class WakeWordRecognizer(
 
     private companion object {
         const val SAMPLE_RATE = 16_000f
+        const val DEFAULT_PHRASE = "ej waldek"
+        const val DEFAULT_GRAMMAR = "[\"ej waldek\", \"hej waldek\", \"ej valdek\", \"hej valdek\", \"ej waldku\", \"hej waldku\", \"[unk]\"]"
     }
 }
 

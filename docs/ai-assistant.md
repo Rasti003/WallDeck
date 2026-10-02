@@ -50,7 +50,7 @@ Prototyp działa jako pojedyncza, półdupleksowa tura: po nadejściu pierwszego
 
 GPT-Live prowadzi rozmowę i deleguje działania do klienta. Klient wywołuje dotychczasową ścieżkę Luna → MCP, a zweryfikowany wynik zwraca do sesji przez `session.commentary.append`. Zwykła wypowiedź modelu nie wymaga narzędzia `speak`; osobne narzędzie będzie potrzebne dopiero dla komunikatów inicjowanych poza aktywną rozmową.
 
-Krótka pauza po wake wordzie nadal poprawia podział frazy. Jeśli Vosk zwróci również dalszą część wypowiedzi, klient zachowuje ją jako tekstowe polecenie i przekazuje wynik do GPT-Live do wypowiedzenia. Sesja zamyka się po odpowiedzi albo po twardym limicie, a lokalny nasłuch uruchamia się ponownie.
+Vosk używa ograniczonej gramatyki wariantów „Ej/Hej Waldek” oraz ostrożnego dopasowania fonetycznego, zamiast próbować rozpoznawać całe otoczenie. Po detekcji panel natychmiast przełącza mikrofon na tor rozmowy i buforuje do 5 sekund PCM podczas zestawiania WebSocketu, dlatego polecenie można wypowiedzieć płynnie zaraz po haśle. Krótka pauza nadal pomaga, ale nie jest wymagana do zachowania początku komendy. Sesja zamyka się po odpowiedzi albo po twardym limicie, lokalny nasłuch uruchamia się ponownie, a router przywraca widok sprzed rozmowy (lub Music, gdy trwa odtwarzanie).
 
 Eksperymentalna obserwacja mówcy oblicza lokalnie prosty fingerprint akustyczny i grupuje próbki jako `Głos 1–3`. Do serwera trafia tylko etykieta, pewność i czas obserwacji. Funkcję można wyłączyć; wynik nie wpływa na pamięć, narzędzia ani uprawnienia i nie jest traktowany jako uwierzytelnienie.
 

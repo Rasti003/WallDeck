@@ -216,3 +216,10 @@ Xiaomi 2603ARP14G, Android 16, bridge v5. Android `assembleDebug`, testy jednost
 - APK pobrał oficjalny polski model Vosk `vosk-model-small-pl-0.22` (52 979 372 bajty), zweryfikował SHA-256 `c4cd16498ea544f446f9e9a55cbd602b71cfe5a2b6f2b0834d81e1b6fce15f0d`, rozpakował i załadował go lokalnie.
 - Po ponownej instalacji status bridge przez 12 s pozostał stabilny: `engine=vosk-pl`, `modelReady=true`, `listening=true`, `progress=100`; bez cyklicznego zatrzymywania wejścia. Tablet pozostał w `LOCKED`.
 - Rzeczywista detekcja głosu użytkownika wymaga jeszcze próby po tej instalacji. Systemowy wskaźnik prywatności Androida podczas ciągłego użycia mikrofonu jest oczekiwany i nie może być ukryty przez APK.
+
+### Detekcja użytkownika i poprawka ciągłej komendy
+
+- Diagnostyka kolejnej serii prób z fizycznego WebView zarejestrowała rzeczywistą detekcję `transcript="hej waldek"`, otwarcie `/api/assistant/live`, zatrzymanie Vosk i ponowne uruchomienie lokalnego nasłuchu po zamknięciu sesji. Potwierdza to działanie mikrofonu i detektora; jedna skuteczna próba na około dziesięć ujawniła jednak zbyt słabą czułość pełnego dekodera.
+- APK zmieniono na ograniczoną gramatykę wariantów wake wordu z kontrolowanym dopasowaniem literówek. Dodano `lastTranscript` do diagnostyki statusu. Android `assembleDebug`, `testDebugUnitTest` i `lintDebug`: PASS.
+- Poprawione APK zainstalowano przez USB po kontrolowanym wyjściu z kiosku; WallDeck uruchomiono ponownie i potwierdzono `LOCKED`. Rzeczywista skuteczność nowej gramatyki wymaga ponownej próby głosowej użytkownika.
+- Frontend rozpoczyna natywne nagrywanie natychmiast po detekcji i zachowuje maksymalnie 5 sekund audio podczas łączenia GPT-Live. Po zamknięciu sesji przywraca widok sprzed rozmowy albo Music przy aktywnym odtwarzaniu. Web typecheck, 39 testów klienta i build: PASS; test mowy po wdrożeniu pozostaje do wykonania.

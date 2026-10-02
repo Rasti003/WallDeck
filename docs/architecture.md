@@ -96,7 +96,7 @@ MCP pozostaje oddzielone od przyszłego „mózgu” opartego o OpenAI API. Serw
 
 Warstwa rozumowania pozostaje niezależna od syntezy: `polecenie → Luna/eskalator → MCP → zweryfikowany wynik → provider głosu`. Próbka w adminie nadal używa krótkiej serwerowej sesji GPT-Live albo fallbacku OpenAI Speech. Rozmowa tabletu używa natywnego PCM 24 kHz przez bridge v6 i serwerowy WebSocket GPT-Live; delegacje wykonawcze wracają do istniejącej Luny i MCP.
 
-Sesje Live są krótkotrwałe. Serwer zbiera `session.output_audio.delta`, śledzi kumulacyjne `session.usage.updated`, kończy przez `session.close` i czeka na `session.closed`. Miesięczny licznik w runtime blokuje rozpoczęcie rozmowy po przekroczeniu budżetu. Lokalny Vosk utrzymuje jeden strumień 16 kHz i uruchamia płatną sesję dopiero po wake wordzie; po zamknięciu sesji nasłuch wraca automatycznie. Eksperymentalny klaster mówcy działa lokalnie i jest wyłącznie telemetrią diagnostyczną.
+Sesje Live są krótkotrwałe. Serwer zbiera `session.output_audio.delta`, śledzi kumulacyjne `session.usage.updated`, kończy przez `session.close` i czeka na `session.closed`. Miesięczny licznik w runtime blokuje rozpoczęcie rozmowy po przekroczeniu budżetu. Lokalny Vosk utrzymuje jeden strumień 16 kHz z ograniczoną gramatyką wake wordu i uruchamia płatną sesję dopiero po wykryciu hasła. Klient od razu przejmuje mikrofon i buforuje PCM podczas nawiązywania WebSocketu, aby nie zgubić początku komendy. Po zamknięciu sesji nasłuch wraca automatycznie, a router przywraca poprzedni widok lub aktywny odtwarzacz. Eksperymentalny klaster mówcy działa lokalnie i jest wyłącznie telemetrią diagnostyczną.
 
 ### Aktywność klientów
 

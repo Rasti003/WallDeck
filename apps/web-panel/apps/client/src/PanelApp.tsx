@@ -31,6 +31,8 @@ export function PanelApp({ forcedView }: { forcedView?: ViewId }) {
   const idleFromMusic = useRef(false);
   const cameFromMusic = useRef(false);
   const previousView = useRef<ViewId>(forcedView ?? "photos");
+  const activeViewRef = useRef<ViewId>(forcedView ?? "photos");
+  const voiceReturnView = useRef<ViewId>("photos");
   const [assistantState, setAssistantState] = useState<AssistantState>("idle");
   const [requestedAssistantState, setRequestedAssistantState] = useState<AssistantState | null>(null);
   const connection = useRef<ReturnType<typeof connectEvents> | null>(null);
@@ -130,6 +132,7 @@ export function PanelApp({ forcedView }: { forcedView?: ViewId }) {
   }, [forcedView]);
 
   const activeView = forcedView ?? viewId;
+  activeViewRef.current = activeView;
   useEffect(() => { if (!settings.tabletMenu.enabled) setMenuOpen(false); }, [settings.tabletMenu.enabled]);
 
   useEffect(() => {
@@ -157,7 +160,15 @@ export function PanelApp({ forcedView }: { forcedView?: ViewId }) {
         setRequestedAssistantState(state);
         setAssistantState(state);
       },
-      showAssistant: () => activate("assistant-expressive", true),
+      showAssistant: () => {
+        const current = activeViewRef.current;
+        voiceReturnView.current = current === "assistant-expressive" ? "photos" : current;
+        activate("assistant-expressive", true);
+      },
+      hideAssistant: () => {
+        const target = musicPlaying.current ? "music" : voiceReturnView.current;
+        activate(target === "assistant-expressive" ? "photos" : target, true);
+      },
       onStatus: status => window.dispatchEvent(new CustomEvent("walldeck:voiceStatus", { detail: { status } })),
     });
     void runtime.start();

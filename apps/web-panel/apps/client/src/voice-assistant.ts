@@ -5,6 +5,7 @@ import { nativeBridge } from "./native";
 type Callbacks = {
   setState(state: AssistantState): void;
   showAssistant(): void;
+  hideAssistant(): void;
   onStatus?(status: string): void;
 };
 
@@ -21,6 +22,7 @@ export class VoiceAssistantRuntime {
   private outputResumeTimer: ReturnType<typeof setTimeout> | null = null;
   private disposed = false;
   private pendingDelegations = new Set<string>();
+  private pendingAudio: string[] = [];
 
   constructor(private settings: AiAssistantSettings, private callbacks: Callbacks) {}
 
@@ -73,7 +75,14 @@ export class VoiceAssistantRuntime {
 
   private onAudioChunk = (event: CustomEvent<AudioChunkEvent>) => {
     const audio = event.detail?.audio;
-    if (audio && this.socket?.readyState === WebSocket.OPEN) this.socket.send(JSON.stringify({ type: "audio", audio }));
+    if (!audio || !this.socket) return;
+    if (this.socket.readyState === WebSocket.OPEN) {
+      this.socket.send(JSON.stringify({ type: "audio", audio }));
+      return;
+    }
+    // Keep the words spoken directly after the wake phrase while GPT-Live is connecting.
+    this.pendingAudio.push(audio);
+    if (this.pendingAudio.length > 50) this.pendingAudio.shift();
   };
 
   private onSpeaker = (event: CustomEvent<SpeakerEvent>) => {
@@ -90,7 +99,9 @@ export class VoiceAssistantRuntime {
     this.inputTranscript = "";
     this.outputStarted = false;
     this.outputPlaybackUntil = 0;
+    this.pendingAudio = [];
     this.pendingDelegations.clear();
+    void nativeBridge.call("haptics").catch(() => undefined);
     await nativeBridge.call("wakeWord.pause").catch(() => undefined);
     const protocol = location.protocol === "https:" ? "wss:" : "ws:";
     const socket = new WebSocket(`${protocol}//${location.host}/api/assistant/live`);
@@ -98,14 +109,19 @@ export class VoiceAssistantRuntime {
     socket.addEventListener("message", (message) => { void this.handleMessage(JSON.parse(String(message.data)) as Record<string, unknown>, remainder); });
     socket.addEventListener("close", () => { void this.finish(); });
     socket.addEventListener("error", () => this.callbacks.onStatus?.("Błąd połączenia GPT-Live"));
+    await nativeBridge.call("assistantAudio.startOutput").catch(() => undefined);
+    await this.startInput();
   }
 
   private async handleMessage(message: Record<string, unknown>, remainder: string) {
     if (message.type === "ready") {
       this.callbacks.setState("listening");
       this.callbacks.onStatus?.("Słucham");
-      await nativeBridge.call("assistantAudio.startOutput").catch(() => undefined);
       await this.startInput();
+      for (const audio of this.pendingAudio.splice(0)) {
+        if (this.socket?.readyState !== WebSocket.OPEN) break;
+        this.socket.send(JSON.stringify({ type: "audio", audio }));
+      }
       if (remainder.length >= 2) void this.executePreservedCommand(remainder);
     } else if (message.type === "inputTranscript" && typeof message.delta === "string") {
       this.inputTranscript += message.delta;
@@ -167,6 +183,7 @@ export class VoiceAssistantRuntime {
   private async finish() {
     if (!this.socket && this.disposed) return;
     this.socket = null;
+    this.pendingAudio = [];
     if (this.outputResumeTimer) clearTimeout(this.outputResumeTimer);
     this.outputResumeTimer = null;
     this.inputActive = false;
@@ -178,13 +195,19 @@ export class VoiceAssistantRuntime {
       this.callbacks.setState("success");
       this.callbacks.onStatus?.("Rozmowa zakończona");
       await nativeBridge.call("wakeWord.resume").catch(() => undefined);
+      this.callbacks.hideAssistant();
     }
   }
 
   private async startInput() {
-    if (this.inputActive || !this.socket || this.socket.readyState !== WebSocket.OPEN) return;
-    await nativeBridge.call("assistantAudio.startInput", { speakerObservation: this.settings.voice.live.speakerObservationEnabled });
+    if (this.inputActive || !this.socket || this.socket.readyState === WebSocket.CLOSED) return;
     this.inputActive = true;
+    try {
+      await nativeBridge.call("assistantAudio.startInput", { speakerObservation: this.settings.voice.live.speakerObservationEnabled });
+    } catch (error) {
+      this.inputActive = false;
+      throw error;
+    }
   }
 
   private async stopInput() {
