@@ -13,7 +13,7 @@ type WakeEvent = { transcript?: string; remainder?: string };
 type AudioChunkEvent = { audio?: string };
 type SpeakerEvent = { label?: string; confidence?: number; experimental?: boolean };
 
-const OUTPUT_GENERATION_GRACE_MS = 10_000;
+const OUTPUT_GENERATION_GRACE_MS = 3_000;
 
 export class VoiceAssistantRuntime {
   private socket: WebSocket | null = null;

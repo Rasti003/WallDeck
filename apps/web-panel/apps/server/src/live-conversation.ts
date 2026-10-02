@@ -17,8 +17,20 @@ type ClientMessage =
   | { type: "close" };
 
 const PCM_RATE = 24_000;
-const OUTPUT_GENERATION_GRACE_MS = 10_000;
+const OUTPUT_GENERATION_GRACE_MS = 2_500;
 const SILENCE_FRAME_MS = 100;
+const NATURAL_PAUSE_MS = 500;
+
+function containsAudiblePcm(pcm: Buffer): boolean {
+  if (pcm.length < 2) return false;
+  let total = 0;
+  let samples = 0;
+  for (let offset = 0; offset + 1 < pcm.length; offset += 32) {
+    total += Math.abs(pcm.readInt16LE(offset));
+    samples += 1;
+  }
+  return samples > 0 && total / samples >= 90;
+}
 
 export function registerLiveConversation(app: FastifyInstance, deps: Dependencies) {
   let active = false;
@@ -59,6 +71,9 @@ export function registerLiveConversation(app: FastifyInstance, deps: Dependencie
     let inputTranscript = "";
     let outputTranscript = "";
     let outputAudioBytes = 0;
+    let audibleAudioBytes = 0;
+    let droppedSilenceBytes = 0;
+    let lastAudibleAt = 0;
     const pendingAudio: string[] = [];
     let outputPlaybackUntil = 0;
     let idleTimer: ReturnType<typeof setTimeout> | undefined;
@@ -76,9 +91,7 @@ export function registerLiveConversation(app: FastifyInstance, deps: Dependencie
       if (sessionStarted) live.send({ type: "session.close", event_id: `close_${Date.now()}` });
       else live.close({ code: 1000, reason: "WallDeck closed before start" });
     };
-    const postponeIdleClose = (base64Audio: string) => {
-      const padding = base64Audio.endsWith("==") ? 2 : base64Audio.endsWith("=") ? 1 : 0;
-      const byteCount = Math.max(0, Math.floor(base64Audio.length * 3 / 4) - padding);
+    const postponeIdleClose = (byteCount: number) => {
       const durationMs = byteCount / (PCM_RATE * 2) * 1_000;
       outputPlaybackUntil = Math.max(Date.now(), outputPlaybackUntil) + durationMs;
       if (idleTimer) clearTimeout(idleTimer);
@@ -148,8 +161,19 @@ export function registerLiveConversation(app: FastifyInstance, deps: Dependencie
           outputTranscript += event.delta;
           send({ type: "outputTranscript", delta: event.delta, startMs: event.start_ms, endMs: event.end_ms });
         } else if (event.type === "session.output_audio.delta") {
-          outputAudioBytes += Math.max(0, Math.floor(event.delta.length * 3 / 4) - (event.delta.endsWith("==") ? 2 : event.delta.endsWith("=") ? 1 : 0));
-          send({ type: "audio", audio: event.delta });
+          const pcm = Buffer.from(event.delta, "base64");
+          const audible = containsAudiblePcm(pcm);
+          outputAudioBytes += pcm.length;
+          if (audible) {
+            lastAudibleAt = Date.now();
+            audibleAudioBytes += pcm.length;
+            send({ type: "audio", audio: event.delta });
+            postponeIdleClose(pcm.length);
+          } else if (lastAudibleAt && Date.now() - lastAudibleAt <= NATURAL_PAUSE_MS) {
+            send({ type: "audio", audio: event.delta });
+          } else {
+            droppedSilenceBytes += pcm.length;
+          }
           // The tablet stops its microphone as soon as playback begins to avoid
           // acoustic feedback. GPT-Live still needs input-time progression while it
           // speaks, so advance the media timeline with server-generated silence.
@@ -160,7 +184,6 @@ export function registerLiveConversation(app: FastifyInstance, deps: Dependencie
               }
             }, SILENCE_FRAME_MS);
           }
-          postponeIdleClose(event.delta);
         } else if (event.type === "session.delegation.created") {
           send({ type: "delegation", delegationId: event.delegation.id, offsetMs: event.offset_ms });
         } else if (event.type === "session.usage.updated") {
@@ -192,6 +215,8 @@ export function registerLiveConversation(app: FastifyInstance, deps: Dependencie
         inputTranscript,
         outputTranscript,
         outputAudioBytes,
+        audibleAudioBytes,
+        droppedSilenceBytes,
         usageSeconds: finalUsage,
       }, "GPT-Live conversation summary");
       active = false;
