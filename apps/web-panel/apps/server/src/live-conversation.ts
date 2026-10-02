@@ -20,6 +20,8 @@ const PCM_RATE = 24_000;
 const OUTPUT_GENERATION_GRACE_MS = 2_500;
 const NATURAL_PAUSE_MS = 500;
 const FOLLOW_UP_WINDOW_MS = 12_000;
+const HARD_LIMIT_FINISH_GRACE_MS = 30_000;
+const ACTIVE_TURN_GRACE_MS = 3_000;
 
 function containsAudiblePcm(pcm: Buffer): boolean {
   if (pcm.length < 2) return false;
@@ -76,10 +78,12 @@ export function registerLiveConversation(app: FastifyInstance, deps: Dependencie
     let audibleAudioBytes = 0;
     let droppedSilenceBytes = 0;
     let lastAudibleAt = 0;
+    let lastTurnActivityAt = 0;
     const pendingAudio: string[] = [];
     let outputPlaybackUntil = 0;
     let idleTimer: ReturnType<typeof setTimeout> | undefined;
     let hardTimer: ReturnType<typeof setTimeout> | undefined;
+    let hardGraceDeadline = 0;
 
     const send = (message: unknown) => {
       if (socket.readyState === 1) socket.send(JSON.stringify(message));
@@ -103,6 +107,15 @@ export function registerLiveConversation(app: FastifyInstance, deps: Dependencie
         () => requestClose("output-idle"),
         Math.max(OUTPUT_GENERATION_GRACE_MS, queuedPlaybackMs + Math.max(settings.voice.live.idleCloseMs, FOLLOW_UP_WINDOW_MS)),
       );
+    };
+    const closeAtHardLimit = () => {
+      const now = Date.now();
+      const activeTurn = outputPlaybackUntil > now || now - lastTurnActivityAt <= ACTIVE_TURN_GRACE_MS;
+      if (activeTurn && now < hardGraceDeadline) {
+        hardTimer = setTimeout(closeAtHardLimit, Math.min(1_000, hardGraceDeadline - now));
+        return;
+      }
+      requestClose("hard-limit");
     };
 
     socket.on("message", (raw: Buffer) => {
@@ -129,7 +142,9 @@ export function registerLiveConversation(app: FastifyInstance, deps: Dependencie
       for await (const envelope of live) {
         if (envelope.type === "open") {
           startedAt = Date.now();
-          hardTimer = setTimeout(() => requestClose("hard-limit"), settings.voice.live.hardLimitSeconds * 1_000);
+          const hardLimitMs = settings.voice.live.hardLimitSeconds * 1_000;
+          hardGraceDeadline = startedAt + hardLimitMs + HARD_LIMIT_FINISH_GRACE_MS;
+          hardTimer = setTimeout(closeAtHardLimit, hardLimitMs);
           live.send({
             type: "session.start",
             event_id: `start_${Date.now()}`,
@@ -159,12 +174,15 @@ Delegation policy: Deleguj do klienta tylko zadania wymagające narzędzi WallDe
           send({ type: "ready", sessionId: event.session.id, sampleRate: PCM_RATE });
         } else if (event.type === "session.input_transcript.delta") {
           if (idleTimer) clearTimeout(idleTimer);
+          lastTurnActivityAt = Date.now();
           inputTranscript += event.delta;
           send({ type: "inputTranscript", delta: event.delta, startMs: event.start_ms, endMs: event.end_ms });
         } else if (event.type === "session.output_transcript.delta") {
+          lastTurnActivityAt = Date.now();
           outputTranscript += event.delta;
           send({ type: "outputTranscript", delta: event.delta, startMs: event.start_ms, endMs: event.end_ms });
         } else if (event.type === "session.output_audio.delta") {
+          lastTurnActivityAt = Date.now();
           const pcm = Buffer.from(event.delta, "base64");
           const audible = containsAudiblePcm(pcm);
           outputAudioBytes += pcm.length;
