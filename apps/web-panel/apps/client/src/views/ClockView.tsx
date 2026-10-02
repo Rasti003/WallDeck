@@ -58,6 +58,8 @@ export function ClockView() {
 
   const date = new Date(now); const time = clock.format(date); const seconds = date.getSeconds();
   const next = scheduled[0];
+  const focusedTimer = scheduled.find(item => item.kind === "timer");
+  const remainingSchedules = focusedTimer ? scheduled.filter(item => item.id !== focusedTimer.id) : scheduled;
   const timerCount = scheduled.filter(item => item.kind === "timer").length;
   const alarmCount = scheduled.filter(item => item.kind === "alarm").length;
   const resetComposer = () => { setComposer(null); setLabel(""); setPrompt(""); setError(""); };
@@ -79,7 +81,7 @@ export function ClockView() {
   }
   const setQuickTimer = (minutes: number) => { setTimerParts({ hours: 0, minutes, seconds: 0 }); setComposer("timer"); };
 
-  return <main className="clock-view" onPointerDown={event => event.stopPropagation()} onPointerUp={event => { event.stopPropagation(); window.dispatchEvent(new Event("wallpanel:userInteraction")); }}>
+  return <main className={`clock-view${focusedTimer ? " clock-view--timer" : ""}`} onPointerDown={event => event.stopPropagation()} onPointerUp={event => { event.stopPropagation(); window.dispatchEvent(new Event("wallpanel:userInteraction")); }}>
     <div className="clock-aurora" aria-hidden="true"><i /><i /><i /></div>
     <motion.header className="clock-hero" initial={reduced ? false : { opacity: 0, y: -18 }} animate={{ opacity: 1, y: 0 }}>
       <div className="clock-brand"><span>WALLDECK</span><strong>Zegar</strong></div>
@@ -102,7 +104,9 @@ export function ClockView() {
         <header><div><span className="clock-kicker">AKTYWNE</span><h2>Twój rytm</h2></div><strong>{scheduled.length}</strong></header>
         <AnimatePresence mode="popLayout">
           {!scheduled.length && <motion.div className="clock-empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }}><div className="clock-empty-orbit"><i /></div><h3>Nic Cię teraz nie pogania</h3><p>Dodaj minutnik albo zaplanuj pierwszy budzik.</p></motion.div>}
-          {scheduled.map((item, index) => <ScheduleCard key={item.id} item={item} now={now} index={index} reduced={Boolean(reduced)} onRemove={() => void api.schedules.remove(item.id).then(refresh)} />)}
+          {focusedTimer && <TimerFocus key={focusedTimer.id} item={focusedTimer} now={now} reduced={Boolean(reduced)} onRemove={() => void api.schedules.remove(focusedTimer.id).then(refresh)} />}
+          {remainingSchedules.length > 0 && focusedTimer && <motion.div className="clock-stack-label" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>POZOSTAŁE</motion.div>}
+          {remainingSchedules.map((item, index) => <ScheduleCard key={item.id} item={item} now={now} index={index} reduced={Boolean(reduced)} onRemove={() => void api.schedules.remove(item.id).then(refresh)} />)}
         </AnimatePresence>
       </section>
     </section>
@@ -127,6 +131,30 @@ export function ClockView() {
 
     <AnimatePresence>{ringing[0] && <Ringing item={ringing[0]} onDismiss={() => void api.schedules.dismiss(ringing[0].id).then(refresh)} onSnooze={() => void api.schedules.snooze(ringing[0].id, 10).then(refresh)} reduced={Boolean(reduced)} />}</AnimatePresence>
   </main>;
+}
+
+function TimerFocus({ item, now, reduced, onRemove }: { item: ScheduledItem; now: number; reduced: boolean; onRemove(): void }) {
+  const remaining = Math.max(0, Date.parse(item.triggerAt) - now);
+  const total = Math.max(1, (item.durationSeconds ?? 1) * 1000);
+  const progress = Math.max(0, Math.min(1, remaining / total));
+  const elapsedAngle = (1 - progress) * 360 - 90;
+  return <motion.article layout className="clock-timer-focus" initial={reduced ? false : { opacity: 0, scale: .94, y: 22 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: .9 }} transition={{ type: "spring", stiffness: 240, damping: 28 }}>
+    <div className="clock-focus-ring" aria-label={`Pozostało ${remainingText(remaining)}`}>
+      <svg viewBox="0 0 240 240" aria-hidden="true">
+        <circle className="clock-focus-track" cx="120" cy="120" r="106" pathLength="1" />
+        <motion.circle className="clock-focus-progress" cx="120" cy="120" r="106" pathLength="1" initial={false} animate={{ pathLength: progress }} transition={{ duration: reduced ? 0 : .25, ease: "linear" }} />
+      </svg>
+      <div className="clock-focus-orbit" style={{ transform: `rotate(${elapsedAngle}deg)` }} aria-hidden="true"><i /></div>
+      <div className="clock-focus-time"><small>POZOSTAŁO</small><strong>{remainingText(remaining)}</strong></div>
+    </div>
+    <div className="clock-focus-copy">
+      <span className="clock-kicker">MINUTNIK W TOKU</span>
+      <h3>{item.label}</h3>
+      <p>Ustawiono na {durationText(item.durationSeconds ?? 0)}</p>
+      {item.automationPrompt && <small>✦ Po zakończeniu odezwie się asystent</small>}
+      <button onClick={onRemove}>Anuluj minutnik</button>
+    </div>
+  </motion.article>;
 }
 
 function ScheduleCard({ item, now, index, reduced, onRemove }: { item: ScheduledItem; now: number; index: number; reduced: boolean; onRemove(): void }) {

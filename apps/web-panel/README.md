@@ -19,7 +19,7 @@ Panel administratora ma nawigację pogrupowaną według zadań (szczegóły poni
 
 Każdy widok ma własne ustawienie jasności. Po aktywacji widoku klient wysyła jego poziom do Android Bridge, więc przyszłe ekrany nocne mogą automatycznie przyciemniać tablet, a dzienne przywracać wyższą jasność.
 
-Widok `/timers` („Zegar”) obsługuje wiele równoległych minutników oraz budziki jednorazowe i cykliczne. Każdy wpis może mieć etykietę i opcjonalny prompt dla asystenta, wykonywany dopiero po wybiciu. Harmonogram jest zapisany atomowo w prywatnym runtime `schedules.json`, używa strefy `Europe/Warsaw`, a zmiany i alarmy trafiają do tabletów przez WebSocket. Ekran alarmu oferuje wyłączenie i dziesięciominutową drzemkę. Te same operacje są dostępne we wspólnym rejestrze narzędzi GPT‑Live, Luny i MCP.
+Widok `/timers` („Zegar”) obsługuje wiele równoległych minutników oraz budziki jednorazowe i cykliczne. Najbliższy aktywny minutnik zajmuje pierwszy plan: duże cyfry otacza pierścień opróżniający się wraz z czasem i świetlny punkt pokazujący dokładny postęp; budziki zachowują spokojne karty listy. Każdy wpis może mieć etykietę i opcjonalny prompt dla asystenta, wykonywany dopiero po wybiciu. Harmonogram jest zapisany atomowo w prywatnym runtime `schedules.json`, używa strefy `Europe/Warsaw`, a zmiany i alarmy trafiają do tabletów przez WebSocket. Ekran alarmu oferuje wyłączenie i dziesięciominutową drzemkę. Te same operacje są dostępne we wspólnym rejestrze narzędzi GPT‑Live, Luny i MCP.
 
 ## Organizacja panelu administratora
 
