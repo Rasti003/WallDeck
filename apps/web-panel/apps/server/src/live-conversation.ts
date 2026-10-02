@@ -54,6 +54,7 @@ export function registerLiveConversation(app: FastifyInstance, deps: Dependencie
     let closeRequested = false;
     let finalUsage = 0;
     const pendingAudio: string[] = [];
+    let outputPlaybackUntil = 0;
     let idleTimer: ReturnType<typeof setTimeout> | undefined;
     let hardTimer: ReturnType<typeof setTimeout> | undefined;
 
@@ -66,9 +67,14 @@ export function registerLiveConversation(app: FastifyInstance, deps: Dependencie
       if (sessionStarted) live.send({ type: "session.close", event_id: `close_${Date.now()}` });
       else live.close({ code: 1000, reason: "WallDeck closed before start" });
     };
-    const postponeIdleClose = () => {
+    const postponeIdleClose = (base64Audio: string) => {
+      const padding = base64Audio.endsWith("==") ? 2 : base64Audio.endsWith("=") ? 1 : 0;
+      const byteCount = Math.max(0, Math.floor(base64Audio.length * 3 / 4) - padding);
+      const durationMs = byteCount / (PCM_RATE * 2) * 1_000;
+      outputPlaybackUntil = Math.max(Date.now(), outputPlaybackUntil) + durationMs;
       if (idleTimer) clearTimeout(idleTimer);
-      idleTimer = setTimeout(requestClose, Math.max(5_000, settings.voice.live.idleCloseMs));
+      const queuedPlaybackMs = Math.max(0, outputPlaybackUntil - Date.now());
+      idleTimer = setTimeout(requestClose, Math.max(5_000, queuedPlaybackMs + settings.voice.live.idleCloseMs));
     };
 
     socket.on("message", (raw: Buffer) => {
@@ -126,7 +132,7 @@ export function registerLiveConversation(app: FastifyInstance, deps: Dependencie
           send({ type: "outputTranscript", delta: event.delta, startMs: event.start_ms, endMs: event.end_ms });
         } else if (event.type === "session.output_audio.delta") {
           send({ type: "audio", audio: event.delta });
-          postponeIdleClose();
+          postponeIdleClose(event.delta);
         } else if (event.type === "session.delegation.created") {
           send({ type: "delegation", delegationId: event.delegation.id, offsetMs: event.offset_ms });
         } else if (event.type === "session.usage.updated") {
