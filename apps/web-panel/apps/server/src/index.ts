@@ -224,6 +224,32 @@ app.post("/api/assistant/speech", async (request, reply) => {
     voiceBusy = false;
   }
 });
+app.post("/api/assistant/speech-pcm", async (request, reply) => {
+  const parsed = aiAssistantSpeechInputSchema.safeParse(request.body);
+  if (!parsed.success) return reply.code(400).send({ error: "Nieprawidłowy tekst odpowiedzi" });
+  const settings = (await readSettings()).aiAssistant;
+  if (!settings.voice.enabled || settings.voice.provider !== "openai-live") {
+    return reply.code(409).send({ error: "Buforowany głos wymaga aktywnego GPT-Live" });
+  }
+  const apiKey = await openAiKeyStore.load();
+  if (!apiKey) return reply.code(409).send({ error: "Brak klucza OpenAI API" });
+  const usage = await liveVoiceUsage.status(settings);
+  if (usage.exhausted) return reply.code(429).send({ error: "Miesięczny limit GPT-Live został osiągnięty" });
+  if (voiceBusy) return reply.code(409).send({ error: "Inna odpowiedź głosowa jest jeszcze generowana" });
+  voiceBusy = true;
+  try {
+    const live = await renderLiveSpeech(apiKey, parsed.data.text, settings.voice, seconds => liveVoiceUsage.add(seconds));
+    return reply
+      .header("content-type", "application/octet-stream")
+      .header("cache-control", "no-store")
+      .header("x-walldeck-pcm-rate", "24000")
+      .send(live.pcm);
+  } catch (error) {
+    return reply.code(502).send({ error: error instanceof Error ? error.message : String(error) });
+  } finally {
+    voiceBusy = false;
+  }
+});
 app.post("/api/assistant/speaker-observation", async (request, reply) => {
   const body = request.body as { label?: unknown; confidence?: unknown; experimental?: unknown } | null;
   if (!body || typeof body.label !== "string" || !body.label.trim() || body.label.length > 80 || typeof body.confidence !== "number" || !Number.isFinite(body.confidence)) {

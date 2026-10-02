@@ -97,7 +97,7 @@ export class LiveVoiceUsageStore {
   }
 }
 
-export type LiveSpeechResult = { audio: Buffer; usageSeconds: number; transcript: string };
+export type LiveSpeechResult = { audio: Buffer; pcm: Buffer; usageSeconds: number; transcript: string };
 
 export async function renderLiveSpeech(
   apiKey: string,
@@ -117,6 +117,7 @@ export async function renderLiveSpeech(
   let hardTimer: ReturnType<typeof setTimeout> | undefined;
   let forceTimer: ReturnType<typeof setTimeout> | undefined;
   let silenceTimer: ReturnType<typeof setInterval> | undefined;
+  let lastAudibleAt = 0;
   const silenceFrame = Buffer.alloc(PCM_RATE / 10 * 2).toString("base64");
 
   const requestClose = () => {
@@ -161,10 +162,14 @@ export async function renderLiveSpeech(
         });
       } else if (event.type === "session.output_audio.delta") {
         const chunk = Buffer.from(event.delta, "base64");
-        audioChunks.push(chunk);
-        if (containsAudiblePcm(chunk)) {
+        const audible = containsAudiblePcm(chunk);
+        if (audible) {
+          lastAudibleAt = Date.now();
+          audioChunks.push(chunk);
           if (idleTimer) clearTimeout(idleTimer);
-          idleTimer = setTimeout(requestClose, Math.max(10_000, settings.live.idleCloseMs));
+          idleTimer = setTimeout(requestClose, Math.max(2_500, settings.live.idleCloseMs));
+        } else if (lastAudibleAt && Date.now() - lastAudibleAt <= 500) {
+          audioChunks.push(chunk);
         }
       } else if (event.type === "session.output_transcript.delta") {
         transcript += event.delta;
@@ -191,5 +196,5 @@ export async function renderLiveSpeech(
 
   const pcm = Buffer.concat(audioChunks);
   if (!pcm.length) throw new Error("GPT-Live nie zwrócił dźwięku");
-  return { audio: wavFromPcm16(pcm), usageSeconds, transcript: transcript.trim() };
+  return { audio: wavFromPcm16(pcm), pcm, usageSeconds, transcript: transcript.trim() };
 }

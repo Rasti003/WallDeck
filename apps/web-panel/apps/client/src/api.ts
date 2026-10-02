@@ -102,6 +102,14 @@ export const api = {
         liveSpendUsd: Number(response.headers.get("x-walldeck-live-spend-usd") ?? 0),
       };
     },
+    speechPcm: async (text: string) => {
+      const response = await fetch("/api/assistant/speech-pcm", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ text }) });
+      if (!response.ok) {
+        const body = await response.json().catch(() => null) as { error?: string } | null;
+        throw new Error(body?.error ?? `${response.status} ${response.statusText}`);
+      }
+      return new Uint8Array(await response.arrayBuffer());
+    },
     speakerObservation: (observation: Pick<SpeakerObservation, "label" | "confidence" | "experimental">) => json<SpeakerObservation>("/api/assistant/speaker-observation", {
       method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(observation),
     }),

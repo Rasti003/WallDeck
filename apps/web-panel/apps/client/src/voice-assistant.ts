@@ -27,6 +27,7 @@ export class VoiceAssistantRuntime {
   private pendingDelegations = new Set<string>();
   private pendingAudio: string[] = [];
   private sessionReady = false;
+  private bufferedSpeechTask: Promise<void> | null = null;
 
   constructor(private settings: AiAssistantSettings, private callbacks: Callbacks) {}
 
@@ -107,6 +108,7 @@ export class VoiceAssistantRuntime {
     this.pendingAudio = [];
     this.sessionReady = false;
     this.pendingDelegations.clear();
+    this.bufferedSpeechTask = null;
     void nativeBridge.call("haptics").catch(() => undefined);
     await nativeBridge.call("wakeWord.pause").catch(() => undefined);
     const protocol = location.protocol === "https:" ? "wss:" : "ws:";
@@ -136,7 +138,7 @@ export class VoiceAssistantRuntime {
       this.callbacks.setState("listening");
     } else if (message.type === "outputTranscript") {
       this.callbacks.setState("speaking");
-    } else if (message.type === "audio" && typeof message.audio === "string") {
+    } else if (message.type === "audio" && typeof message.audio === "string" && !this.bufferedSpeechTask) {
       if (!this.outputStarted) {
         this.outputStarted = true;
         this.callbacks.setState("speaking");
@@ -145,7 +147,7 @@ export class VoiceAssistantRuntime {
       await nativeBridge.call("assistantAudio.appendOutput", { audio: message.audio }).catch(() => undefined);
       this.scheduleCloseAfterPlayback(message.audio);
     } else if (message.type === "delegation" && typeof message.delegationId === "string") {
-      void this.handleDelegation(message.delegationId);
+      this.bufferedSpeechTask = this.handleDelegation(message.delegationId);
     } else if (message.type === "closed") {
       this.socket?.close();
     } else if (message.type === "error") {
@@ -162,9 +164,11 @@ export class VoiceAssistantRuntime {
     socket.send(JSON.stringify({ type: "context", content: `Użytkownik powiedział po wake wordzie: ${command}` }));
     try {
       const result = await api.assistant.run({ message: command, forceFallback: false });
-      socket.send(JSON.stringify({ type: "delegation.result", delegationId: null, content: result.text }));
+      await this.playBufferedSpeech(result.text);
+      socket.send(JSON.stringify({ type: "close" }));
     } catch (error) {
-      socket.send(JSON.stringify({ type: "delegation.result", delegationId: null, content: `Nie udało się wykonać polecenia: ${error instanceof Error ? error.message : String(error)}` }));
+      await this.playBufferedSpeech(`Nie udało się wykonać polecenia: ${error instanceof Error ? error.message : String(error)}`);
+      socket.send(JSON.stringify({ type: "close" }));
     }
   }
 
@@ -182,9 +186,29 @@ export class VoiceAssistantRuntime {
     }
     try {
       const result = await api.assistant.run({ message: command, forceFallback: false });
-      socket.send(JSON.stringify({ type: "delegation.result", delegationId, content: result.text }));
+      await this.stopInput();
+      await this.playBufferedSpeech(result.text);
+      socket.send(JSON.stringify({ type: "close" }));
     } catch (error) {
-      socket.send(JSON.stringify({ type: "delegation.result", delegationId, content: `Zadanie nie zostało wykonane: ${error instanceof Error ? error.message : String(error)}` }));
+      await this.stopInput();
+      await this.playBufferedSpeech(`Zadanie nie zostało wykonane: ${error instanceof Error ? error.message : String(error)}`);
+      socket.send(JSON.stringify({ type: "close" }));
+    }
+  }
+
+  private async playBufferedSpeech(text: string) {
+    this.callbacks.setState("thinking");
+    this.callbacks.onStatus?.("Przygotowuję odpowiedź…");
+    const pcm = await api.assistant.speechPcm(text);
+    this.outputStarted = true;
+    this.callbacks.setState("speaking");
+    this.callbacks.onStatus?.("Mówię");
+    const chunkSize = 48_000;
+    for (let offset = 0; offset < pcm.length; offset += chunkSize) {
+      const chunk = pcm.subarray(offset, Math.min(offset + chunkSize, pcm.length));
+      let binary = "";
+      for (let index = 0; index < chunk.length; index += 1) binary += String.fromCharCode(chunk[index]);
+      await nativeBridge.call("assistantAudio.appendOutput", { audio: btoa(binary) });
     }
   }
 
@@ -197,6 +221,7 @@ export class VoiceAssistantRuntime {
     this.outputResumeTimer = null;
     this.inputActive = false;
     await nativeBridge.call("assistantAudio.stopInput").catch(() => undefined);
+    if (this.bufferedSpeechTask) await this.bufferedSpeechTask.catch(() => undefined);
     await this.finishOutput();
     if (!this.disposed) {
       this.callbacks.setState("success");
