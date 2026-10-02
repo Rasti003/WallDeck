@@ -36,10 +36,10 @@
 .clock-view button { color: inherit; }
 
 .clock-aurora { position: absolute; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; }
-.clock-aurora i { position: absolute; border-radius: 50%; filter: blur(80px); opacity: .18; animation: clock-float 15s ease-in-out infinite alternate; }
-.clock-aurora i:nth-child(1) { width: 46vw; height: 38vw; left: -18vw; top: 26%; background: #6844e4; }
-.clock-aurora i:nth-child(2) { width: 35vw; height: 32vw; right: -10vw; top: -10vw; background: #18aabd; animation-delay: -5s; }
-.clock-aurora i:nth-child(3) { width: 28vw; height: 25vw; left: 52%; bottom: -18vw; background: #ca6ba8; animation-delay: -9s; }
+.clock-aurora i { position: absolute; border-radius: 50%; opacity: .16; animation: clock-float 15s ease-in-out infinite alternate; will-change: transform; }
+.clock-aurora i:nth-child(1) { width: 46vw; height: 38vw; left: -18vw; top: 26%; background: radial-gradient(circle, rgba(104,68,228,.82), transparent 68%); }
+.clock-aurora i:nth-child(2) { width: 35vw; height: 32vw; right: -10vw; top: -10vw; background: radial-gradient(circle, rgba(24,170,189,.78), transparent 68%); animation-delay: -5s; }
+.clock-aurora i:nth-child(3) { width: 28vw; height: 25vw; left: 52%; bottom: -18vw; background: radial-gradient(circle, rgba(202,107,168,.72), transparent 68%); animation-delay: -9s; }
 
 .clock-hero { display: grid; grid-template-columns: minmax(150px, 1fr) minmax(280px, 1.15fr) minmax(210px, 1fr); align-items: center; gap: 24px; padding-bottom: clamp(24px, 4vh, 44px); border-bottom: 1px solid var(--clock-line); }
 .clock-brand { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
@@ -53,7 +53,7 @@
 .clock-now p { margin: 15px 0 0; color: var(--clock-muted); font-size: 13px; text-transform: capitalize; }
 .clock-orbit { position: absolute; width: 118px; height: 118px; left: calc(50% - 59px); top: calc(50% - 63px); border: 1px solid rgba(155,135,245,.16); border-radius: 50%; pointer-events: none; }
 .clock-orbit i { position: absolute; width: 5px; height: 5px; top: -3px; left: calc(50% - 2px); border-radius: 50%; background: var(--clock-violet); box-shadow: 0 0 16px 4px rgba(155,135,245,.45); transform-origin: 2px 62px; }
-.clock-next { justify-self: end; display: grid; width: min(100%, 270px); gap: 5px; padding: 17px 19px; border: 1px solid var(--clock-line); border-radius: 19px; background: rgba(255,255,255,.035); backdrop-filter: blur(18px); }
+.clock-next { justify-self: end; display: grid; width: min(100%, 270px); gap: 5px; padding: 17px 19px; border: 1px solid var(--clock-line); border-radius: 19px; background: rgba(255,255,255,.04); }
 .clock-next small { color: var(--clock-violet); font-size: 9px; font-weight: 800; letter-spacing: .2em; }
 .clock-next strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 16px; font-weight: 600; }
 .clock-next span { color: var(--clock-muted); font-size: 12px; font-variant-numeric: tabular-nums; }
@@ -79,8 +79,8 @@
 .clock-schedules { min-width: 0; }
 .clock-schedules > header { display: flex; align-items: end; justify-content: space-between; margin-bottom: 17px; }
 .clock-schedules > header strong { color: rgba(255,255,255,.2); font-size: 55px; font-weight: 200; line-height: .8; }
-.clock-timer-focus { position: relative; display: grid; grid-template-columns: minmax(230px, 290px) minmax(0, 1fr); align-items: center; gap: clamp(20px, 3vw, 42px); min-height: 326px; padding: 18px clamp(20px, 3vw, 38px) 18px 16px; border: 1px solid rgba(155,135,245,.25); border-radius: 31px; background: radial-gradient(circle at 22% 50%, rgba(116,86,230,.18), transparent 38%), rgba(255,255,255,.043); box-shadow: inset 0 1px rgba(255,255,255,.045), 0 22px 70px rgba(0,0,0,.18); backdrop-filter: blur(24px); overflow: hidden; }
-.clock-timer-focus::after { content: ""; position: absolute; width: 220px; height: 220px; right: -110px; top: -120px; border-radius: 50%; background: rgba(86,216,228,.07); filter: blur(35px); }
+.clock-timer-focus { position: relative; display: grid; grid-template-columns: minmax(230px, 290px) minmax(0, 1fr); align-items: center; gap: clamp(20px, 3vw, 42px); min-height: 326px; padding: 18px clamp(20px, 3vw, 38px) 18px 16px; border: 1px solid rgba(155,135,245,.25); border-radius: 31px; background: radial-gradient(circle at 22% 50%, rgba(116,86,230,.18), transparent 38%), rgba(255,255,255,.05); box-shadow: inset 0 1px rgba(255,255,255,.045), 0 22px 70px rgba(0,0,0,.18); overflow: hidden; }
+.clock-timer-focus::after { content: ""; position: absolute; width: 220px; height: 220px; right: -110px; top: -120px; border-radius: 50%; background: radial-gradient(circle, rgba(86,216,228,.08), transparent 68%); }
 .clock-focus-ring { position: relative; display: grid; place-items: center; width: min(100%, 286px); aspect-ratio: 1; }
 .clock-focus-ring::before { content: ""; position: absolute; inset: 17%; border-radius: 50%; background: radial-gradient(circle, rgba(155,135,245,.16), rgba(155,135,245,.025) 58%, transparent 72%); animation: clock-focus-breathe 1s ease-in-out infinite; }
 .clock-focus-ring svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; transform: rotate(-90deg); }
@@ -100,6 +100,8 @@
 .clock-focus-copy button:hover { color: white; background: rgba(255,255,255,.075); transform: translateY(-2px); }
 .clock-stack-label { margin: 17px 3px 9px; color: var(--clock-muted); font-size: 8px; font-weight: 800; letter-spacing: .18em; }
 .clock-fullscreen-timer { position: fixed; inset: 0; z-index: 70; display: grid; place-items: center; overflow: hidden; contain: layout paint style; color: var(--clock-ink); background: radial-gradient(circle at 18% 55%, rgba(101,71,215,.2), transparent 38%), radial-gradient(circle at 82% 48%, rgba(44,184,195,.16), transparent 38%), radial-gradient(circle at 50% 46%, #19162f 0, #090a12 47%, #03050a 100%); }
+.clock-fullscreen-timer.is-active { pointer-events: auto; }
+.clock-fullscreen-timer.is-minimized { pointer-events: none; }
 .clock-fullscreen-timer::before { content: ""; position: absolute; inset: 0; opacity: .18; background-image: linear-gradient(rgba(255,255,255,.028) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.028) 1px, transparent 1px); background-size: 52px 52px; mask-image: radial-gradient(circle at center, black, transparent 75%); }
 .clock-fullscreen-brand { position: absolute; z-index: 2; top: clamp(27px, 5vh, 48px); left: clamp(28px, 5vw, 65px); display: grid; gap: 5px; }
 .clock-fullscreen-brand small { color: var(--clock-cyan); font-size: 9px; font-weight: 800; letter-spacing: .28em; }
@@ -124,7 +126,7 @@
 .clock-fullscreen-time h2 { max-width: 82%; margin: clamp(22px, 3.5vh, 38px) 0 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: clamp(20px, 2.3vw, 34px); font-weight: 390; letter-spacing: -.035em; }
 .clock-fullscreen-time p { margin: 10px 0 0; color: #c8bdf6; font-size: 10px; }
 .clock-fullscreen-cancel { position: absolute; z-index: 3; right: clamp(27px, 5vw, 64px); bottom: clamp(26px, 5vh, 48px); padding: 10px 15px; border: 1px solid rgba(255,255,255,.11); border-radius: 13px; color: rgba(255,255,255,.48) !important; font-size: 10px !important; background: rgba(255,255,255,.035); cursor: pointer; }
-.clock-card { position: relative; display: grid; grid-template-columns: 62px minmax(0, 1fr) auto 30px; align-items: center; gap: 17px; min-height: 86px; margin-bottom: 10px; padding: 12px 12px 12px 14px; border: 1px solid var(--clock-line); border-radius: 23px; background: rgba(255,255,255,.042); backdrop-filter: blur(22px); overflow: hidden; }
+.clock-card { position: relative; display: grid; grid-template-columns: 62px minmax(0, 1fr) auto 30px; align-items: center; gap: 17px; min-height: 86px; margin-bottom: 10px; padding: 12px 12px 12px 14px; border: 1px solid var(--clock-line); border-radius: 23px; background: rgba(255,255,255,.05); overflow: hidden; }
 .clock-card::after { content: ""; position: absolute; inset: auto 15% 0; height: 1px; background: linear-gradient(90deg, transparent, rgba(155,135,245,.65), transparent); opacity: .45; }
 .clock-card-icon { display: grid; place-items: center; width: 57px; height: 57px; border-radius: 18px; color: var(--clock-violet); background: rgba(155,135,245,.1); }
 .clock-card--alarm .clock-card-icon { color: var(--clock-cyan); background: rgba(86,216,228,.09); }
