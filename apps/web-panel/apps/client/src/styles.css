@@ -265,6 +265,17 @@ button, input, select { font: inherit; }
 .ai-status-grid strong { color: #343f37; font-size: .77rem; }
 .ai-status-grid .is-ready { border-color: #c4dbc8; background: #f0f8f1; }
 .ai-status-grid .is-ready i { background: #50a267; }
+.ai-mode-switcher { display: grid; grid-template-columns: minmax(260px, 1fr) minmax(360px, 1.25fr); align-items: center; gap: 20px 28px; }
+.ai-mode-switcher h2 { margin: 3px 0 7px; }
+.ai-mode-switcher p { margin: 0; color: #6c776f; font-size: .78rem; }
+.ai-mode-options { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 5px; border: 1px solid #d3ddd5; border-radius: 15px; background: #edf2ed; }
+.ai-mode-options button { display: grid; gap: 3px; padding: 13px 16px; border: 0; border-radius: 11px; color: #69746c; background: transparent; text-align: left; cursor: pointer; transition: color .18s ease, background .18s ease, box-shadow .18s ease, transform .18s ease; }
+.ai-mode-options button:hover:not(:disabled) { color: #315f44; transform: translateY(-1px); }
+.ai-mode-options button.is-active { color: #244b34; background: rgba(255,255,255,.94); box-shadow: 0 5px 18px rgba(45, 78, 55, .12); }
+.ai-mode-options button:disabled { cursor: wait; opacity: .65; }
+.ai-mode-options strong { font-size: .85rem; }
+.ai-mode-options small { font-size: .66rem; }
+.ai-mode-switcher output { grid-column: 1 / -1; color: #647168; font-size: .72rem; }
 .ai-config, .ai-console { display: grid; gap: 18px; }
 .ai-model-grid { display: grid; grid-template-columns: minmax(240px, 2fr) minmax(150px, 1fr) minmax(240px, 2fr) minmax(150px, 1fr); gap: 12px; }
 .ai-config label:not(.switch-row), .ai-voice-settings > label:not(.switch-row) { display: grid; gap: 7px; color: #4f5c53; font-size: .78rem; font-weight: 700; }
@@ -318,5 +329,5 @@ button, input, select { font: inherit; }
 .ai-history-turn label { display: block; margin-top: 10px; color: #8fa797; font-size: .65rem; }
 .ai-history-final { border-top: 1px solid #e1e7e2; background: #f3f8f3; }
 .ai-history-error { margin: 0; padding: 12px 16px; color: #8a4335; background: #fff1ed; }
-@media (max-width: 1050px) { .ai-model-grid { grid-template-columns: 1fr 1fr; } .ai-status-card { grid-template-columns: 1fr; } }
+@media (max-width: 1050px) { .ai-model-grid { grid-template-columns: 1fr 1fr; } .ai-status-card, .ai-mode-switcher { grid-template-columns: 1fr; } .ai-mode-switcher output { grid-column: auto; } }
 @media (max-width: 650px) { .ai-model-grid, .ai-voice-settings .ai-model-grid, .ai-status-grid { grid-template-columns: 1fr; } .ai-console-actions, .ai-config footer { align-items: stretch; flex-direction: column; } }

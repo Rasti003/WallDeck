@@ -46,6 +46,8 @@ Bridge v7 dodaje natywny tor PCM 24 kHz i potwierdzenie opróżnienia kolejki wy
 
 Admin pokazuje trwałą historię ostatnich 100 tur ścieżki Luna i konsoli tekstowej. Każdy wpis zawiera źródło, transkrypcję, dokładne wejście i instrukcję systemową każdego uruchomionego modelu, odpowiedź, wywołania MCP wraz z argumentami i wynikami, końcowy tekst TTS oraz błąd. Historia znajduje się w `assistant-history.json` w prywatnym runtime i może zostać wyczyszczona z panelu. Surowe audio i klucze API nie są zapisywane.
 
+Na górze sekcji Asystent znajduje się natychmiastowy przełącznik `GPT-Live / Luna`. Zapisuje wyłącznie wybór aktywnego toru, rozsyła zmianę do tabletu przez istniejący `settings.changed` i nie zeruje konfiguracji żadnego z trybów. Szczegółowy selektor pozostaje również w formularzu konfiguracji.
+
 Stały strumień usuwa miganie wskaźnika wywołane restartami `SpeechRecognizer`. Android nadal pokazuje systemowy wskaźnik użycia mikrofonu, gdy wake word jest aktywny; zwykła aplikacja nie może go ukryć. Wyłączenie wake wordu w adminie zamyka strumień i usuwa wskaźnik.
 
 Prototyp działa jako pojedyncza, półdupleksowa tura: po nadejściu pierwszego fragmentu odpowiedzi zatrzymuje wejście mikrofonowe, odtwarza całą kolejkę PCM, zamyka płatną sesję i wraca do lokalnego wake wordu. Klient i serwer wyliczają czas kolejki z liczby bajtów PCM 24 kHz; timeout serwera obejmuje pozostały czas odtwarzania, dlatego szybkie wygenerowanie dłuższej wypowiedzi nie czyści jej przed końcem. Zapobiega to ponownemu rozpoznawaniu głosu asystenta na głośniku tabletu oraz przypadkowym kolejnym turom od dźwięków otoczenia. Pełny dialog wieloturowy i barge-in pozostają zadaniem po pomiarze VAD oraz eliminacji echa na docelowym montażu.

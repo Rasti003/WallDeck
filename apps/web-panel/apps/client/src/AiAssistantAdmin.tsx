@@ -99,6 +99,23 @@ export function AiAssistantAdmin({ settings, setSettings }: Props) {
     } catch (error) { setState(`Błąd: ${error instanceof Error ? error.message : String(error)}`); }
   }
 
+  async function switchConversationMode(mode: WallDeckSettings["aiAssistant"]["voice"]["conversationMode"]) {
+    if (mode === config.voice.conversationMode || running) return;
+    setRunning(true);
+    setState(`Przełączanie na ${mode === "gpt-live" ? "GPT-Live" : "Lunę"}…`);
+    try {
+      const next = { ...config, voice: { ...config.voice, conversationMode: mode } };
+      const saved = await api.assistant.save({ settings: next });
+      setSettings({ ...settings, aiAssistant: saved.settings });
+      setConnection(saved.status);
+      setState(`Aktywny tryb: ${mode === "gpt-live" ? "GPT-Live" : "Luna + MCP + TTS"}`);
+    } catch (error) {
+      setState(`Błąd przełączania: ${error instanceof Error ? error.message : String(error)}`);
+    } finally {
+      setRunning(false);
+    }
+  }
+
   async function clearHistory() {
     await api.assistant.clearHistory();
     setHistory([]);
@@ -113,6 +130,15 @@ export function AiAssistantAdmin({ settings, setSettings }: Props) {
         <span className={connection.mcpReady ? "is-ready" : ""}><i />MCP<strong>{connection.mcpReady ? "gotowe" : "wyłączone"}</strong></span>
         <span className={config.enabled ? "is-ready" : ""}><i />Asystent<strong>{config.enabled ? "aktywny" : "wyłączony"}</strong></span>
       </div>
+    </article>
+
+    <article className="admin-card ai-mode-switcher">
+      <div><span className="admin-kicker">AKTYWNY TOR ROZMOWY</span><h2>Tryb asystenta</h2><p>Zmiana działa natychmiast. Ustawienia obu torów pozostają zachowane.</p></div>
+      <div className="ai-mode-options" role="group" aria-label="Tryb rozmowy asystenta">
+        <button type="button" className={config.voice.conversationMode === "gpt-live" ? "is-active" : ""} aria-pressed={config.voice.conversationMode === "gpt-live"} disabled={running} onClick={() => void switchConversationMode("gpt-live")}><strong>GPT‑Live</strong><small>rozmowa audio–audio</small></button>
+        <button type="button" className={config.voice.conversationMode === "luna-pipeline" ? "is-active" : ""} aria-pressed={config.voice.conversationMode === "luna-pipeline"} disabled={running} onClick={() => void switchConversationMode("luna-pipeline")}><strong>Luna</strong><small>STT · MCP · ElevenLabs</small></button>
+      </div>
+      <output>{state}</output>
     </article>
 
     <form className="admin-card admin-form ai-config" onSubmit={save}>
