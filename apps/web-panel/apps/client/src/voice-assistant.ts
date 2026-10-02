@@ -166,6 +166,7 @@ export class VoiceAssistantRuntime {
     const socket = this.socket;
     if (!socket || socket.readyState !== WebSocket.OPEN) return;
     this.callbacks.setState("thinking");
+    await this.stopInput();
     socket.send(JSON.stringify({ type: "context", content: `Użytkownik powiedział po wake wordzie: ${command}` }));
     let speechText: string;
     try {
@@ -174,7 +175,6 @@ export class VoiceAssistantRuntime {
     } catch (error) {
       speechText = `Nie udało się wykonać polecenia: ${error instanceof Error ? error.message : String(error)}`;
     }
-    await this.stopInput();
     try {
       await this.playBufferedSpeech(speechText);
     } finally {
@@ -194,6 +194,7 @@ export class VoiceAssistantRuntime {
       socket.send(JSON.stringify({ type: "delegation.result", delegationId, content: "Nie otrzymano czytelnej treści polecenia. Poproś użytkownika krótko o powtórzenie." }));
       return;
     }
+    await this.stopInput();
     let speechText: string;
     try {
       const result = await api.assistant.run({ message: command, forceFallback: false });
@@ -201,7 +202,6 @@ export class VoiceAssistantRuntime {
     } catch (error) {
       speechText = `Zadanie nie zostało wykonane: ${error instanceof Error ? error.message : String(error)}`;
     }
-    await this.stopInput();
     try {
       await this.playBufferedSpeech(speechText);
     } finally {
