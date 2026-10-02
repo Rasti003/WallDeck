@@ -4,6 +4,8 @@ Aplikacja WWW panelu ściennego. Pierwszy widok prezentuje lokalną kopię album
 
 Rozmowa głosowa ma dwa zachowywane niezależnie tryby wybierane w adminie: bezpośredni **GPT-Live** oraz **Luna** (`transkrypcja → model tekstowy/MCP → TTS`). Oba zaczynają się lokalnym wake wordem. Luna używa `speaker-service` do wyznaczania końca wypowiedzi aktywnego mówcy; GPT-Live używa go równolegle do diagnostyki. Silero VAD odrzuca ciszę, a ECAPA-TDNN porównuje kolejne fragmenty z pierwszym głosem sesji. Audio nie jest zapisywane, `pyannote.audio` nie należy do domyślnego obrazu. Szczegóły: [apps/speaker-service/README.md](apps/speaker-service/README.md).
 
+Odpowiedzi trybu Luna mogą być syntezowane przez OpenAI TTS albo ElevenLabs. Klucz ElevenLabs jest wpisywany w adminie, szyfrowany w runtime i nigdy nie wraca do klienta. Admin pobiera bezpieczną listę nazw/ID głosów dostępnych dla konta. ElevenLabs zwraca do tabletu surowy PCM 24 kHz, więc korzysta z tej samej natywnej ścieżki głośnika co pozostałe odpowiedzi asystenta.
+
 ## Dostępne ekrany
 
 - `/music` — Music z odtwarzaniem przez APK oraz wyszukiwaniem, playlistami i kolejką przez Spotify Web API (PKCE).

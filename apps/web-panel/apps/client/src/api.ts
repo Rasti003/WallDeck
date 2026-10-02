@@ -4,6 +4,7 @@ import type {
   AiAssistantRunResult,
   AiAssistantSettings,
   AiAssistantStatus,
+  ElevenLabsVoice,
   SpeakerObservation,
   DeviceStatus,
   HomeAssistantConfigInput,
@@ -113,6 +114,7 @@ export const api = {
     speakerObservation: (observation: Pick<SpeakerObservation, "label" | "confidence" | "experimental">) => json<SpeakerObservation>("/api/assistant/speaker-observation", {
       method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(observation),
     }),
+    elevenLabsVoices: () => json<{ voices: ElevenLabsVoice[] }>("/api/assistant/elevenlabs/voices"),
   },
 };
 

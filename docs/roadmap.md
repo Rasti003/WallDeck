@@ -74,7 +74,7 @@
 - [ ] fizyczny test obu trybów w hałasie tła i dostrojenie progu ECAPA/czasu końca tury;
 - [ ] dopracować barge-in, echo cancellation oraz ewaluację jakości wake wordu; ciągła fraza bez wymaganej pauzy ma już bufor przed otwarciem GPT-Live;
 - [ ] zastąpić diagnostyczny klaster głosu zweryfikowanym lokalnym modelem speaker verification i rejestracją profili;
-- [ ] provider ElevenLabs z szyfrowanym kluczem i wyborem polskiego Voice ID;
+- [x] provider ElevenLabs z szyfrowanym kluczem, listą głosów konta, próbką w adminie i PCM 24 kHz dla trybu Luna;
 - [ ] aktualizacja konfiguracji i modeli bez wydawania nowego APK.
 
 - [x] rozróżnienie błędów połączenia Spotify; potwierdzono na tablecie UserNotAuthorizedException, autoryzacja nadal wymaga dokończenia.

@@ -18,6 +18,8 @@ Konfiguracja jest szyfrowana AES-256-GCM. Klucz szyfrujący jest generowany w An
 
 Repozytorium nie może zawierać rzeczywistych Device Key, kluczy podpisujących APK, cookies, haseł, linków dających dostęp do prywatnych albumów ani prywatnych plików `.env`/`photo-sync.config.json`.
 
+Klucze OpenAI i ElevenLabs są przechowywane w osobnych zaszyfrowanych plikach runtime przez `EncryptedSecretStore`. API konfiguracji przyjmuje nowy klucz, ale status zwraca wyłącznie informację, czy został zapisany. Klucz ElevenLabs jest wysyłany do dostawcy tylko w nagłówku `xi-api-key`; nie trafia do URL, ustawień publicznych, WebView ani repozytorium. Endpoint listy głosów usuwa adresy próbek i pozostałe metadane konta.
+
 Udostępniony link Google Photos traktujemy jak sekret o ograniczonym zakresie. Jest przechowywany tylko w konfiguracji serwera, nie trafia do klienta WebView ani logów. Album powinien służyć wyłącznie WallDeckowi; unieważnienie linku w Google Photos odcina synchronizator.
 
 ## Odpowiedzialność panelu WWW

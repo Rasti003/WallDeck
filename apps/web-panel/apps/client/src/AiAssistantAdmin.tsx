@@ -1,13 +1,16 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { openAiVoiceSchema, type AiAssistantRunResult, type AiAssistantStatus, type WallDeckSettings } from "@walldeck/contracts";
+import { openAiVoiceSchema, type AiAssistantRunResult, type AiAssistantStatus, type ElevenLabsVoice, type WallDeckSettings } from "@walldeck/contracts";
 import { api } from "./api";
 
 type Props = { settings: WallDeckSettings; setSettings(value: WallDeckSettings): void };
 
 export function AiAssistantAdmin({ settings, setSettings }: Props) {
   const [apiKey, setApiKey] = useState("");
+  const [elevenLabsApiKey, setElevenLabsApiKey] = useState("");
+  const [elevenLabsVoices, setElevenLabsVoices] = useState<ElevenLabsVoice[]>([]);
   const [connection, setConnection] = useState<AiAssistantStatus>({
     configured: false,
+    elevenLabsConfigured: false,
     enabled: false,
     mcpReady: false,
     busy: false,
@@ -27,6 +30,7 @@ export function AiAssistantAdmin({ settings, setSettings }: Props) {
       setSettings({ ...settings, aiAssistant: next });
       setConnection(status);
       setState("Gotowe");
+      if (status.elevenLabsConfigured) void loadElevenLabsVoices();
     }).catch((error) => setState(error instanceof Error ? error.message : String(error)));
   // Initial synchronization only; settings is deliberately not a dependency.
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -36,15 +40,27 @@ export function AiAssistantAdmin({ settings, setSettings }: Props) {
     setSettings({ ...settings, aiAssistant: { ...config, ...patch } });
   }
 
+  async function loadElevenLabsVoices() {
+    try {
+      const response = await api.assistant.elevenLabsVoices();
+      setElevenLabsVoices(response.voices);
+      setState(`ElevenLabs · ${response.voices.length} dostępnych głosów`);
+    } catch (error) {
+      setState(`ElevenLabs: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
   async function save(event: FormEvent) {
     event.preventDefault();
     setState("Zapisywanie…");
     try {
-      const saved = await api.assistant.save({ settings: config, ...(apiKey.trim() ? { apiKey: apiKey.trim() } : {}) });
+      const saved = await api.assistant.save({ settings: config, ...(apiKey.trim() ? { apiKey: apiKey.trim() } : {}), ...(elevenLabsApiKey.trim() ? { elevenLabsApiKey: elevenLabsApiKey.trim() } : {}) });
       setSettings({ ...settings, aiAssistant: saved.settings });
       setConnection(saved.status);
       setApiKey("");
+      setElevenLabsApiKey("");
       setState("Konfiguracja zapisana");
+      if (saved.status.elevenLabsConfigured) void loadElevenLabsVoices();
     } catch (error) { setState(`Błąd: ${error instanceof Error ? error.message : String(error)}`); }
   }
 
@@ -69,7 +85,7 @@ export function AiAssistantAdmin({ settings, setSettings }: Props) {
       await audio.play();
       const refreshed = await api.assistant.config();
       setConnection(refreshed.status);
-      const provider = sample.provider === "openai-live" ? "GPT-Live" : sample.provider === "openai-tts-fallback" ? "TTS · fallback" : "OpenAI TTS";
+      const provider = sample.provider === "openai-live" ? "GPT-Live" : sample.provider === "openai-tts-fallback" ? "TTS · fallback" : sample.provider === "elevenlabs" ? "ElevenLabs" : "OpenAI TTS";
       setState(`Odtwarzam próbkę · ${provider}${sample.liveSeconds ? ` · ${sample.liveSeconds.toFixed(1)} s sesji` : ""}`);
     } catch (error) { setState(`Błąd: ${error instanceof Error ? error.message : String(error)}`); }
   }
@@ -143,15 +159,20 @@ export function AiAssistantAdmin({ settings, setSettings }: Props) {
           <p className="admin-note"><strong>Silnik mówcy:</strong> {connection.speakerObserver.available && connection.speakerObserver.modelReady ? "Silero + ECAPA gotowy" : "niedostępny"}{connection.speakerObserver.detail ? ` · ${connection.speakerObserver.detail}` : ""}</p>
         </div>}
         {config.voice.provider === "elevenlabs" && <div className="ai-live-settings">
-          <p className="admin-note">Konfiguracja jest zachowana w kontrakcie, ale połączenie pozostaje nieaktywne do czasu dodania klucza ElevenLabs.</p>
-          <div className="ai-model-grid"><label>Model ElevenLabs<input value={config.voice.elevenLabs.model} onChange={(e) => update({ voice: { ...config.voice, elevenLabs: { ...config.voice.elevenLabs, model: e.target.value } } })} /></label><label>Voice ID<input placeholder="Po wyborze polskiego głosu" value={config.voice.elevenLabs.voiceId} onChange={(e) => update({ voice: { ...config.voice, elevenLabs: { ...config.voice.elevenLabs, voiceId: e.target.value } } })} /></label></div>
+          <p className="admin-note"><strong>ElevenLabs:</strong> {connection.elevenLabsConfigured ? "klucz zapisany" : "brak klucza"}. Lista pokazuje głosy dostępne dla Twojego konta; najlepiej wybrać głos zweryfikowany dla polskiego.</p>
+          <label>Klucz ElevenLabs API<input type="password" autoComplete="off" placeholder={connection.elevenLabsConfigured ? "Zapisany — pozostaw puste, aby go zachować" : "xi-api-key"} value={elevenLabsApiKey} onChange={(e) => setElevenLabsApiKey(e.target.value)} /><small>Klucz jest szyfrowany na serwerze i nie jest zwracany do przeglądarki.</small></label>
+          <div className="ai-model-grid">
+            <label>Model ElevenLabs<select value={config.voice.elevenLabs.model} onChange={(e) => update({ voice: { ...config.voice, elevenLabs: { ...config.voice.elevenLabs, model: e.target.value } } })}><option value="eleven_multilingual_v2">Multilingual v2 · naturalny</option><option value="eleven_flash_v2_5">Flash v2.5 · szybki</option><option value="eleven_turbo_v2_5">Turbo v2.5 · balans</option><option value="eleven_v3">Eleven v3 · ekspresyjny</option></select></label>
+            <label>Głos<select value={config.voice.elevenLabs.voiceId} onChange={(e) => update({ voice: { ...config.voice, elevenLabs: { ...config.voice.elevenLabs, voiceId: e.target.value } } })}><option value="">Wybierz głos…</option>{config.voice.elevenLabs.voiceId && !elevenLabsVoices.some(voice => voice.voiceId === config.voice.elevenLabs.voiceId) && <option value={config.voice.elevenLabs.voiceId}>Zapisany Voice ID</option>}{elevenLabsVoices.map(voice => <option key={voice.voiceId} value={voice.voiceId}>{voice.name}{voice.verifiedLanguages.includes("pl") ? " · polski" : voice.labels.accent ? ` · ${voice.labels.accent}` : ""}</option>)}</select></label>
+          </div>
+          <button type="button" className="secondary" disabled={!connection.elevenLabsConfigured} onClick={() => void loadElevenLabsVoices()}>Odśwież listę głosów</button>
         </div>}
         <div className="ai-model-grid">
           <label>Model fallback TTS<input value={config.voice.model} onChange={(e) => update({ voice: { ...config.voice, model: e.target.value } })} /></label>
           <label>Głos fallback TTS<select value={config.voice.voice} onChange={(e) => update({ voice: { ...config.voice, voice: e.target.value as typeof config.voice.voice } })}>{openAiVoiceSchema.options.map((voice) => <option key={voice} value={voice}>{voice}</option>)}</select></label>
         </div>
         <label>Sposób mówienia<input value={config.voice.instructions} onChange={(e) => update({ voice: { ...config.voice, instructions: e.target.value } })} /></label>
-        <button type="button" className="secondary" disabled={!config.voice.enabled || !connection.configured || config.voice.provider === "elevenlabs"} onClick={testVoice}>Odtwórz próbkę tutaj</button>
+        <button type="button" className="secondary" disabled={!config.voice.enabled || (config.voice.provider === "elevenlabs" ? !connection.elevenLabsConfigured || !config.voice.elevenLabs.voiceId : !connection.configured)} onClick={testVoice}>Odtwórz próbkę tutaj</button>
       </fieldset>
       <footer><button type="submit">Zapisz konfigurację</button><span>{state}</span></footer>
     </form>

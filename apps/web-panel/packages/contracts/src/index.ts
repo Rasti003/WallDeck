@@ -81,9 +81,9 @@ export const aiAssistantSettingsSchema = z.object({
       maxInputSeconds: z.number().int().min(5).max(45).default(20),
     }).default({ transcriptionModel: "gpt-4o-mini-transcribe", endOfTurnMs: 1_500, maxInputSeconds: 20 }),
     elevenLabs: z.object({
-      model: z.string().trim().min(1).max(100).default("eleven_v3_conversational"),
+      model: z.preprocess(value => value === "eleven_v3_conversational" ? "eleven_multilingual_v2" : value, z.string().trim().min(1).max(100).default("eleven_multilingual_v2")),
       voiceId: z.string().trim().max(200).default(""),
-    }).default({ model: "eleven_v3_conversational", voiceId: "" }),
+    }).default({ model: "eleven_multilingual_v2", voiceId: "" }),
   }).default({
     enabled: false,
     conversationMode: "gpt-live",
@@ -93,7 +93,7 @@ export const aiAssistantSettingsSchema = z.object({
     instructions: "Mów spokojnie, naturalnie i ciepło po polsku.",
     live: { model: "gpt-live-1", voice: "marin", monthlyBudgetUsd: 15, idleCloseMs: 2_000, hardLimitSeconds: 90, fallbackToTts: true, conversationEnabled: true, wakeWordEnabled: true, wakePhrase: "Ej Waldek", speakerObservationEnabled: true },
     pipeline: { transcriptionModel: "gpt-4o-mini-transcribe", endOfTurnMs: 1_500, maxInputSeconds: 20 },
-    elevenLabs: { model: "eleven_v3_conversational", voiceId: "" },
+    elevenLabs: { model: "eleven_multilingual_v2", voiceId: "" },
   }),
 }).default({
   enabled: false,
@@ -113,11 +113,15 @@ export const aiAssistantSettingsSchema = z.object({
     instructions: "Mów spokojnie, naturalnie i ciepło po polsku.",
     live: { model: "gpt-live-1", voice: "marin", monthlyBudgetUsd: 15, idleCloseMs: 2_000, hardLimitSeconds: 90, fallbackToTts: true, conversationEnabled: true, wakeWordEnabled: true, wakePhrase: "Ej Waldek", speakerObservationEnabled: true },
     pipeline: { transcriptionModel: "gpt-4o-mini-transcribe", endOfTurnMs: 1_500, maxInputSeconds: 20 },
-    elevenLabs: { model: "eleven_v3_conversational", voiceId: "" },
+    elevenLabs: { model: "eleven_multilingual_v2", voiceId: "" },
   },
 });
 export type AiAssistantSettings = z.infer<typeof aiAssistantSettingsSchema>;
-export const aiAssistantConfigInputSchema = z.object({ settings: aiAssistantSettingsSchema, apiKey: z.string().trim().min(20).max(300).optional() });
+export const aiAssistantConfigInputSchema = z.object({
+  settings: aiAssistantSettingsSchema,
+  apiKey: z.string().trim().min(20).max(300).optional(),
+  elevenLabsApiKey: z.string().trim().min(10).max(300).optional(),
+});
 export type AiAssistantConfigInput = z.infer<typeof aiAssistantConfigInputSchema>;
 export const aiAssistantRunInputSchema = z.object({ message: z.string().trim().min(1).max(2_000), forceFallback: z.boolean().default(false) });
 export type AiAssistantRunInput = z.infer<typeof aiAssistantRunInputSchema>;
@@ -143,7 +147,8 @@ export interface SpeakerObservation {
   processingMs?: number;
 }
 export interface SpeakerObserverStatus { available: boolean; engine: "silero-ecapa"; modelReady: boolean; detail?: string; }
-export interface AiAssistantStatus { configured: boolean; enabled: boolean; mcpReady: boolean; busy: boolean; voiceUsage: AiVoiceUsageStatus; speakerObservation: SpeakerObservation | null; speakerObserver: SpeakerObserverStatus; }
+export interface ElevenLabsVoice { voiceId: string; name: string; category?: string; labels: Record<string, string>; verifiedLanguages: string[]; }
+export interface AiAssistantStatus { configured: boolean; elevenLabsConfigured: boolean; enabled: boolean; mcpReady: boolean; busy: boolean; voiceUsage: AiVoiceUsageStatus; speakerObservation: SpeakerObservation | null; speakerObserver: SpeakerObserverStatus; }
 export interface AiAssistantToolTrace { name: string; arguments: unknown; output?: unknown; }
 export interface AiAssistantRunResult { text: string; model: string; escalated: boolean; toolCalls: AiAssistantToolTrace[]; durationMs: number; }
 

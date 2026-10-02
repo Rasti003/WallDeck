@@ -32,6 +32,7 @@ import { LiveVoiceUsageStore, renderLiveSpeech } from "./live-voice.js";
 import { registerLiveConversation } from "./live-conversation.js";
 import { registerLunaConversation } from "./luna-conversation.js";
 import { SpeakerObserverClient } from "./speaker-observer.js";
+import { listElevenLabsVoices, renderElevenLabsSpeech } from "./elevenlabs.js";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const webRoot = path.resolve(here, "../../client/dist");
@@ -105,6 +106,7 @@ const spotify = new SpotifyConnector(runtimeRoot);
 const initialSettings = await readSettings();
 await spotify.load(initialSettings.music.clientId);
 const openAiKeyStore = new EncryptedSecretStore(runtimeRoot, "openai-api-key");
+const elevenLabsKeyStore = new EncryptedSecretStore(runtimeRoot, "elevenlabs-api-key");
 const liveVoiceUsage = new LiveVoiceUsageStore(runtimeRoot);
 const speakerObserver = new SpeakerObserverClient();
 const mcpToken = process.env.WALLDECK_MCP_TOKEN ?? "";
@@ -141,6 +143,7 @@ async function assistantStatus() {
   const settings = await readSettings();
   return {
     configured: Boolean(await openAiKeyStore.load()),
+    elevenLabsConfigured: Boolean(await elevenLabsKeyStore.load()),
     enabled: settings.aiAssistant.enabled,
     mcpReady: settings.mcp.enabled && Boolean(mcpToken),
     busy: assistant.busy,
@@ -169,6 +172,7 @@ app.put("/api/assistant/config", async (request, reply) => {
   const parsed = aiAssistantConfigInputSchema.safeParse(request.body);
   if (!parsed.success) return reply.code(400).send({ error: "Nieprawidłowa konfiguracja asystenta", details: parsed.error.issues });
   if (parsed.data.apiKey) await openAiKeyStore.save(parsed.data.apiKey);
+  if (parsed.data.elevenLabsApiKey) await elevenLabsKeyStore.save(parsed.data.elevenLabsApiKey);
   const current = await readSettings();
   const saved = await writeSettingsValue({ ...current, aiAssistant: parsed.data.settings });
   return { settings: saved.aiAssistant, status: await assistantStatus() };
@@ -189,14 +193,17 @@ app.post("/api/assistant/speech", async (request, reply) => {
   if (!parsed.success) return reply.code(400).send({ error: "Nieprawidłowy tekst próbki" });
   const settings = (await readSettings()).aiAssistant;
   if (!settings.voice.enabled) return reply.code(409).send({ error: "Model głosowy jest wyłączony" });
-  const apiKey = await openAiKeyStore.load();
-  if (!apiKey) return reply.code(409).send({ error: "Najpierw zapisz klucz OpenAI API" });
   if (voiceBusy) return reply.code(409).send({ error: "Inna próbka głosu jest jeszcze generowana" });
   voiceBusy = true;
   try {
     if (settings.voice.provider === "elevenlabs") {
-      return reply.code(409).send({ error: "ElevenLabs jest przygotowane konfiguracyjnie, ale wymaga jeszcze klucza API i wyboru głosu" });
+      const apiKey = await elevenLabsKeyStore.load();
+      if (!apiKey) return reply.code(409).send({ error: "Najpierw zapisz klucz ElevenLabs API" });
+      const audio = await renderElevenLabsSpeech(apiKey, parsed.data.text, settings.voice.elevenLabs, "mp3_44100_128");
+      return reply.header("content-type", "audio/mpeg").header("cache-control", "no-store").header("x-walldeck-voice-provider", "elevenlabs").send(audio);
     }
+    const apiKey = await openAiKeyStore.load();
+    if (!apiKey) return reply.code(409).send({ error: "Najpierw zapisz klucz OpenAI API" });
     const usageBefore = await liveVoiceUsage.status(settings);
     if (settings.voice.provider === "openai-live" && !usageBefore.exhausted) {
       try {
@@ -232,27 +239,42 @@ app.post("/api/assistant/speech-pcm", async (request, reply) => {
   const parsed = aiAssistantSpeechInputSchema.safeParse(request.body);
   if (!parsed.success) return reply.code(400).send({ error: "Nieprawidłowy tekst odpowiedzi" });
   const settings = (await readSettings()).aiAssistant;
-  if (!settings.voice.enabled || settings.voice.provider !== "openai-live") {
-    return reply.code(409).send({ error: "Buforowany głos wymaga aktywnego GPT-Live" });
-  }
-  const apiKey = await openAiKeyStore.load();
-  if (!apiKey) return reply.code(409).send({ error: "Brak klucza OpenAI API" });
+  if (!settings.voice.enabled) return reply.code(409).send({ error: "Model głosowy jest wyłączony" });
   if (voiceBusy) return reply.code(409).send({ error: "Inna odpowiedź głosowa jest jeszcze generowana" });
   voiceBusy = true;
   try {
-    const pcm = await renderOpenAiTts(apiKey, parsed.data.text, {
-      ...settings.voice,
-      voice: settings.voice.live.voice,
-    }, "pcm");
+    let pcm: Buffer;
+    let provider: string;
+    if (settings.voice.provider === "elevenlabs") {
+      const apiKey = await elevenLabsKeyStore.load();
+      if (!apiKey) return reply.code(409).send({ error: "Brak klucza ElevenLabs API" });
+      pcm = await renderElevenLabsSpeech(apiKey, parsed.data.text, settings.voice.elevenLabs, "pcm_24000");
+      provider = "elevenlabs";
+    } else {
+      const apiKey = await openAiKeyStore.load();
+      if (!apiKey) return reply.code(409).send({ error: "Brak klucza OpenAI API" });
+      pcm = await renderOpenAiTts(apiKey, parsed.data.text, { ...settings.voice, voice: settings.voice.live.voice }, "pcm");
+      provider = "openai-tts";
+    }
     return reply
       .header("content-type", "application/octet-stream")
       .header("cache-control", "no-store")
       .header("x-walldeck-pcm-rate", "24000")
+      .header("x-walldeck-voice-provider", provider)
       .send(pcm);
   } catch (error) {
     return reply.code(502).send({ error: error instanceof Error ? error.message : String(error) });
   } finally {
     voiceBusy = false;
+  }
+});
+app.get("/api/assistant/elevenlabs/voices", async (_request, reply) => {
+  const apiKey = await elevenLabsKeyStore.load();
+  if (!apiKey) return reply.code(409).send({ error: "Najpierw zapisz klucz ElevenLabs API" });
+  try {
+    return { voices: await listElevenLabsVoices(apiKey) };
+  } catch (error) {
+    return reply.code(502).send({ error: error instanceof Error ? error.message : String(error) });
   }
 });
 app.post("/api/assistant/speaker-observation", async (request, reply) => {
@@ -299,7 +321,14 @@ registerLunaConversation(app, {
     lastSpeakerObservation = observation;
     broadcast({ type: "assistant.speakerObserved", observation });
   },
-  renderSpeechPcm: (apiKey, text, settings) => renderOpenAiTts(apiKey, text, settings.voice, "pcm"),
+  renderSpeechPcm: async (apiKey, text, settings) => {
+    if (settings.voice.provider === "elevenlabs") {
+      const elevenLabsApiKey = await elevenLabsKeyStore.load();
+      if (!elevenLabsApiKey) throw new Error("Brak klucza ElevenLabs API");
+      return renderElevenLabsSpeech(elevenLabsApiKey, text, settings.voice.elevenLabs, "pcm_24000");
+    }
+    return renderOpenAiTts(apiKey, text, settings.voice, "pcm");
+  },
 });
 
 app.get("/api/spotify/status", async () => spotify.status());

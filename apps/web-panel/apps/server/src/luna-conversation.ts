@@ -171,7 +171,6 @@ export function registerLunaConversation(app: FastifyInstance, deps: Dependencie
         send({ type: "inputTranscript", transcript });
         const result: AiAssistantRunResult = await deps.assistant.execute(transcript, settings, false);
         send({ type: "answer", text: result.text, model: result.model, toolCalls: result.toolCalls.length });
-        if (settings.voice.provider === "elevenlabs") throw new Error("ElevenLabs nie jest jeszcze aktywnym dostawcą odpowiedzi");
         const speech = await deps.renderSpeechPcm(openAiApiKey, result.text, settings);
         const chunkBytes = 8_192;
         for (let offset = 0; offset < speech.length; offset += chunkBytes) {
