@@ -85,7 +85,7 @@ function panelCommand(name: string, args: Record<string, unknown>) {
   if (!socket) return Promise.reject(new Error("Tablet WallDeck jest offline"));
   const id = randomUUID();
   return new Promise<unknown>((resolve, reject) => {
-    const timer = setTimeout(() => { pendingPanelCommands.delete(id); reject(new Error("Tablet nie odpowiedział na komendę")); }, 8_000);
+    const timer = setTimeout(() => { pendingPanelCommands.delete(id); reject(new Error("Tablet nie odpowiedział na komendę")); }, 15_000);
     pendingPanelCommands.set(id, { resolve, reject, timer });
     socket.send(JSON.stringify({ type: "mcp.command", id, command: name, args }));
   });

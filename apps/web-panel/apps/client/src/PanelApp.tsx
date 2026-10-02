@@ -10,6 +10,7 @@ import { viewRegistry } from "./views/registry";
 import { PanelContext } from "./panel-context";
 import { createPlaybackStartDetector } from "./music/playback-start";
 import { musicController } from "./music/controller";
+import { ensureMusicConnected } from "./music/connection";
 import type { MusicState } from "@walldeck/contracts";
 import { VoiceAssistantRuntime } from "./voice-assistant";
 
@@ -23,6 +24,8 @@ export function PanelApp({ forcedView }: { forcedView?: ViewId }) {
   const reducedMotion = useReducedMotion();
   const [viewId, setViewId] = useState<ViewId>("photos");
   const [settings, setSettings] = useState<WallDeckSettings>(defaultSettings);
+  const settingsRef = useRef(settings);
+  settingsRef.current = settings;
   const [assistantIdleTransition, setAssistantIdleTransition] = useState(false);
   const [danceTransition, setDanceTransition] = useState(false);
   const [instantTransition, setInstantTransition] = useState(false);
@@ -88,6 +91,7 @@ export function PanelApp({ forcedView }: { forcedView?: ViewId }) {
             return { ok: true, mood };
           }
           if (message.command === "music.control") {
+            await ensureMusicConnected(musicController, settingsRef.current.music.clientId);
             const action = String(args.action ?? "");
             if (action === "play") await musicController.play();
             else if (action === "pause") await musicController.pause();
@@ -100,10 +104,12 @@ export function PanelApp({ forcedView }: { forcedView?: ViewId }) {
             return await musicController.getPlaybackState();
           }
           if (message.command === "music.playContext") {
+            await ensureMusicConnected(musicController, settingsRef.current.music.clientId);
             await musicController.playContext(String(args.uri));
             return { ok: true };
           }
           if (message.command === "music.addToQueue") {
+            await ensureMusicConnected(musicController, settingsRef.current.music.clientId);
             await musicController.addToQueue(String(args.uri));
             return { ok: true };
           }
@@ -205,7 +211,7 @@ export function PanelApp({ forcedView }: { forcedView?: ViewId }) {
         const state = await musicController.getPlaybackState();
         // A delayed poll must not overwrite a more recent player event.
         if (revision === eventRevision) update(state);
-        if (!disposed && settings.music.clientId && state.installed && state.connection === "disconnected" && Date.now() >= nextConnectAt) {
+        if (!disposed && settings.music.clientId && state.installed && (state.connection === "disconnected" || state.connection === "error") && Date.now() >= nextConnectAt) {
           nextConnectAt = Date.now() + 60_000;
           // Reuse prior consent; authorization errors still require the explicit Music button.
           const connected = await musicController.connect(settings.music.clientId, false);
