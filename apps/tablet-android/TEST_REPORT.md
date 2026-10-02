@@ -244,3 +244,10 @@ Xiaomi 2603ARP14G, Android 16, bridge v5. Android `assembleDebug`, testy jednost
 - Bridge v7 kończy rozmowę dopiero po opróżnieniu natywnego `AudioTrack`, zamiast po samym wysłaniu ostatniego fragmentu PCM. Kontrolowana długa odpowiedź na fizycznym Xiaomi zapisała `91 200` ramek i potwierdziła odtworzenie `91 200` ramek; `timedOut=false`. Dopiero potem wznowiono Vosk i przywrócono widok `photos`. PASS.
 - Przebieg statusów: `Łączenie z GPT-Live… → Słucham → Kończę rozmowę → Rozmowa zakończona`. Serwer nie zapisał błędu GPT-Live, aplikacja pozostała aktywna, a kiosk miał stan `LOCKED`. Spotify nie uruchamiano.
 - Android `assembleDebug`, `testDebugUnitTest`, `lintDebug`: PASS. WebPanel `typecheck`, 2 testy synchronizatora, 39 testów klienta, 12 testów serwera i build produkcyjny: PASS.
+
+### Zegar GPT-Live i usuwanie końcowej ciszy
+
+- Diagnostyka realnych prób użytkownika wykazała dwa niezależne problemy. Po zatrzymaniu mikrofonu GPT-Live kończył generowanie po około 3,8 s (`182 400` bajtów PCM), mimo że wypowiedź urywała się w środku zdania. Po podtrzymaniu osi czasu cichymi ramkami kontrolowana odpowiedź wzrosła do `1 391 040` bajtów i zawierała pełne trzy zdania.
+- Ciągłe ciche ramki ujawniły drugi problem: końcowa cisza trafiała do `AudioTrack`, sesja dochodziła do sztywnego limitu 30 s, a Android rejestrował underrun i ponowne uruchomienie ścieżki. Serwer rozpoznaje teraz słyszalny PCM, zachowuje krótkie naturalne pauzy i odrzuca długą ciszę.
+- Końcowy test na fizycznym tablecie zwrócił pełną, dwuzdaniową ciekawostkę, zakończył się przez `output-idle` po `15 600` ms zamiast przez `hard-limit`, przekazał `446 400` słyszalnych bajtów i odrzucił `174 720` bajtów ciszy. W świeżym logu nie wystąpił restart `AudioTrack` ani ostrzeżenie `RenderInspector`; aplikacja pozostała aktywna i `LOCKED`.
+- Pełna próba użytkownika została rozpoznana jako `Opowiedz ciekawostkę historyczną o Polsce`, a transkrypt odpowiedzi zakończył się pełnym zdaniem. WebPanel `typecheck`, 2 testy synchronizatora, 39 testów klienta, 12 testów serwera i build produkcyjny: PASS.
