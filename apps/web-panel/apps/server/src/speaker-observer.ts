@@ -8,6 +8,7 @@ const SAME_SPEAKER_THRESHOLD = 0.72;
 export type SpeakerAnalysis = {
   speech: boolean;
   speechSeconds: number;
+  lastSpeechEndSeconds?: number | null;
   processingMs: number;
   embedding?: number[];
 };

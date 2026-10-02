@@ -99,12 +99,16 @@ export function AiAssistantAdmin({ settings, setSettings }: Props) {
       <label>Klucz OpenAI API<input type="password" autoComplete="off" placeholder={connection.configured ? "Zapisany — pozostaw puste, aby go zachować" : "sk-…"} value={apiKey} onChange={(e) => setApiKey(e.target.value)} /><small>Klucz jest szyfrowany na serwerze i nie wraca do przeglądarki.</small></label>
       <fieldset className="ai-voice-settings"><legend>Opcjonalny głos</legend>
         <label className="switch-row"><input type="checkbox" checked={config.voice.enabled} onChange={(e) => update({ voice: { ...config.voice, enabled: e.target.checked } })} /><span><strong>Włącz generowanie mowy</strong><small>Na tym etapie próbka gra wyłącznie w przeglądarce administratora.</small></span></label>
-        <label>Dostawca głosu<select value={config.voice.provider} onChange={(e) => update({ voice: { ...config.voice, provider: e.target.value as typeof config.voice.provider } })}>
+        <label>Tryb rozmowy na tablecie<select value={config.voice.conversationMode} onChange={(e) => update({ voice: { ...config.voice, conversationMode: e.target.value as typeof config.voice.conversationMode } })}>
+          <option value="gpt-live">GPT-Live · szybka rozmowa audio–audio</option>
+          <option value="luna-pipeline">Luna · transkrypcja, MCP i TTS</option>
+        </select><small>Zmiana trybu nie usuwa jego ustawień. Po zapisaniu następne „Ej Waldek” użyje wybranej ścieżki.</small></label>
+        <label>Dostawca głosu próbki i fallbacku<select value={config.voice.provider} onChange={(e) => update({ voice: { ...config.voice, provider: e.target.value as typeof config.voice.provider } })}>
           <option value="openai-live">GPT-Live · naturalna rozmowa</option>
           <option value="openai-tts">OpenAI TTS · oszczędny</option>
           <option value="elevenlabs">ElevenLabs · przygotowane, jeszcze nieaktywne</option>
         </select></label>
-        {config.voice.provider === "openai-live" && <div className="ai-live-settings">
+        {config.voice.conversationMode === "gpt-live" && <div className="ai-live-settings">
           <div className="ai-usage-meter"><header><strong>Budżet GPT-Live · {connection.voiceUsage.month || "bieżący miesiąc"}</strong><span>${connection.voiceUsage.estimatedUsd.toFixed(3)} / ${config.voice.live.monthlyBudgetUsd.toFixed(2)}</span></header><progress max={config.voice.live.monthlyBudgetUsd} value={Math.min(connection.voiceUsage.estimatedUsd, config.voice.live.monthlyBudgetUsd)} /><small>{connection.voiceUsage.exhausted ? "Limit osiągnięty — aktywny jest fallback TTS." : `Pozostało około $${connection.voiceUsage.remainingUsd.toFixed(2)} · ${connection.voiceUsage.liveSeconds.toFixed(1)} s sesji Live.`}</small></div>
           <div className="ai-model-grid">
             <label>Model Live<input value={config.voice.live.model} onChange={(e) => update({ voice: { ...config.voice, live: { ...config.voice.live, model: e.target.value } } })} /></label>
@@ -124,6 +128,19 @@ export function AiAssistantAdmin({ settings, setSettings }: Props) {
           <label className="switch-row"><input type="checkbox" checked={config.voice.live.speakerObservationEnabled} onChange={(e) => update({ voice: { ...config.voice, live: { ...config.voice.live, speakerObservationEnabled: e.target.checked } } })} /><span><strong>Eksperymentalnie obserwuj mówcę</strong><small>Homelab używa Silero VAD i ECAPA-TDNN. Wynik pozostaje diagnostyczny i nie wpływa jeszcze na pamięć, uprawnienia ani narzędzia.</small></span></label>
           <p className="admin-note"><strong>Silnik mówcy:</strong> {connection.speakerObserver.available && connection.speakerObserver.modelReady ? "Silero + ECAPA gotowy" : "niedostępny"}{connection.speakerObserver.detail ? ` · ${connection.speakerObserver.detail}` : ""}</p>
           {connection.speakerObservation && <p className="admin-note"><strong>Ostatnia obserwacja:</strong> {connection.speakerObservation.label} · {(connection.speakerObservation.confidence * 100).toFixed(0)}%{typeof connection.speakerObservation.similarity === "number" ? ` · podobieństwo ${(connection.speakerObservation.similarity * 100).toFixed(0)}%` : ""}{typeof connection.speakerObservation.processingMs === "number" ? ` · ${connection.speakerObservation.processingMs.toFixed(0)} ms` : ""} · {new Date(connection.speakerObservation.observedAt).toLocaleString("pl-PL")}</p>}
+        </div>}
+        {config.voice.conversationMode === "luna-pipeline" && <div className="ai-live-settings">
+          <article className="admin-note"><strong>Ścieżka Luna</strong><p>Wake word → lokalny Silero/ECAPA → transkrypcja OpenAI → model podstawowy i MCP → OpenAI TTS → głośnik tabletu. GPT-Live pozostaje dostępny po zmianie przełącznika.</p></article>
+          <div className="ai-model-grid">
+            <label>Model transkrypcji<input value={config.voice.pipeline.transcriptionModel} onChange={(e) => update({ voice: { ...config.voice, pipeline: { ...config.voice.pipeline, transcriptionModel: e.target.value } } })} /></label>
+            <label>Koniec wypowiedzi<input type="number" min="750" max="5000" step="250" value={config.voice.pipeline.endOfTurnMs} onChange={(e) => update({ voice: { ...config.voice, pipeline: { ...config.voice.pipeline, endOfTurnMs: Number(e.target.value) } } })} /><small>ms bez aktywnego mówcy</small></label>
+            <label>Maksymalna długość polecenia<input type="number" min="5" max="45" step="1" value={config.voice.pipeline.maxInputSeconds} onChange={(e) => update({ voice: { ...config.voice, pipeline: { ...config.voice.pipeline, maxInputSeconds: Number(e.target.value) } } })} /><small>sekund</small></label>
+          </div>
+          <label className="switch-row"><input type="checkbox" checked={config.voice.live.conversationEnabled} onChange={(e) => update({ voice: { ...config.voice, live: { ...config.voice.live, conversationEnabled: e.target.checked } } })} /><span><strong>Włącz rozmowę Luna na tablecie</strong><small>Po rozpoznaniu wypowiedzi Luna korzysta z tych samych narzędzi MCP co konsola tekstowa.</small></span></label>
+          <label className="switch-row"><input type="checkbox" checked={config.voice.live.wakeWordEnabled} onChange={(e) => update({ voice: { ...config.voice, live: { ...config.voice.live, wakeWordEnabled: e.target.checked } } })} /><span><strong>Nasłuchuj lokalnego wake wordu</strong><small>Dźwięk jest wysyłany do serwera dopiero po wykryciu frazy na tablecie.</small></span></label>
+          <label>Fraza wybudzająca<input value={config.voice.live.wakePhrase} onChange={(e) => update({ voice: { ...config.voice, live: { ...config.voice.live, wakePhrase: e.target.value } } })} /></label>
+          <label className="switch-row"><input type="checkbox" checked={config.voice.live.speakerObservationEnabled} onChange={(e) => update({ voice: { ...config.voice, live: { ...config.voice.live, speakerObservationEnabled: e.target.checked } } })} /><span><strong>Śledź aktywnego mówcę</strong><small>Silero i ECAPA pomagają zakończyć wypowiedź mimo dźwięku telewizora lub muzyki. Wynik nadal nie nadaje uprawnień.</small></span></label>
+          <p className="admin-note"><strong>Silnik mówcy:</strong> {connection.speakerObserver.available && connection.speakerObserver.modelReady ? "Silero + ECAPA gotowy" : "niedostępny"}{connection.speakerObserver.detail ? ` · ${connection.speakerObserver.detail}` : ""}</p>
         </div>}
         {config.voice.provider === "elevenlabs" && <div className="ai-live-settings">
           <p className="admin-note">Konfiguracja jest zachowana w kontrakcie, ale połączenie pozostaje nieaktywne do czasu dodania klucza ElevenLabs.</p>

@@ -2,7 +2,7 @@
 
 Aplikacja WWW panelu ściennego. Pierwszy widok prezentuje lokalną kopię albumu zdjęć i automatycznie dopasowuje układ do orientacji ekranu oraz fotografii.
 
-Rozmowa głosowa może równolegle korzystać z lokalnego `speaker-service`: Silero VAD odrzuca ciszę, a ECAPA-TDNN porównuje kolejne fragmenty z pierwszym głosem sesji. Analiza jest opcjonalna, nie blokuje GPT-Live, nie zapisuje audio i pozostaje diagnostyczna. `pyannote.audio` nie należy do domyślnego obrazu. Szczegóły: [apps/speaker-service/README.md](apps/speaker-service/README.md).
+Rozmowa głosowa ma dwa zachowywane niezależnie tryby wybierane w adminie: bezpośredni **GPT-Live** oraz **Luna** (`transkrypcja → model tekstowy/MCP → TTS`). Oba zaczynają się lokalnym wake wordem. Luna używa `speaker-service` do wyznaczania końca wypowiedzi aktywnego mówcy; GPT-Live używa go równolegle do diagnostyki. Silero VAD odrzuca ciszę, a ECAPA-TDNN porównuje kolejne fragmenty z pierwszym głosem sesji. Audio nie jest zapisywane, `pyannote.audio` nie należy do domyślnego obrazu. Szczegóły: [apps/speaker-service/README.md](apps/speaker-service/README.md).
 
 ## Dostępne ekrany
 

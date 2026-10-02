@@ -61,7 +61,7 @@ export function registerLiveConversation(app: FastifyInstance, deps: Dependencie
     const enabledTools = await deps.getEnabledTools();
     const key = await deps.getApiKey();
     const usage = await deps.usage.status(settings);
-    if (!settings.enabled || !settings.voice.enabled || settings.voice.provider !== "openai-live" || !settings.voice.live.conversationEnabled) {
+    if (!settings.enabled || !settings.voice.enabled || settings.voice.conversationMode !== "gpt-live" || !settings.voice.live.conversationEnabled) {
       socket.send(JSON.stringify({ type: "error", error: "Rozmowy GPT-Live są wyłączone" }));
       socket.close();
       return;

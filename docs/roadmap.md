@@ -70,6 +70,8 @@
 - [x] lokalny wake word on-device i natywny bufor PCM; dokładniejsze KWS/VAD pozostaje do ewaluacji;
 - [x] tekstowy Luna/MCP → GPT-Live z budżetem, twardym limitem sesji i fallbackiem OpenAI TTS;
 - [x] prototyp „Ej Waldek” → mikrofon tabletu → GPT-Live → głośnik, z delegacją do Luny/MCP;
+- [x] przełączany tryb „Ej Waldek” → lokalne śledzenie mówcy → transkrypcja → Luna/MCP → OpenAI TTS, obok zachowanego GPT-Live;
+- [ ] fizyczny test obu trybów w hałasie tła i dostrojenie progu ECAPA/czasu końca tury;
 - [ ] dopracować barge-in, echo cancellation oraz ewaluację jakości wake wordu; ciągła fraza bez wymaganej pauzy ma już bufor przed otwarciem GPT-Live;
 - [ ] zastąpić diagnostyczny klaster głosu zweryfikowanym lokalnym modelem speaker verification i rejestracją profili;
 - [ ] provider ElevenLabs z szyfrowanym kluczem i wyborem polskiego Voice ID;

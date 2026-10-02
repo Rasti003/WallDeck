@@ -71,7 +71,7 @@ export class VoiceAssistantRuntime {
 
   private wakeEnabled() {
     const live = this.settings.voice.live;
-    return nativeBridge.available && this.settings.enabled && this.settings.voice.enabled && this.settings.voice.provider === "openai-live" && live.conversationEnabled && live.wakeWordEnabled;
+    return nativeBridge.available && this.settings.enabled && this.settings.voice.enabled && live.conversationEnabled && live.wakeWordEnabled;
   }
 
   private async configureWake() {
@@ -110,9 +110,10 @@ export class VoiceAssistantRuntime {
   };
 
   private async openConversation(remainder: string) {
+    const lunaPipeline = this.settings.voice.conversationMode === "luna-pipeline";
     this.callbacks.showAssistant();
     this.callbacks.setState("attention");
-    this.callbacks.onStatus?.("Łączenie z GPT-Live…");
+    this.callbacks.onStatus?.(lunaPipeline ? "Uruchamiam Lunę…" : "Łączenie z GPT-Live…");
     this.inputTranscript = "";
     this.lastTranscriptAt = 0;
     this.outputStarted = false;
@@ -133,12 +134,13 @@ export class VoiceAssistantRuntime {
     void nativeBridge.call("haptics").catch(() => undefined);
     await nativeBridge.call("wakeWord.pause").catch(() => undefined);
     const protocol = location.protocol === "https:" ? "wss:" : "ws:";
-    const initial = remainder.length >= 2 ? `?initial=${encodeURIComponent(remainder.slice(0, 500))}` : "";
-    const socket = new WebSocket(`${protocol}//${location.host}/api/assistant/live${initial}`);
+    const initial = !lunaPipeline && remainder.length >= 2 ? `?initial=${encodeURIComponent(remainder.slice(0, 500))}` : "";
+    const route = lunaPipeline ? "/api/assistant/luna" : "/api/assistant/live";
+    const socket = new WebSocket(`${protocol}//${location.host}${route}${initial}`);
     this.socket = socket;
     socket.addEventListener("message", (message) => { void this.handleMessage(JSON.parse(String(message.data)) as Record<string, unknown>, remainder); });
     socket.addEventListener("close", () => { void this.finish(); });
-    socket.addEventListener("error", () => this.callbacks.onStatus?.("Błąd połączenia GPT-Live"));
+    socket.addEventListener("error", () => this.callbacks.onStatus?.(lunaPipeline ? "Błąd połączenia z Luną" : "Błąd połączenia GPT-Live"));
     await this.startInput();
   }
 
@@ -152,14 +154,27 @@ export class VoiceAssistantRuntime {
         if (this.socket?.readyState !== WebSocket.OPEN) break;
         this.socket.send(JSON.stringify({ type: "audio", audio }));
       }
-      if (remainder.length >= 2) void this.executePreservedCommand(remainder);
-      else this.scheduleDelegationFallback(8_000);
+      if (this.settings.voice.conversationMode === "gpt-live") {
+        if (remainder.length >= 2) void this.executePreservedCommand(remainder);
+        else this.scheduleDelegationFallback(8_000);
+      }
+    } else if (message.type === "processing") {
+      await this.stopInput();
+      this.callbacks.setState("thinking");
+      this.callbacks.onStatus?.("Rozpoznaję i wykonuję polecenie…");
+    } else if (message.type === "answer") {
+      this.callbacks.setState("thinking");
+      this.callbacks.onStatus?.("Luna przygotowała odpowiedź");
     } else if (message.type === "inputTranscript" && typeof message.delta === "string") {
       this.inputTranscript += message.delta;
       this.lastTranscriptAt = Date.now();
       this.pendingUserTurn = true;
       this.callbacks.setState("listening");
       this.scheduleDelegationFallback(3_500);
+    } else if (message.type === "inputTranscript" && typeof message.transcript === "string") {
+      this.inputTranscript = message.transcript;
+      this.callbacks.setState("thinking");
+      this.callbacks.onStatus?.(`Usłyszałem: ${message.transcript}`);
     } else if (message.type === "outputTranscript") {
       this.callbacks.setState("speaking");
     } else if (message.type === "audio" && typeof message.audio === "string") {

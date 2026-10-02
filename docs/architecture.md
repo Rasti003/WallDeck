@@ -96,7 +96,14 @@ MCP pozostaje oddzielone od przyszłego „mózgu” opartego o OpenAI API. Serw
 
 ## Pipeline głosu asystenta
 
-Warstwa rozumowania pozostaje niezależna od syntezy: `polecenie → Luna/eskalator → MCP → zweryfikowany wynik → provider głosu`. Próbka w adminie nadal używa krótkiej serwerowej sesji GPT-Live albo fallbacku OpenAI Speech. Rozmowa tabletu używa natywnego PCM 24 kHz przez bridge v7 i serwerowy WebSocket GPT-Live; delegacje wykonawcze wracają do istniejącej Luny i MCP po ustabilizowaniu strumienia transkrypcji.
+Warstwa rozumowania pozostaje niezależna od syntezy. Admin przełącza dwa kompletne tory bez usuwania ustawień drugiego:
+
+- `gpt-live`: `wake word → PCM 24 kHz → GPT-Live → audio`, z delegacją działań do Luny i MCP;
+- `luna-pipeline`: `wake word → PCM 24 kHz → Silero/ECAPA → OpenAI transcription → Luna/eskalator → MCP → OpenAI TTS → głośnik tabletu`.
+
+Tryb Luna wysyła dźwięk do `/api/assistant/luna`, analizuje przesuwne trzysekundowe okna lokalnie i kończy turę po zniknięciu głosu zakotwiczonego na początku polecenia. Ma konfigurowalny czas końca tury oraz twardy limit nagrania. Awaria lokalnego modelu przełącza detekcję na prosty próg audio, ale nie omija limitu. Po ustaleniu tury serwer zatrzymuje mikrofon klienta, transkrybuje całe polecenie, uruchamia ten sam `AssistantService` co konsola tekstowa i odsyła PCM z OpenAI TTS. ElevenLabs pozostaje przygotowany konfiguracyjnie, lecz nie jest jeszcze aktywnym syntezatorem.
+
+Próbka w adminie nadal używa krótkiej serwerowej sesji GPT-Live albo fallbacku OpenAI Speech. Rozmowa tabletu używa natywnego PCM 24 kHz przez bridge v7.
 
 Sesje Live są krótkotrwałe. Serwer zbiera `session.output_audio.delta`, śledzi kumulacyjne `session.usage.updated`, kończy przez `session.close` i czeka na `session.closed`. Czas zamknięcia uwzględnia skumulowaną długość oczekującego PCM, a bridge utrzymuje twarz asystenta i nie wznawia wake wordu, dopóki natywny `AudioTrack` nie wyemituje `assistantOutputDrained`. Miesięczny licznik w runtime blokuje rozpoczęcie rozmowy po przekroczeniu budżetu. Lokalny Vosk utrzymuje jeden strumień 16 kHz z ograniczoną gramatyką wake wordu i uruchamia płatną sesję dopiero po wykryciu hasła. Klient od razu przejmuje mikrofon i buforuje PCM podczas nawiązywania WebSocketu, aby nie zgubić początku komendy. `session.start` pozostaje pierwszym zdarzeniem wysłanym do OpenAI; dopiero `session.started` otwiera bramkę audio, a serwer ma dodatkowy ograniczony bufor dla starszych klientów. Po zamknięciu sesji nasłuch wraca automatycznie, a router przywraca poprzedni widok lub aktywny odtwarzacz.
 

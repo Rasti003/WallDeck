@@ -4,8 +4,8 @@
 
 Pierwszym hostem jest VM Debian `walldeck` w Proxmox:
 
-- 2 vCPU;
-- 4 GB RAM;
+- 4 vCPU;
+- 8 GB RAM;
 - systemowy dysk 24 GB;
 - adres LAN przydzielany przez DHCP;
 - Docker Engine z Compose;

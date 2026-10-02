@@ -30,6 +30,7 @@ import { AssistantService } from "./assistant.js";
 import { EncryptedSecretStore } from "./secret-store.js";
 import { LiveVoiceUsageStore, renderLiveSpeech } from "./live-voice.js";
 import { registerLiveConversation } from "./live-conversation.js";
+import { registerLunaConversation } from "./luna-conversation.js";
 import { SpeakerObserverClient } from "./speaker-observer.js";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -287,6 +288,18 @@ registerLiveConversation(app, {
   searchSpotify: (query, types) => spotify.search(query, types),
   activateView,
   panelCommand,
+});
+
+registerLunaConversation(app, {
+  getApiKey: () => openAiKeyStore.load(),
+  getSettings: async () => (await readSettings()).aiAssistant,
+  assistant,
+  speakerObserver,
+  onSpeakerObservation: observation => {
+    lastSpeakerObservation = observation;
+    broadcast({ type: "assistant.speakerObserved", observation });
+  },
+  renderSpeechPcm: (apiKey, text, settings) => renderOpenAiTts(apiKey, text, settings.voice, "pcm"),
 });
 
 app.get("/api/spotify/status", async () => spotify.status());

@@ -70,6 +70,7 @@ class Models:
                 return {
                     "speech": False,
                     "speechSeconds": round(speech_samples / TARGET_RATE, 3),
+                    "lastSpeechEndSeconds": round(timestamps[-1]["end"] / TARGET_RATE, 3) if timestamps else None,
                     "processingMs": round((time.perf_counter() - started) * 1000, 1),
                 }
             embedding = self.encoder.encode_batch(voiced.unsqueeze(0)).squeeze().float()
@@ -80,6 +81,7 @@ class Models:
         return {
             "speech": True,
             "speechSeconds": round(speech_samples / TARGET_RATE, 3),
+            "lastSpeechEndSeconds": round(timestamps[-1]["end"] / TARGET_RATE, 3),
             "processingMs": round((time.perf_counter() - started) * 1000, 1),
             "embedding": [round(float(value), 7) for value in embedding.tolist()],
         }

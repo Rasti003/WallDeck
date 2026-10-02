@@ -7,7 +7,7 @@ Lokalny, opcjonalny proces obserwacji mówcy. Serwis przyjmuje krótkie fragment
 ## API
 
 - `GET /health` — gotowość modeli i liczba wątków Torch.
-- `POST /v1/analyze` — surowy mono PCM16 little-endian; nagłówek `x-sample-rate` określa częstotliwość. Odpowiedź zawiera czas mowy, czas obliczeń i — gdy wykryto co najmniej 0,5 s mowy — znormalizowany embedding.
+- `POST /v1/analyze` — surowy mono PCM16 little-endian; nagłówek `x-sample-rate` określa częstotliwość. Odpowiedź zawiera czas mowy, koniec ostatniego fragmentu mowy (`lastSpeechEndSeconds`), czas obliczeń i — gdy wykryto co najmniej 0,5 s mowy — znormalizowany embedding. Tryb Luna używa końca mowy i podobieństwa ECAPA do zamknięcia tury aktywnego mówcy.
 
 Serwis nie jest publikowany na porcie hosta. Jest osiągalny wyłącznie z sieci Compose jako `http://speaker-service:8091`. Compose ogranicza go do 2 vCPU i 2 GB RAM. Modele są pobierane przy pierwszym uruchomieniu i utrzymywane w wolumenie `speaker-models`.
 

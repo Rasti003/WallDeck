@@ -13,7 +13,7 @@ function monthKey(now = new Date()) {
   return now.toISOString().slice(0, 7);
 }
 
-function wavFromPcm16(pcm: Buffer): Buffer {
+export function wavFromPcm16(pcm: Buffer): Buffer {
   const header = Buffer.alloc(44);
   const byteRate = PCM_RATE * 2;
   header.write("RIFF", 0);

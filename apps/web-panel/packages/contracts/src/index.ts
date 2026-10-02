@@ -46,6 +46,7 @@ export const assistantBrightnessSchema = z.object({
 export const openAiReasoningSchema = z.enum(["low", "medium", "high"]);
 export const openAiVoiceSchema = z.enum(["alloy", "ash", "ballad", "coral", "echo", "fable", "nova", "onyx", "sage", "shimmer", "verse", "marin", "cedar"]);
 export const assistantVoiceProviderSchema = z.enum(["openai-live", "openai-tts", "elevenlabs"]);
+export const assistantConversationModeSchema = z.enum(["gpt-live", "luna-pipeline"]);
 export const aiAssistantSettingsSchema = z.object({
   enabled: z.boolean().default(false),
   primaryModel: z.string().trim().min(1).max(80).default("gpt-6-luna"),
@@ -57,6 +58,7 @@ export const aiAssistantSettingsSchema = z.object({
   systemPrompt: z.string().trim().min(1).max(4_000).default("Jesteś domowym asystentem WallDeck. Odpowiadaj po polsku, krótko i konkretnie. Korzystaj z narzędzi MCP, gdy użytkownik prosi o działanie lub aktualny stan. Nie zgaduj wyniku narzędzia i nie ogłaszaj sukcesu, zanim narzędzie go nie potwierdzi. Jeżeli polecenie jest niejasne albo nie potrafisz go bezpiecznie wykonać, rozpocznij odpowiedź od ESCALATE:."),
   voice: z.object({
     enabled: z.boolean().default(false),
+    conversationMode: assistantConversationModeSchema.default("gpt-live"),
     provider: assistantVoiceProviderSchema.default("openai-live"),
     model: z.string().trim().min(1).max(80).default("gpt-4o-mini-tts"),
     voice: openAiVoiceSchema.default("coral"),
@@ -73,17 +75,24 @@ export const aiAssistantSettingsSchema = z.object({
       wakePhrase: z.string().trim().min(2).max(40).default("Ej Waldek"),
       speakerObservationEnabled: z.boolean().default(true),
     }).default({ model: "gpt-live-1", voice: "marin", monthlyBudgetUsd: 15, idleCloseMs: 2_000, hardLimitSeconds: 90, fallbackToTts: true, conversationEnabled: true, wakeWordEnabled: true, wakePhrase: "Ej Waldek", speakerObservationEnabled: true }),
+    pipeline: z.object({
+      transcriptionModel: z.string().trim().min(1).max(80).default("gpt-4o-mini-transcribe"),
+      endOfTurnMs: z.number().int().min(750).max(5_000).default(1_500),
+      maxInputSeconds: z.number().int().min(5).max(45).default(20),
+    }).default({ transcriptionModel: "gpt-4o-mini-transcribe", endOfTurnMs: 1_500, maxInputSeconds: 20 }),
     elevenLabs: z.object({
       model: z.string().trim().min(1).max(100).default("eleven_v3_conversational"),
       voiceId: z.string().trim().max(200).default(""),
     }).default({ model: "eleven_v3_conversational", voiceId: "" }),
   }).default({
     enabled: false,
+    conversationMode: "gpt-live",
     provider: "openai-live",
     model: "gpt-4o-mini-tts",
     voice: "coral",
     instructions: "Mów spokojnie, naturalnie i ciepło po polsku.",
     live: { model: "gpt-live-1", voice: "marin", monthlyBudgetUsd: 15, idleCloseMs: 2_000, hardLimitSeconds: 90, fallbackToTts: true, conversationEnabled: true, wakeWordEnabled: true, wakePhrase: "Ej Waldek", speakerObservationEnabled: true },
+    pipeline: { transcriptionModel: "gpt-4o-mini-transcribe", endOfTurnMs: 1_500, maxInputSeconds: 20 },
     elevenLabs: { model: "eleven_v3_conversational", voiceId: "" },
   }),
 }).default({
@@ -97,11 +106,13 @@ export const aiAssistantSettingsSchema = z.object({
   systemPrompt: "Jesteś domowym asystentem WallDeck. Odpowiadaj po polsku, krótko i konkretnie. Korzystaj z narzędzi MCP, gdy użytkownik prosi o działanie lub aktualny stan. Nie zgaduj wyniku narzędzia i nie ogłaszaj sukcesu, zanim narzędzie go nie potwierdzi. Jeżeli polecenie jest niejasne albo nie potrafisz go bezpiecznie wykonać, rozpocznij odpowiedź od ESCALATE:.",
   voice: {
     enabled: false,
+    conversationMode: "gpt-live",
     provider: "openai-live",
     model: "gpt-4o-mini-tts",
     voice: "coral",
     instructions: "Mów spokojnie, naturalnie i ciepło po polsku.",
     live: { model: "gpt-live-1", voice: "marin", monthlyBudgetUsd: 15, idleCloseMs: 2_000, hardLimitSeconds: 90, fallbackToTts: true, conversationEnabled: true, wakeWordEnabled: true, wakePhrase: "Ej Waldek", speakerObservationEnabled: true },
+    pipeline: { transcriptionModel: "gpt-4o-mini-transcribe", endOfTurnMs: 1_500, maxInputSeconds: 20 },
     elevenLabs: { model: "eleven_v3_conversational", voiceId: "" },
   },
 });
