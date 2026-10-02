@@ -165,14 +165,16 @@ export class VoiceAssistantRuntime {
     if (!socket || socket.readyState !== WebSocket.OPEN) return;
     this.callbacks.setState("thinking");
     socket.send(JSON.stringify({ type: "context", content: `Użytkownik powiedział po wake wordzie: ${command}` }));
+    let speechText: string;
     try {
       const result = await api.assistant.run({ message: command, forceFallback: false });
-      await this.playBufferedSpeech(result.text);
-      socket.send(JSON.stringify({ type: "close" }));
+      speechText = result.text;
     } catch (error) {
-      await this.playBufferedSpeech(`Nie udało się wykonać polecenia: ${error instanceof Error ? error.message : String(error)}`);
-      socket.send(JSON.stringify({ type: "close" }));
+      speechText = `Nie udało się wykonać polecenia: ${error instanceof Error ? error.message : String(error)}`;
     }
+    await this.stopInput();
+    await this.playBufferedSpeech(speechText);
+    if (socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify({ type: "close" }));
   }
 
   private async handleDelegation(delegationId: string) {
@@ -187,16 +189,16 @@ export class VoiceAssistantRuntime {
       socket.send(JSON.stringify({ type: "delegation.result", delegationId, content: "Nie otrzymano czytelnej treści polecenia. Poproś użytkownika krótko o powtórzenie." }));
       return;
     }
+    let speechText: string;
     try {
       const result = await api.assistant.run({ message: command, forceFallback: false });
-      await this.stopInput();
-      await this.playBufferedSpeech(result.text);
-      socket.send(JSON.stringify({ type: "close" }));
+      speechText = result.text;
     } catch (error) {
-      await this.stopInput();
-      await this.playBufferedSpeech(`Zadanie nie zostało wykonane: ${error instanceof Error ? error.message : String(error)}`);
-      socket.send(JSON.stringify({ type: "close" }));
+      speechText = `Zadanie nie zostało wykonane: ${error instanceof Error ? error.message : String(error)}`;
     }
+    await this.stopInput();
+    await this.playBufferedSpeech(speechText);
+    if (socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify({ type: "close" }));
   }
 
   private async playBufferedSpeech(text: string) {
