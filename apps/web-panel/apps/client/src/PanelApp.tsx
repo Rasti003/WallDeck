@@ -11,6 +11,7 @@ import { PanelContext } from "./panel-context";
 import { createPlaybackStartDetector } from "./music/playback-start";
 import { musicController } from "./music/controller";
 import type { MusicState } from "@walldeck/contracts";
+import { VoiceAssistantRuntime } from "./voice-assistant";
 
 export function PanelApp({ forcedView }: { forcedView?: ViewId }) {
   const [interactionLocked, setInteractionLocked] = useState(false);
@@ -146,6 +147,22 @@ export function PanelApp({ forcedView }: { forcedView?: ViewId }) {
     setViewId(nextView);
     api.activateView(nextView).catch(() => undefined);
   }, [forcedView]);
+
+  useEffect(() => {
+    if (!nativeBridge.available || forcedView) return;
+    const runtime = new VoiceAssistantRuntime(settings.aiAssistant, {
+      setState: state => {
+        setAssistantIdleTransition(false);
+        setDanceTransition(false);
+        setRequestedAssistantState(state);
+        setAssistantState(state);
+      },
+      showAssistant: () => activate("assistant-expressive", true),
+      onStatus: status => window.dispatchEvent(new CustomEvent("walldeck:voiceStatus", { detail: { status } })),
+    });
+    void runtime.start();
+    return () => { void runtime.dispose(); };
+  }, [activate, forcedView, settings.aiAssistant]);
 
   const playbackView = useRef(activeView);
   playbackView.current = activeView;

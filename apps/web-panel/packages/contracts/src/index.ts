@@ -67,7 +67,11 @@ export const aiAssistantSettingsSchema = z.object({
       idleCloseMs: z.number().int().min(750).max(10_000).default(2_000),
       hardLimitSeconds: z.number().int().min(10).max(120).default(30),
       fallbackToTts: z.boolean().default(true),
-    }).default({ model: "gpt-live-1", voice: "marin", monthlyBudgetUsd: 15, idleCloseMs: 2_000, hardLimitSeconds: 30, fallbackToTts: true }),
+      conversationEnabled: z.boolean().default(true),
+      wakeWordEnabled: z.boolean().default(true),
+      wakePhrase: z.string().trim().min(2).max(40).default("Ej Waldek"),
+      speakerObservationEnabled: z.boolean().default(true),
+    }).default({ model: "gpt-live-1", voice: "marin", monthlyBudgetUsd: 15, idleCloseMs: 2_000, hardLimitSeconds: 30, fallbackToTts: true, conversationEnabled: true, wakeWordEnabled: true, wakePhrase: "Ej Waldek", speakerObservationEnabled: true }),
     elevenLabs: z.object({
       model: z.string().trim().min(1).max(100).default("eleven_v3_conversational"),
       voiceId: z.string().trim().max(200).default(""),
@@ -78,7 +82,7 @@ export const aiAssistantSettingsSchema = z.object({
     model: "gpt-4o-mini-tts",
     voice: "coral",
     instructions: "Mów spokojnie, naturalnie i ciepło po polsku.",
-    live: { model: "gpt-live-1", voice: "marin", monthlyBudgetUsd: 15, idleCloseMs: 2_000, hardLimitSeconds: 30, fallbackToTts: true },
+    live: { model: "gpt-live-1", voice: "marin", monthlyBudgetUsd: 15, idleCloseMs: 2_000, hardLimitSeconds: 30, fallbackToTts: true, conversationEnabled: true, wakeWordEnabled: true, wakePhrase: "Ej Waldek", speakerObservationEnabled: true },
     elevenLabs: { model: "eleven_v3_conversational", voiceId: "" },
   }),
 }).default({
@@ -96,7 +100,7 @@ export const aiAssistantSettingsSchema = z.object({
     model: "gpt-4o-mini-tts",
     voice: "coral",
     instructions: "Mów spokojnie, naturalnie i ciepło po polsku.",
-    live: { model: "gpt-live-1", voice: "marin", monthlyBudgetUsd: 15, idleCloseMs: 2_000, hardLimitSeconds: 30, fallbackToTts: true },
+    live: { model: "gpt-live-1", voice: "marin", monthlyBudgetUsd: 15, idleCloseMs: 2_000, hardLimitSeconds: 30, fallbackToTts: true, conversationEnabled: true, wakeWordEnabled: true, wakePhrase: "Ej Waldek", speakerObservationEnabled: true },
     elevenLabs: { model: "eleven_v3_conversational", voiceId: "" },
   },
 });
@@ -115,7 +119,8 @@ export interface AiVoiceUsageStatus {
   exhausted: boolean;
   fallbackActive: boolean;
 }
-export interface AiAssistantStatus { configured: boolean; enabled: boolean; mcpReady: boolean; busy: boolean; voiceUsage: AiVoiceUsageStatus; }
+export interface SpeakerObservation { label: string; confidence: number; observedAt: string; experimental: true; }
+export interface AiAssistantStatus { configured: boolean; enabled: boolean; mcpReady: boolean; busy: boolean; voiceUsage: AiVoiceUsageStatus; speakerObservation: SpeakerObservation | null; }
 export interface AiAssistantToolTrace { name: string; arguments: unknown; output?: unknown; }
 export interface AiAssistantRunResult { text: string; model: string; escalated: boolean; toolCalls: AiAssistantToolTrace[]; durationMs: number; }
 

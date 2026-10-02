@@ -4,6 +4,7 @@ import type {
   AiAssistantRunResult,
   AiAssistantSettings,
   AiAssistantStatus,
+  SpeakerObservation,
   DeviceStatus,
   HomeAssistantConfigInput,
   HomeAssistantEntity,
@@ -101,6 +102,9 @@ export const api = {
         liveSpendUsd: Number(response.headers.get("x-walldeck-live-spend-usd") ?? 0),
       };
     },
+    speakerObservation: (observation: Pick<SpeakerObservation, "label" | "confidence" | "experimental">) => json<SpeakerObservation>("/api/assistant/speaker-observation", {
+      method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(observation),
+    }),
   },
 };
 

@@ -49,6 +49,20 @@ class MainActivity : ComponentActivity() {
     private val notificationSounds by lazy { NotificationSoundPlayer(this) }
     private val music by lazy { SpotifyController(this) { state -> runOnUiThread { event("musicStateChanged", state) } } }
     private val audioOutputs by lazy { AudioOutputs(this) }
+    private val wakeWord by lazy {
+        WakeWordRecognizer(
+            this,
+            onWake = { data -> runOnUiThread { event("wakeWordDetected", data) } },
+            onStatus = { data -> runOnUiThread { event("wakeWordStatus", data) } },
+        )
+    }
+    private val assistantAudio by lazy {
+        AssistantAudioIo(
+            this,
+            onChunk = { chunk -> runOnUiThread { event("assistantAudioChunk", JSONObject().put("audio", chunk).put("sampleRate", 24_000)) } },
+            onSpeaker = { observation -> runOnUiThread { event("speakerObserved", observation) } },
+        )
+    }
     private val sensorManager by lazy { getSystemService(SensorManager::class.java) }
     private val cameraLightSampler by lazy {
         CameraLightSampler(this) { level -> runOnUiThread { event("cameraLightChanged", JSONObject().put("brightnessPercent", level)) } }
@@ -148,6 +162,7 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         updateKiosk()
+        if (::root.isInitialized) wakeWord.resume()
         cameraLightSampler.onResume()
         lightSensor?.let {
             sensorManager.registerListener(lightListener, it, SensorManager.SENSOR_DELAY_NORMAL)
@@ -169,6 +184,7 @@ class MainActivity : ComponentActivity() {
     }
     override fun onPause() {
         emergencyHandler.removeCallbacks(emergencyExit)
+        wakeWord.pause()
         cameraLightSampler.onPause()
         sensorManager.unregisterListener(lightListener)
         super.onPause()
@@ -176,6 +192,7 @@ class MainActivity : ComponentActivity() {
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == CAMERA_LIGHT_PERMISSION_REQUEST && grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED) cameraLightSampler.permissionGranted()
+        if (requestCode == MICROPHONE_PERMISSION_REQUEST && grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED) wakeWord.resume()
     }
     private fun showConfig() {
         if (dialog?.isShowing == true) return
@@ -388,7 +405,22 @@ class MainActivity : ComponentActivity() {
                 return
             }
             val result: Any = when (req.getString("method")) {
-                "capabilities" -> JSONObject().put("bridgeVersion", 5).put("methods", JSONArray(listOf("capabilities", "deviceInfo", "sensors", "cameraLightSampling", "battery", "brightness", "mediaVolume", "keepAwake", "haptics", "reload", "exitToTablet", "appVersion", "permissions", "signChallenge", "notification.playSound", "music.connect", "music.disconnect", "music.getState", "music.command", "music.getQueue", "audio.getOutputs", "audio.selectOutput", "audio.openSystemOutputPicker"))).put("wakeWord", false).put("spotify", true).put("youtube", false).put("homeAssistant", false)
+                "capabilities" -> JSONObject().put("bridgeVersion", 6).put("methods", JSONArray(listOf("capabilities", "deviceInfo", "sensors", "cameraLightSampling", "battery", "brightness", "mediaVolume", "keepAwake", "haptics", "reload", "exitToTablet", "appVersion", "permissions", "signChallenge", "notification.playSound", "music.connect", "music.disconnect", "music.getState", "music.command", "music.getQueue", "audio.getOutputs", "audio.selectOutput", "audio.openSystemOutputPicker", "wakeWord.configure", "wakeWord.status", "wakeWord.pause", "wakeWord.resume", "assistantAudio.startInput", "assistantAudio.stopInput", "assistantAudio.startOutput", "assistantAudio.appendOutput", "assistantAudio.stopOutput"))).put("wakeWord", true).put("wakeWordLocalOnly", true).put("speakerObservation", true).put("spotify", true).put("youtube", false).put("homeAssistant", false)
+                "wakeWord.configure" -> {
+                    val enabled = args.optBoolean("enabled", false)
+                    if (enabled && checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) runOnUiThread {
+                        requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), MICROPHONE_PERMISSION_REQUEST)
+                    }
+                    wakeWord.configure(enabled, args.optString("phrase", "Ej Waldek"))
+                }
+                "wakeWord.status" -> wakeWord.status()
+                "wakeWord.pause" -> { wakeWord.pause(); wakeWord.status() }
+                "wakeWord.resume" -> { wakeWord.resume(); wakeWord.status() }
+                "assistantAudio.startInput" -> { wakeWord.pause(); assistantAudio.startInput(args.optBoolean("speakerObservation", false)) }
+                "assistantAudio.stopInput" -> assistantAudio.stopInput()
+                "assistantAudio.startOutput" -> assistantAudio.startOutput()
+                "assistantAudio.appendOutput" -> assistantAudio.appendOutput(args.getString("audio"))
+                "assistantAudio.stopOutput" -> assistantAudio.stopOutput()
                 "notification.playSound" -> notificationSounds.play(args.getString("sound"), args.getDouble("volume"))
                 "music.connect" -> music.connect(args.getString("clientId"), args.optBoolean("authorize", false))
                 "music.disconnect" -> music.disconnect()
@@ -447,10 +479,11 @@ class MainActivity : ComponentActivity() {
         }
     }
     private fun toast(text: String) = Toast.makeText(this, text, Toast.LENGTH_LONG).show()
-    override fun onDestroy() { music.disconnect(); cameraLightSampler.destroy(); sensorManager.unregisterListener(lightListener); unregisterReceiver(batteryReceiver); dialog?.dismiss(); web?.destroy(); web = null; reply = null; super.onDestroy() }
+    override fun onDestroy() { music.disconnect(); wakeWord.destroy(); assistantAudio.destroy(); cameraLightSampler.destroy(); sensorManager.unregisterListener(lightListener); unregisterReceiver(batteryReceiver); dialog?.dismiss(); web?.destroy(); web = null; reply = null; super.onDestroy() }
 
     private companion object {
         const val DEBUG_PANEL_URL_EXTRA = "pl.home.wallpanel.DEBUG_PANEL_URL"
         const val CAMERA_LIGHT_PERMISSION_REQUEST = 2
+        const val MICROPHONE_PERMISSION_REQUEST = 3
     }
 }

@@ -192,3 +192,11 @@ Na serwerze: pobrano 3 nowe zdjęcia (119 → 122), wysłano jedno powiadomienie
 ## Natywny dźwięk powiadomień — 2026-09-28
 
 Xiaomi 2603ARP14G, Android 16, bridge v5. Android `assembleDebug`, testy jednostkowe i lint PASS; WebPanel typecheck, 39 testów klienta i build PASS. APK zainstalowano po kontrolowanym wyjściu z lock task i ponownie uruchomiono w trybie panelu. Wywołanie `notification.playSound` dla próbki `chime` zwróciło `played=true`, `route=tablet-speaker`, `preferredDeviceAccepted=true`, `deviceName=2603ARP14G`. Dźwięk korzysta z natywnego `AudioTrack` i wbudowanego głośnika, a nie z trasy `STREAM_MUSIC` używanej przez Spotify/Bluetooth. Web Audio pozostaje fallbackiem poza aplikacją tabletową.
+
+## 2026-10-02 — wake word i natywny tor audio asystenta
+
+- Fizyczny Xiaomi `2603ARP14G`, Android 16 / API 36, połączenie ADB USB: APK bridge v6 zainstalowany i uruchomiony w `LOCKED`.
+- Uprawnienie `RECORD_AUDIO` jest przyznane. `wakeWord.configure` zwrócił `localAvailable=true`, `permission=true`, `listening=true` dla frazy „Ej Waldek”.
+- Bezpośredni test bridge/WebView uruchomił `assistantAudio.startInput` na 24 kHz mono PCM16. W 2,2 s odebrano 21 fragmentów i 100 800 bajtów PCM; `stopInput` zakończył nagrywanie, po czym wznowiono wake word. PASS.
+- Android `assembleDebug`, `testDebugUnitTest` i `lintDebug`: PASS. WebPanel `typecheck`, 39 testów klienta, 12 testów serwera, 2 testy synchronizatora i build produkcyjny: PASS.
+- NIE TESTOWANO jeszcze rzeczywistego wypowiedzenia frazy przez użytkownika ani porównania jakości anonimowych klastrów mówców. Klaster jest diagnostyczny i nie wpływa na uprawnienia.

@@ -66,9 +66,11 @@
 - [ ] połączenie MCP z OpenAI Responses API przez Secure MCP Tunnel/HTTPS;
 - [ ] audio focus/duck/pause/resume asystenta;
 - [ ] routing audio tablet/Bluetooth;
-- [ ] lokalny wake word, VAD i bufor audio;
+- [x] lokalny wake word on-device i natywny bufor PCM; dokładniejsze KWS/VAD pozostaje do ewaluacji;
 - [x] tekstowy Luna/MCP → GPT-Live z budżetem, twardym limitem sesji i fallbackiem OpenAI TTS;
-- [ ] lokalny wake word „Ej Waldek” → mikrofon tabletu → pełna sesja GPT-Live z VAD i barge-in;
+- [x] prototyp „Ej Waldek” → mikrofon tabletu → GPT-Live → głośnik, z delegacją do Luny/MCP;
+- [ ] dopracować barge-in, echo cancellation, ciągłą frazę bez pauzy oraz ewaluację jakości wake wordu;
+- [ ] zastąpić diagnostyczny klaster głosu zweryfikowanym lokalnym modelem speaker verification i rejestracją profili;
 - [ ] provider ElevenLabs z szyfrowanym kluczem i wyborem polskiego Voice ID;
 - [ ] aktualizacja konfiguracji i modeli bez wydawania nowego APK.
 

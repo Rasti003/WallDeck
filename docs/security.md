@@ -30,7 +30,9 @@ Komendy mają allowlist, walidowany zakres seek/repeat i wyłącznie URI Spotify
 
 Jasność per mimika używa istniejącego zaufanego bridge i dotyczy wyłącznie okna WallDeck. Nie zapisuje globalnej jasności systemu ani nie wymaga nowych uprawnień. Backend waliduje nazwy min oraz zakres 5–100%; fallback -1 jest wyliczany w kliencie jako powrót do ustawień Androida.
 
-Widok twarzy asystenta nadal nie korzysta z mikrofonu ani nowych uprawnień Androida. Ręczna próbka w adminie może wysłać krótki tekst do GPT-Live lub OpenAI Speech; klucz pozostaje w szyfrowanym storage serwera i nigdy nie trafia do przeglądarki. Odpowiedź audio ma `no-store`. Licznik GPT-Live przechowuje wyłącznie miesiąc i łączną liczbę sekund, bez tekstu i nagrań. Sesje mają `store: false`, twardy limit czasu i kontrolowane zamknięcie. ElevenLabs nie otrzymuje danych, dopóki provider nie zostanie zaimplementowany i jawnie skonfigurowany.
+Rozmowa głosowa wymaga uprawnienia Android `RECORD_AUDIO`. Wake word korzysta wyłącznie z recognizera on-device; płatne połączenie GPT-Live powstaje dopiero po lokalnym wykryciu frazy. Surowy PCM rozmowy przechodzi przez zaufany bridge i serwer WallDeck do OpenAI, ale nie jest zapisywany w runtime ani logach. Klucz pozostaje w szyfrowanym storage serwera i nigdy nie trafia do WebView. Endpoint WebSocket sprawdza zgodność Origin/Host, dopuszcza jedną sesję i respektuje budżet oraz twardy limit. Obecny prototyp nadal wymaga zaufanej sieci LAN; docelowo transport panel–serwer wymaga HTTPS/WSS i sesji urządzenia.
+
+Eksperymentalna obserwacja mówcy przechowuje centroidy cech lokalnie w prywatnych preferencjach APK. Do backendu trafia wyłącznie anonimowa etykieta klastra, pewność oraz czas. Wynik nie uwierzytelnia użytkownika, nie ładuje pamięci i nie rozszerza uprawnień. Funkcję można wyłączyć w adminie.
 
 Wszystkie skrypty uruchamiane przez zaufany origin mają dostęp do bridge. Backend i frontend muszą więc zapobiegać XSS, stosować restrykcyjny CSP, aktualizować zależności oraz wydawać krótkie sesje. Weryfikacja HMAC powinna być stałoczasowa, a każde wyzwanie jednorazowe i szybko wygasające.
 

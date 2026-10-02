@@ -94,9 +94,9 @@ MCP pozostaje oddzielone od przyszłego „mózgu” opartego o OpenAI API. Serw
 
 ## Pipeline głosu asystenta
 
-Warstwa rozumowania pozostaje niezależna od syntezy: `polecenie tekstowe → Luna/eskalator → MCP → zweryfikowana odpowiedź tekstowa → provider głosu`. Pierwszy provider GPT-Live służy obecnie do naturalnego odczytania gotowej odpowiedzi przez krótką serwerową sesję WebSocket. Fallback używa istniejącego endpointu OpenAI Speech. Kontrakt przewiduje ElevenLabs bez aktywnego transportu i sekretu.
+Warstwa rozumowania pozostaje niezależna od syntezy: `polecenie → Luna/eskalator → MCP → zweryfikowany wynik → provider głosu`. Próbka w adminie nadal używa krótkiej serwerowej sesji GPT-Live albo fallbacku OpenAI Speech. Rozmowa tabletu używa natywnego PCM 24 kHz przez bridge v6 i serwerowy WebSocket GPT-Live; delegacje wykonawcze wracają do istniejącej Luny i MCP.
 
-Sesje Live są krótkotrwałe. Serwer zbiera `session.output_audio.delta`, śledzi kumulacyjne `session.usage.updated`, kończy przez `session.close` i czeka na `session.closed`. Miesięczny licznik w runtime wybiera fallback po przekroczeniu budżetu. Przyszła ścieżka mikrofonu ma uruchamiać sesję dopiero po lokalnym wake wordzie i zamykać ją po zakończeniu odtwarzania oraz braku aktywności, z osobnym twardym limitem.
+Sesje Live są krótkotrwałe. Serwer zbiera `session.output_audio.delta`, śledzi kumulacyjne `session.usage.updated`, kończy przez `session.close` i czeka na `session.closed`. Miesięczny licznik w runtime blokuje rozpoczęcie rozmowy po przekroczeniu budżetu. Lokalny on-device recognizer uruchamia płatną sesję dopiero po wake wordzie; po zamknięciu sesji nasłuch wraca automatycznie. Eksperymentalny klaster mówcy działa lokalnie i jest wyłącznie telemetrią diagnostyczną.
 
 ### Aktywność klientów
 

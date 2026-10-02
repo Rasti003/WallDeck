@@ -21,6 +21,7 @@ import {
   type WeatherNow,
   type DeviceReport,
   type DeviceStatus,
+  type SpeakerObservation,
 } from "@walldeck/contracts";
 import { HomeAssistantClient, HomeAssistantConfigStore } from "./home-assistant.js";
 import { registerMcpEndpoint } from "./mcp.js";
@@ -28,6 +29,7 @@ import { SpotifyConnector } from "./spotify.js";
 import { AssistantService } from "./assistant.js";
 import { EncryptedSecretStore } from "./secret-store.js";
 import { LiveVoiceUsageStore, renderLiveSpeech } from "./live-voice.js";
+import { registerLiveConversation } from "./live-conversation.js";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const webRoot = path.resolve(here, "../../client/dist");
@@ -109,6 +111,7 @@ const assistant = new AssistantService({
   getApiKey: () => openAiKeyStore.load(),
 });
 let voiceBusy = false;
+let lastSpeakerObservation: SpeakerObservation | null = null;
 
 const app = Fastify({ logger: true });
 await app.register(websocket);
@@ -139,6 +142,7 @@ async function assistantStatus() {
     mcpReady: settings.mcp.enabled && Boolean(mcpToken),
     busy: assistant.busy,
     voiceUsage: await liveVoiceUsage.status(settings.aiAssistant),
+    speakerObservation: lastSpeakerObservation,
   };
 }
 
@@ -219,6 +223,28 @@ app.post("/api/assistant/speech", async (request, reply) => {
   } finally {
     voiceBusy = false;
   }
+});
+app.post("/api/assistant/speaker-observation", async (request, reply) => {
+  const body = request.body as { label?: unknown; confidence?: unknown; experimental?: unknown } | null;
+  if (!body || typeof body.label !== "string" || !body.label.trim() || body.label.length > 80 || typeof body.confidence !== "number" || !Number.isFinite(body.confidence)) {
+    return reply.code(400).send({ error: "Nieprawidłowa obserwacja głosu" });
+  }
+  const settings = (await readSettings()).aiAssistant;
+  if (!settings.voice.live.speakerObservationEnabled) return reply.code(409).send({ error: "Obserwacja mówcy jest wyłączona" });
+  lastSpeakerObservation = {
+    label: body.label.trim(),
+    confidence: Math.max(0, Math.min(1, body.confidence)),
+    observedAt: new Date().toISOString(),
+    experimental: true,
+  };
+  broadcast({ type: "assistant.speakerObserved", observation: lastSpeakerObservation });
+  return lastSpeakerObservation;
+});
+
+registerLiveConversation(app, {
+  getApiKey: () => openAiKeyStore.load(),
+  getSettings: async () => (await readSettings()).aiAssistant,
+  usage: liveVoiceUsage,
 });
 
 app.get("/api/spotify/status", async () => spotify.status());

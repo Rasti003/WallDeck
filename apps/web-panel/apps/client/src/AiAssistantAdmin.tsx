@@ -12,6 +12,7 @@ export function AiAssistantAdmin({ settings, setSettings }: Props) {
     mcpReady: false,
     busy: false,
     voiceUsage: { month: "", liveSeconds: 0, estimatedUsd: 0, budgetUsd: 15, remainingUsd: 15, exhausted: false, fallbackActive: false },
+    speakerObservation: null,
   });
   const [message, setMessage] = useState("");
   const [forceFallback, setForceFallback] = useState(false);
@@ -112,6 +113,15 @@ export function AiAssistantAdmin({ settings, setSettings }: Props) {
             <label>Zamknięcie po ciszy<input type="number" min="750" max="10000" step="250" value={config.voice.live.idleCloseMs} onChange={(e) => update({ voice: { ...config.voice, live: { ...config.voice.live, idleCloseMs: Number(e.target.value) } } })} /><small>ms po ostatnim fragmencie audio</small></label>
           </div>
           <label className="switch-row"><input type="checkbox" checked={config.voice.live.fallbackToTts} onChange={(e) => update({ voice: { ...config.voice, live: { ...config.voice.live, fallbackToTts: e.target.checked } } })} /><span><strong>Po limicie lub błędzie przejdź na OpenAI TTS</strong><small>Próbka i przyszłe odpowiedzi nadal będą działały z modelem ustawionym niżej.</small></span></label>
+          <article className="admin-note">
+            <strong>Rozmowa na tablecie</strong>
+            <p>Wake word działa lokalnie. Dopiero po jego wykryciu tablet wysyła dźwięk rozmowy do GPT-Live. Zwykłe odpowiedzi wracają bezpośrednio jako audio, dlatego osobne narzędzie „speak” nie jest potrzebne.</p>
+          </article>
+          <label className="switch-row"><input type="checkbox" checked={config.voice.live.conversationEnabled} onChange={(e) => update({ voice: { ...config.voice, live: { ...config.voice.live, conversationEnabled: e.target.checked } } })} /><span><strong>Włącz rozmowę GPT-Live na tablecie</strong><small>Uruchamia natywny tor mikrofon → WallDeck Server → GPT-Live → głośnik tabletu.</small></span></label>
+          <label className="switch-row"><input type="checkbox" checked={config.voice.live.wakeWordEnabled} onChange={(e) => update({ voice: { ...config.voice, live: { ...config.voice.live, wakeWordEnabled: e.target.checked } } })} /><span><strong>Nasłuchuj lokalnego wake wordu</strong><small>Android używa wyłącznie lokalnego recognizera; brak lokalnego silnika nie uruchamia wariantu chmurowego.</small></span></label>
+          <label>Fraza wybudzająca<input value={config.voice.live.wakePhrase} onChange={(e) => update({ voice: { ...config.voice, live: { ...config.voice.live, wakePhrase: e.target.value } } })} /></label>
+          <label className="switch-row"><input type="checkbox" checked={config.voice.live.speakerObservationEnabled} onChange={(e) => update({ voice: { ...config.voice, live: { ...config.voice.live, speakerObservationEnabled: e.target.checked } } })} /><span><strong>Eksperymentalnie obserwuj mówcę</strong><small>Lokalny klaster głosu zapisuje wyłącznie etykietę diagnostyczną i pewność. Wynik nie wpływa na pamięć, uprawnienia ani narzędzia.</small></span></label>
+          {connection.speakerObservation && <p className="admin-note"><strong>Ostatnia obserwacja:</strong> {connection.speakerObservation.label} · {(connection.speakerObservation.confidence * 100).toFixed(0)}% · {new Date(connection.speakerObservation.observedAt).toLocaleString("pl-PL")}</p>}
         </div>}
         {config.voice.provider === "elevenlabs" && <div className="ai-live-settings">
           <p className="admin-note">Konfiguracja jest zachowana w kontrakcie, ale połączenie pozostaje nieaktywne do czasu dodania klucza ElevenLabs.</p>

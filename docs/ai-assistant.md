@@ -1,6 +1,6 @@
 # Asystent AI
 
-Pierwsza wersja asystenta działa jako konsola tekstowa w `/admin`. Nie korzysta jeszcze z mikrofonu, wake wordu ani głośnika tabletu. Polecenia są interpretowane przez OpenAI Agents SDK, a dostęp do WallDeck odbywa się wyłącznie przez lokalny endpoint MCP i narzędzia włączone w sekcji **MCP · AI**.
+Asystent działa jako konsola tekstowa w `/admin` oraz eksperymentalna rozmowa głosowa na tablecie. Polecenia wykonawcze są interpretowane przez OpenAI Agents SDK, a dostęp do WallDeck odbywa się wyłącznie przez lokalny endpoint MCP i narzędzia włączone w sekcji **MCP · AI**.
 
 ## Konfiguracja
 
@@ -40,7 +40,15 @@ Domyślnie limit wynosi 15 USD miesięcznie, sesja najwyżej 30 sekund, a zamkni
 
 Pola modelu i Voice ID ElevenLabs należą już do wspólnego kontraktu ustawień. Endpoint celowo odrzuca tę opcję do czasu dodania osobnego, szyfrowanego klucza i implementacji providera.
 
-Integracja lokalny wake word „Ej Waldek” → mikrofon → rozmowa Live na tablecie jest kolejnym etapem. Dla przyszłej sesji audio timeout ma uwzględniać aktywność mikrofonu, odtwarzanie i trwające narzędzia; sam brak fragmentów transkrypcji nie jest uznawany za ciszę.
+## Rozmowa na tablecie
+
+Bridge v6 dodaje natywny tor PCM 24 kHz. Android korzysta wyłącznie z lokalnego `SpeechRecognizer` do wykrycia „Ej Waldek”; jeżeli urządzenie nie ma recognizera on-device, moduł zgłasza niedostępność i nie przechodzi na rozpoznawanie chmurowe. Po wykryciu frazy recognizer zwalnia mikrofon, a `AudioRecord` przesyła kolejne fragmenty przez zaufany bridge i WebSocket WallDeck Server do GPT-Live. Odpowiedź PCM wraca do natywnego `AudioTrack`, który preferuje wbudowany głośnik tabletu.
+
+GPT-Live prowadzi rozmowę i deleguje działania do klienta. Klient wywołuje dotychczasową ścieżkę Luna → MCP, a zweryfikowany wynik zwraca do sesji przez `session.commentary.append`. Zwykła wypowiedź modelu nie wymaga narzędzia `speak`; osobne narzędzie będzie potrzebne dopiero dla komunikatów inicjowanych poza aktywną rozmową.
+
+Pierwszy prototyp wymaga krótkiej pauzy po wake wordzie, aby lokalny recognizer zdążył zwolnić mikrofon. Jeśli recognizer zwróci również dalszą część wypowiedzi, klient zachowuje ją jako tekstowe polecenie i przekazuje wynik do GPT-Live do wypowiedzenia. Sesja zamyka się po ciszy po odpowiedzi albo po twardym limicie, a lokalny nasłuch uruchamia się ponownie.
+
+Eksperymentalna obserwacja mówcy oblicza lokalnie prosty fingerprint akustyczny i grupuje próbki jako `Głos 1–3`. Do serwera trafia tylko etykieta, pewność i czas obserwacji. Funkcję można wyłączyć; wynik nie wpływa na pamięć, narzędzia ani uprawnienia i nie jest traktowany jako uwierzytelnienie.
 
 ## Bezpieczeństwo i koszty
 
