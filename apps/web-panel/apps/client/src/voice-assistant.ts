@@ -119,7 +119,7 @@ export class VoiceAssistantRuntime {
         await this.stopInput();
       }
       await nativeBridge.call("assistantAudio.appendOutput", { audio: message.audio }).catch(() => undefined);
-      this.scheduleInputAfterPlayback(message.audio);
+      this.scheduleCloseAfterPlayback(message.audio);
     } else if (message.type === "delegation" && typeof message.delegationId === "string") {
       void this.handleDelegation(message.delegationId);
     } else if (message.type === "closed") {
@@ -193,7 +193,7 @@ export class VoiceAssistantRuntime {
     await nativeBridge.call("assistantAudio.stopInput").catch(() => undefined);
   }
 
-  private scheduleInputAfterPlayback(base64Audio: string) {
+  private scheduleCloseAfterPlayback(base64Audio: string) {
     const padding = base64Audio.endsWith("==") ? 2 : base64Audio.endsWith("=") ? 1 : 0;
     const byteCount = Math.max(0, Math.floor(base64Audio.length * 3 / 4) - padding);
     const durationMs = byteCount / (24_000 * 2) * 1_000;
@@ -201,10 +201,8 @@ export class VoiceAssistantRuntime {
     if (this.outputResumeTimer) clearTimeout(this.outputResumeTimer);
     this.outputResumeTimer = setTimeout(() => {
       this.outputResumeTimer = null;
-      this.outputStarted = false;
-      this.callbacks.setState("listening");
-      this.callbacks.onStatus?.("Słucham");
-      void this.startInput();
-    }, Math.max(0, this.outputPlaybackUntil - Date.now()) + 300);
+      this.callbacks.onStatus?.("Kończę rozmowę");
+      this.socket?.send(JSON.stringify({ type: "close" }));
+    }, Math.max(0, this.outputPlaybackUntil - Date.now()) + 1_200);
   }
 }

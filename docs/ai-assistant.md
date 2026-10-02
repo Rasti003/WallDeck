@@ -44,7 +44,7 @@ Pola modelu i Voice ID ElevenLabs należą już do wspólnego kontraktu ustawie�
 
 Bridge v6 dodaje natywny tor PCM 24 kHz. Android korzysta wyłącznie z lokalnego `SpeechRecognizer` do wykrycia „Ej Waldek”; jeżeli urządzenie nie ma recognizera on-device, moduł zgłasza niedostępność i nie przechodzi na rozpoznawanie chmurowe. Po wykryciu frazy recognizer zwalnia mikrofon, a `AudioRecord` przesyła kolejne fragmenty przez zaufany bridge i WebSocket WallDeck Server do GPT-Live. Odpowiedź PCM wraca do natywnego `AudioTrack`, który preferuje wbudowany głośnik tabletu.
 
-Prototyp działa półdupleksowo: po nadejściu pierwszego fragmentu odpowiedzi zatrzymuje wejście mikrofonowe, odtwarza całą kolejkę PCM i wznawia nasłuch po jej opróżnieniu. Zapobiega to ponownemu rozpoznawaniu głosu asystenta na głośniku tabletu. Pełny barge-in pozostaje zadaniem po pomiarze jakości eliminacji echa na docelowym montażu.
+Prototyp działa jako pojedyncza, półdupleksowa tura: po nadejściu pierwszego fragmentu odpowiedzi zatrzymuje wejście mikrofonowe, odtwarza całą kolejkę PCM, zamyka płatną sesję i wraca do lokalnego wake wordu. Zapobiega to ponownemu rozpoznawaniu głosu asystenta na głośniku tabletu oraz przypadkowym kolejnym turom od dźwięków otoczenia. Pełny dialog wieloturowy i barge-in pozostają zadaniem po pomiarze VAD oraz eliminacji echa na docelowym montażu.
 
 GPT-Live prowadzi rozmowę i deleguje działania do klienta. Klient wywołuje dotychczasową ścieżkę Luna → MCP, a zweryfikowany wynik zwraca do sesji przez `session.commentary.append`. Zwykła wypowiedź modelu nie wymaga narzędzia `speak`; osobne narzędzie będzie potrzebne dopiero dla komunikatów inicjowanych poza aktywną rozmową.
 
