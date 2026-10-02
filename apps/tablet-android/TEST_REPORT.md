@@ -231,3 +231,9 @@ Xiaomi 2603ARP14G, Android 16, bridge v5. Android `assembleDebug`, testy jednost
 - Klient otwiera bramkę PCM dopiero po komunikacie `ready`, a serwer dodatkowo buforuje maksymalnie 50 fragmentów przed `session.started`. Callbacki Vosk są przypisane do konkretnego identyfikatora sesji, więc spóźnione zakończenie starego recognizera nie może zgubić referencji do nowego.
 - Android `assembleDebug`, `testDebugUnitTest`, `lintDebug`: PASS. Pełny WebPanel typecheck, 2 testy synchronizatora, 39 testów klienta, 12 testów serwera i build: PASS.
 - APK zainstalowano przez USB, serwer wdrożono i panel przeładowano. Pełny test na fizycznym Xiaomi z kontrolowaną komendą tekstową przeszedł: `Łączenie → Słucham → odpowiedź audio → Kończę → Rozmowa zakończona`, `photos → assistant-expressive → photos`. W logu serwera nie było błędu Live, wykonano `POST /api/assistant/run`, po teście pozostała jedna aktywna sesja Vosk, a kiosk miał stan `LOCKED`. Spotify nie uruchamiano.
+
+### Dokończenie kolejki odpowiedzi audio
+
+- Użytkownik potwierdził, że odpowiedź zaczynała się, lecz była ucinana przed końcem. Serwer zamykał Live po stałym czasie od ostatniego szybko wygenerowanego delta, podczas gdy dłuższy PCM nadal czekał w kolejce `AudioTrack`.
+- Timeout serwera uwzględnia teraz skumulowany czas odtwarzania wyliczony z liczby bajtów PCM 16-bit/24 kHz oraz skonfigurowany zapas. Server typecheck, 12 testów i pełny build WebPanel: PASS.
+- Po wdrożeniu wykonano na fizycznym tablecie dłuższą kontrolowaną odpowiedź bez Spotify. Przepływ zakończył się `Łączenie → Słucham → Kończę rozmowę → Rozmowa zakończona`, wrócił do `photos`, wykonał `POST /api/assistant/run`, a serwer nie zapisał błędu GPT-Live.
