@@ -2,7 +2,7 @@ import type { ViewId, WallDeckSettings } from "@walldeck/contracts";
 import { assistantStates, stateLabels, transientDelay, assistantTransition } from "./assistant/assistant-state";
 import "./state-machines.css";
 
-const names: Record<ViewId, string> = { photos: "Zdjęcia", ha: "Home Assistant", music: "Music", "assistant-expressive": "Asystent" };
+const names: Record<ViewId, string> = { photos: "Zdjęcia", ha: "Home Assistant", music: "Music", timers: "Zegar", "assistant-expressive": "Asystent" };
 type Row = [string, string, string];
 function Machine({ title, rows }: { title: string; rows: Row[] }) {
   return <section className="admin-card state-machine"><h2>{title}</h2><div className="state-machine-scroll"><table><thead><tr><th>Stan / początek</th><th>Zdarzenie i warunek</th><th>Wynik</th></tr></thead><tbody>{rows.map(([from, event, to], i) => <tr key={i}><td>{from}</td><td>{event}</td><td>{to}</td></tr>)}</tbody></table></div></section>;

@@ -3,8 +3,8 @@ import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import type { ViewId } from "@walldeck/contracts";
 import "./tablet-menu.css";
 import { nativeBridge } from "./native";
-export const menuLabels: Record<ViewId, string> = { photos: "Zdjęcia", ha: "Dom", music: "Music", "assistant-expressive": "Asystent" };
-const icons: Record<ViewId, string> = { photos: "▧", ha: "⌂", music: "♫", "assistant-expressive": "✦" };
+export const menuLabels: Record<ViewId, string> = { photos: "Zdjęcia", ha: "Dom", timers: "Zegar", music: "Music", "assistant-expressive": "Asystent" };
+const icons: Record<ViewId, string> = { photos: "▧", ha: "⌂", timers: "◷", music: "♫", "assistant-expressive": "✦" };
 export function TabletMenu({ open, current, views, onOpen, onClose, onSelect }: { open: boolean; current: ViewId; views: ViewId[]; onOpen: () => void; onClose: () => void; onSelect: (v: ViewId) => void }) {
  const [exitAvailable, setExitAvailable] = useState(false);
  const [exitError, setExitError] = useState(false);

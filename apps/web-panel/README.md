@@ -19,6 +19,8 @@ Panel administratora ma nawigację pogrupowaną według zadań (szczegóły poni
 
 Każdy widok ma własne ustawienie jasności. Po aktywacji widoku klient wysyła jego poziom do Android Bridge, więc przyszłe ekrany nocne mogą automatycznie przyciemniać tablet, a dzienne przywracać wyższą jasność.
 
+Widok `/timers` („Zegar”) obsługuje wiele równoległych minutników oraz budziki jednorazowe i cykliczne. Każdy wpis może mieć etykietę i opcjonalny prompt dla asystenta, wykonywany dopiero po wybiciu. Harmonogram jest zapisany atomowo w prywatnym runtime `schedules.json`, używa strefy `Europe/Warsaw`, a zmiany i alarmy trafiają do tabletów przez WebSocket. Ekran alarmu oferuje wyłączenie i dziesięciominutową drzemkę. Te same operacje są dostępne we wspólnym rejestrze narzędzi GPT‑Live, Luny i MCP.
+
 ## Organizacja panelu administratora
 
 Panel `/admin` ma ciemny, zwarty interfejs i wyszukiwarkę nazw, opisów oraz słów kluczowych (również bez polskich znaków). Menu na telefonie rozwija przycisk „Menu konfiguracji”.

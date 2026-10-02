@@ -22,6 +22,12 @@ WallDeck udostępnia kontrolowany interfejs Model Context Protocol pod adresem `
 | `set_view_brightness` | akcja | zapisana jasność konkretnego widoku |
 | `search_home_entities` | odczyt | wyszukanie encji Home Assistant |
 | `get_home_entity` | odczyt | stan wskazanej encji Home Assistant |
+| `list_schedules` | odczyt | aktywne minutniki i budziki wraz ze stanem i identyfikatorem |
+| `create_timer` | akcja | minutnik z etykietą i opcjonalnym promptem wykonywanym po wybiciu |
+| `create_alarm` | akcja | budzik jednorazowy albo cykliczny w strefie `Europe/Warsaw` |
+| `cancel_schedule` | akcja | trwałe usunięcie minutnika lub budzika |
+| `dismiss_schedule` | akcja | wyłączenie alarmu; cykliczny budzik planuje kolejne wystąpienie |
+| `snooze_schedule` | akcja | odłożenie alarmu o 1–180 minut |
 
 W `/admin` sekcja **Asystent AI i MCP** pokazuje jeden katalog narzędzi używany przez GPT‑Live, Lunę i endpoint MCP. Definicja zawiera jeden identyfikator, opis, schemat parametrów i handler wykonawczy; dodanie nowego narzędzia nie wymaga osobnej implementacji dla każdego toru. Wyłączenie funkcji usuwa ją ze wszystkich list przekazywanych modelom. Osobny przełącznik steruje wyłącznie dostępnością zewnętrznego endpointu `/mcp`.
 
@@ -50,6 +56,8 @@ WallDeck Server /mcp
 ```
 
 Serwer kieruje komendę sprzętową do aktywnego panelu i czeka maksymalnie 8 sekund na odpowiedź. Brak połączonego tabletu lub błąd bridge'a wraca do klienta MCP jako błąd narzędzia.
+
+Narzędzia harmonogramu korzystają z trwałego magazynu serwera. `automationPrompt` nie jest mapowany na konkretną integrację: po wybiciu serwer przekazuje jego tekst do istniejącego asystenta, który widzi dokładnie swój aktualnie włączony zestaw narzędzi. Dzięki temu budzik zapisuje intencję, a nie zaszytą akcję Home Assistant czy Spotify.
 
 ## Następny etap asystenta
 

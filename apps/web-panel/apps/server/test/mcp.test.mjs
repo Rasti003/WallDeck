@@ -29,6 +29,12 @@ test("MCP exposes only enabled tools and routes focused WallDeck actions", async
     activateView: view => calls.push(["view", view]),
     notify: notification => calls.push(["notification", notification]),
     panelCommand: async (name, args) => { calls.push([name, args]); return { ok: true }; },
+    listSchedules: () => [],
+    createTimer: async input => ({ id: "00000000-0000-4000-8000-000000000001", kind: "timer", label: input.label || "Minutnik", automationPrompt: input.automationPrompt, createdAt: new Date().toISOString(), triggerAt: new Date(Date.now() + input.durationSeconds * 1000).toISOString(), durationSeconds: input.durationSeconds, repeatDays: [], enabled: true, status: "scheduled" }),
+    createAlarm: async input => ({ id: "00000000-0000-4000-8000-000000000002", kind: "alarm", label: input.label || "Budzik", automationPrompt: input.automationPrompt, createdAt: new Date().toISOString(), triggerAt: input.triggerAt ?? new Date(Date.now() + 60_000).toISOString(), time: input.time, repeatDays: input.repeatDays, enabled: true, status: "scheduled" }),
+    cancelSchedule: async id => ({ ok: true, id }),
+    dismissSchedule: async id => ({ ok: true, id }),
+    snoozeSchedule: async (id, minutes) => ({ ok: true, id, minutes }),
   };
   const server = createWallDeckMcpServer(settings, deps);
   const client = new Client({ name: "WallDeck tests", version: "1.0.0" });
@@ -38,11 +44,12 @@ test("MCP exposes only enabled tools and routes focused WallDeck actions", async
     await server.connect(serverTransport);
     await client.connect(clientTransport);
     const listed = await client.listTools();
-    assert.equal(listed.tools.length, 15);
+    assert.equal(listed.tools.length, 21);
     assert.ok(listed.tools.some(tool => tool.name === "get_status"));
     assert.ok(listed.tools.some(tool => tool.name === "get_current_time"));
     assert.ok(listed.tools.some(tool => tool.name === "adjust_tablet_volume"));
     assert.ok(!listed.tools.some(tool => tool.name === "control_music"));
+    assert.ok(listed.tools.some(tool => tool.name === "create_timer"));
 
     const status = readText(await client.callTool({ name: "get_status", arguments: {} }));
     const currentTime = readText(await client.callTool({ name: "get_current_time", arguments: {} }));
@@ -60,6 +67,7 @@ test("MCP exposes only enabled tools and routes focused WallDeck actions", async
     const entities = readText(await client.callTool({ name: "search_home_entities", arguments: { query: "salon" } }));
     const entity = readText(await client.callTool({ name: "get_home_entity", arguments: { entityId: "sensor.salon_temperature" } }));
     const spotify = readText(await client.callTool({ name: "search_spotify", arguments: { query: "Test" } }));
+    const timer = readText(await client.callTool({ name: "create_timer", arguments: { durationSeconds: 600, label: "Makaron", automationPrompt: "Opowiedz kawał" } }));
 
     assert.deepEqual(calls[0], ["view", "music"]);
     assert.deepEqual(calls[1], ["assistant.mood", { mood: "curious" }]);
@@ -70,6 +78,8 @@ test("MCP exposes only enabled tools and routes focused WallDeck actions", async
     assert.equal(entities.entities.length, 1);
     assert.equal(entity.state, "22.5");
     assert.equal(spotify.items[0].uri, "spotify:track:abc");
+    assert.equal(timer.label, "Makaron");
+    assert.equal(timer.automationPrompt, "Opowiedz kawał");
   } finally {
     await client.close();
     await server.close();

@@ -11,10 +11,13 @@ import {
   aiAssistantConfigInputSchema,
   aiAssistantRunInputSchema,
   aiAssistantSpeechInputSchema,
+  alarmInputSchema,
   deviceReportSchema,
   homeAssistantConfigInputSchema,
   notificationPreviewSchema,
   settingsSchema,
+  snoozeInputSchema,
+  timerInputSchema,
   viewIdSchema,
   type ViewId,
   type WallDeckSettings,
@@ -34,6 +37,7 @@ import { registerLunaConversation } from "./luna-conversation.js";
 import { SpeakerObserverClient } from "./speaker-observer.js";
 import { listElevenLabsVoices, renderElevenLabsSpeech } from "./elevenlabs.js";
 import { AssistantHistoryStore } from "./assistant-history.js";
+import { ScheduleStore } from "./schedules.js";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const webRoot = path.resolve(here, "../../client/dist");
@@ -46,7 +50,9 @@ await mkdir(runtimeRoot, { recursive: true });
 
 async function readSettings(): Promise<WallDeckSettings> {
   try {
-    return settingsSchema.parse(JSON.parse(await readFile(settingsPath, "utf8")));
+    const parsed = settingsSchema.parse(JSON.parse(await readFile(settingsPath, "utf8")));
+    if (!parsed.tabletMenu.views.includes("timers")) parsed.tabletMenu.views.splice(Math.min(2, parsed.tabletMenu.views.length), 0, "timers");
+    return parsed;
   } catch {
     return defaultSettings;
   }
@@ -117,11 +123,29 @@ const assistant = new AssistantService({
   getApiKey: () => openAiKeyStore.load(),
 });
 const assistantHistory = new AssistantHistoryStore(path.join(runtimeRoot, "assistant-history.json"));
+let schedules: ScheduleStore;
 let voiceBusy = false;
 let lastSpeakerObservation: SpeakerObservation | null = null;
 
 const app = Fastify({ logger: true });
 await app.register(websocket);
+
+schedules = new ScheduleStore(path.join(runtimeRoot, "schedules.json"), {
+  onChanged: items => broadcast({ type: "schedules.changed", items }),
+  onFired: async item => {
+    activateView("timers");
+    broadcast({ type: "schedule.fired", item });
+    if (!item.automationPrompt) return;
+    try {
+      const settings = await readSettings();
+      const result = await assistant.execute(`Właśnie wybił ${item.kind === "timer" ? "minutnik" : "budzik"} „${item.label}”. Wykonaj teraz zapisaną automatyzację: ${item.automationPrompt}`, settings.aiAssistant);
+      await schedules.setAutomationResult(item.id, result.text);
+    } catch (error) {
+      await schedules.setAutomationResult(item.id, `Błąd automatyzacji: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  },
+});
+await schedules.load();
 
 app.get("/api/health", async () => ({ status: "ok", view: currentView }));
 app.get("/api/devices", async () => deviceStatuses());
@@ -131,6 +155,30 @@ app.post("/api/notifications/preview", async (request, reply) => {
   const alarm = parsed.data.priority === "alarm";
   broadcast({ type: "notification", notification: { id: `admin-preview:${parsed.data.priority}:${Date.now()}`, message: alarm ? "Przykładowy alarm WallDeck" : "Przykładowe powiadomienie WallDeck", kind: alarm ? "error" : "info", ...parsed.data } });
   return { ok: true as const };
+});
+
+app.get("/api/schedules", async () => ({ items: schedules.list() }));
+app.post("/api/timers", async (request, reply) => {
+  const parsed = timerInputSchema.safeParse(request.body);
+  if (!parsed.success) return reply.code(400).send({ error: "Nieprawidłowy minutnik", details: parsed.error.issues });
+  return schedules.createTimer(parsed.data);
+});
+app.post("/api/alarms", async (request, reply) => {
+  const parsed = alarmInputSchema.safeParse(request.body);
+  if (!parsed.success) return reply.code(400).send({ error: "Nieprawidłowy budzik", details: parsed.error.issues });
+  try { return await schedules.createAlarm(parsed.data); }
+  catch (error) { return reply.code(400).send({ error: error instanceof Error ? error.message : String(error) }); }
+});
+app.delete<{ Params: { id: string } }>("/api/schedules/:id", async (request, reply) => {
+  try { return await schedules.remove(request.params.id); } catch (error) { return reply.code(404).send({ error: error instanceof Error ? error.message : String(error) }); }
+});
+app.post<{ Params: { id: string } }>("/api/schedules/:id/dismiss", async (request, reply) => {
+  try { return await schedules.dismiss(request.params.id); } catch (error) { return reply.code(404).send({ error: error instanceof Error ? error.message : String(error) }); }
+});
+app.post<{ Params: { id: string } }>("/api/schedules/:id/snooze", async (request, reply) => {
+  const parsed = snoozeInputSchema.safeParse(request.body ?? {});
+  if (!parsed.success) return reply.code(400).send({ error: "Nieprawidłowy czas drzemki" });
+  try { return await schedules.snooze(request.params.id, parsed.data.minutes); } catch (error) { return reply.code(404).send({ error: error instanceof Error ? error.message : String(error) }); }
 });
 
 app.get("/api/settings", async () => readSettings());
@@ -318,6 +366,12 @@ const assistantToolDependencies = {
   activateView,
   notify: (notification: Record<string, unknown>) => broadcast({ type: "notification", notification }),
   panelCommand,
+  listSchedules: () => schedules.list(),
+  createTimer: (input: import("@walldeck/contracts").TimerInput) => schedules.createTimer(input),
+  createAlarm: (input: import("@walldeck/contracts").AlarmInput) => schedules.createAlarm(input),
+  cancelSchedule: (id: string) => schedules.remove(id),
+  dismissSchedule: (id: string) => schedules.dismiss(id),
+  snoozeSchedule: (id: string, minutes: number) => schedules.snooze(id, minutes),
 };
 
 registerLiveConversation(app, {
@@ -400,6 +454,7 @@ app.get("/api/views", async () => ({ current: currentView, available: [
   { id: "ha", name: "Home Assistant" },
   { id: "assistant-expressive", name: "Asystent — ekspresyjny" },
   { id: "music", name: "Music · Spotify" },
+  { id: "timers", name: "Czas · minutniki i budziki" },
 ] }));
 app.post("/api/views/activate", async (request, reply) => {
   const parsed = viewIdSchema.safeParse((request.body as { viewId?: unknown } | null)?.viewId);
@@ -513,7 +568,7 @@ app.get("/api/events", { websocket: true }, (socket) => {
   socket.on("close", () => { sockets.delete(socket); panelSockets.delete(socket); });
 });
 
-app.addHook("onClose", async () => homeAssistant.stop());
+app.addHook("onClose", async () => { schedules.stop(); homeAssistant.stop(); });
 
 try {
   await registerClient(app, webRoot);

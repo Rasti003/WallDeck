@@ -4,7 +4,7 @@ export type { MusicState, AudioOutputState, MusicController, SpotifyItem, Spotif
 export const assistantStates = ["idle", "attention", "listening", "thinking", "speaking", "success", "error", "sleep", "curious", "uncertain", "confirm", "surprised", "wink", "laughing", "dancing"] as const;
 export const assistantStateSchema = z.enum(assistantStates);
 export type AssistantState = z.infer<typeof assistantStateSchema>;
-export const mcpToolIds = ["get_status", "get_current_time", "show_view", "show_assistant_mood", "control_music", "search_spotify", "get_spotify_queue", "list_spotify_playlists", "play_spotify_item", "add_spotify_to_queue", "set_tablet_volume", "adjust_tablet_volume", "send_notification", "set_view_brightness", "search_home_entities", "get_home_entity"] as const;
+export const mcpToolIds = ["get_status", "get_current_time", "show_view", "show_assistant_mood", "control_music", "search_spotify", "get_spotify_queue", "list_spotify_playlists", "play_spotify_item", "add_spotify_to_queue", "set_tablet_volume", "adjust_tablet_volume", "send_notification", "set_view_brightness", "search_home_entities", "get_home_entity", "list_schedules", "create_timer", "create_alarm", "cancel_schedule", "dismiss_schedule", "snooze_schedule"] as const;
 export const mcpToolIdSchema = z.enum(mcpToolIds);
 export type McpToolId = z.infer<typeof mcpToolIdSchema>;
 export const assistantToolCatalog = {
@@ -24,6 +24,12 @@ export const assistantToolCatalog = {
   set_view_brightness: { label: "Jasność widoku", summary: "Trwała zmiana jasności wybranego widoku.", kind: "akcja" },
   search_home_entities: { label: "Wyszukiwanie encji HA", summary: "Odnajdywanie entity_id po nazwie lub domenie.", kind: "odczyt" },
   get_home_entity: { label: "Stan encji HA", summary: "Odczyt aktualnego stanu jednej wskazanej encji.", kind: "odczyt" },
+  list_schedules: { label: "Minutniki i budziki", summary: "Lista aktywnych minutników, budzików i alarmów.", kind: "odczyt" },
+  create_timer: { label: "Nowy minutnik", summary: "Minutnik z etykietą i opcjonalną automatyzacją AI.", kind: "akcja" },
+  create_alarm: { label: "Nowy budzik", summary: "Jednorazowy lub powtarzalny budzik z etykietą.", kind: "akcja" },
+  cancel_schedule: { label: "Usuń minutnik lub budzik", summary: "Usunięcie harmonogramu po jego identyfikatorze.", kind: "akcja" },
+  dismiss_schedule: { label: "Wyłącz alarm", summary: "Zatrzymanie aktualnie dzwoniącego alarmu.", kind: "akcja" },
+  snooze_schedule: { label: "Drzemka", summary: "Odłożenie aktualnego alarmu o podaną liczbę minut.", kind: "akcja" },
 } as const satisfies Record<McpToolId, { label: string; summary: string; kind: "odczyt" | "akcja" }>;
 export const mcpSettingsSchema = z.object({
   enabled: z.boolean().default(false),
@@ -44,10 +50,13 @@ export const mcpSettingsSchema = z.object({
     set_view_brightness: z.boolean().default(true),
     search_home_entities: z.boolean().default(true),
     get_home_entity: z.boolean().default(true),
+    list_schedules: z.boolean().default(true), create_timer: z.boolean().default(true), create_alarm: z.boolean().default(true),
+    cancel_schedule: z.boolean().default(true), dismiss_schedule: z.boolean().default(true), snooze_schedule: z.boolean().default(true),
   }).default({
     get_status: true, get_current_time: true, show_view: true, show_assistant_mood: true, control_music: true, search_spotify: true, get_spotify_queue: true, list_spotify_playlists: true, play_spotify_item: true, add_spotify_to_queue: true,
     set_tablet_volume: true, adjust_tablet_volume: true, send_notification: true, set_view_brightness: true,
     search_home_entities: true, get_home_entity: true,
+    list_schedules: true, create_timer: true, create_alarm: true, cancel_schedule: true, dismiss_schedule: true, snooze_schedule: true,
   }),
 }).default({
   enabled: false,
@@ -55,6 +64,7 @@ export const mcpSettingsSchema = z.object({
     get_status: true, get_current_time: true, show_view: true, show_assistant_mood: true, control_music: true, search_spotify: true, get_spotify_queue: true, list_spotify_playlists: true, play_spotify_item: true, add_spotify_to_queue: true,
     set_tablet_volume: true, adjust_tablet_volume: true, send_notification: true, set_view_brightness: true,
     search_home_entities: true, get_home_entity: true,
+    list_schedules: true, create_timer: true, create_alarm: true, cancel_schedule: true, dismiss_schedule: true, snooze_schedule: true,
   },
 });
 export const assistantBrightnessSchema = z.object({
@@ -205,7 +215,7 @@ export const ambientSleepSchema = z.object({
   path: ["homeAssistantResetAbove"],
 }).default({ enabled: true, source: "home-assistant", homeAssistantEntityId: null, homeAssistantSleepBelow: 5, homeAssistantResetAbove: 15, sleepEntryDelaySeconds: 1.6, sleepBelowLux: 5, resetAboveLux: 15, cameraEnabled: false, cameraSleepBelowPercent: 5, cameraResetAbovePercent: 15, cameraSampleSeconds: 30 });
 
-export const viewIdSchema = z.preprocess(value => value === "assistant-demo" ? "assistant-expressive" : value, z.enum(["photos", "ha", "assistant-expressive", "music"]));
+export const viewIdSchema = z.preprocess(value => value === "assistant-demo" ? "assistant-expressive" : value, z.enum(["photos", "ha", "assistant-expressive", "music", "timers"]));
 export type ViewId = z.infer<typeof viewIdSchema>;
 
 export const viewRouterSettingsSchema = z.object({
@@ -247,7 +257,7 @@ export const settingsSchema = z.object({
   }).default({ normal: { durationSeconds: 5, sound: "none" }, alarm: { persistent: true, durationSeconds: 30, sound: "alarm" }, volume: .35, ttsEnabled: false }),
   mcp: mcpSettingsSchema,
   aiAssistant: aiAssistantSettingsSchema,
-  tabletMenu: z.object({ enabled: z.boolean().default(true), views: z.array(z.enum(["photos", "ha", "music", "assistant-expressive"])).min(1).max(4).refine(v => new Set(v).size === v.length).default(["photos", "ha", "music", "assistant-expressive"]) }).default({ enabled: true, views: ["photos", "ha", "music", "assistant-expressive"] }),
+  tabletMenu: z.object({ enabled: z.boolean().default(true), views: z.array(z.enum(["photos", "ha", "music", "assistant-expressive", "timers"])).min(1).max(5).refine(v => new Set(v).size === v.length).default(["photos", "ha", "timers", "music", "assistant-expressive"]) }).default({ enabled: true, views: ["photos", "ha", "timers", "music", "assistant-expressive"] }),
   music: z.object({ clientId: z.string().trim().regex(/^([a-fA-F0-9]{32})?$/).default("") }).default({ clientId: "" }),
   photoIntervalSeconds: z.number().int().min(10).max(3600),
   transitionSeconds: z.number().min(0.3).max(5),
@@ -256,7 +266,8 @@ export const settingsSchema = z.object({
     ha: z.number().min(0.05).max(1).default(0.85),
     music: z.number().min(0.05).max(1).default(0.65),
     "assistant-expressive": z.number().min(0.05).max(1).default(0.65),
-  }).default({ photos: 0.75, ha: 0.85, music: 0.65, "assistant-expressive": 0.65 }),
+    timers: z.number().min(0.05).max(1).default(0.75),
+  }).default({ photos: 0.75, ha: 0.85, music: 0.65, "assistant-expressive": 0.65, timers: 0.75 }),
   viewRouter: viewRouterSettingsSchema,
   assistantBrightness: assistantBrightnessSchema,
   ambientSleep: ambientSleepSchema,
@@ -279,13 +290,13 @@ export type WallDeckSettings = z.infer<typeof settingsSchema>;
 export const defaultSettings: WallDeckSettings = {
   gallery: { holdMilliseconds: 600, notifyNewPhotos: true },
   notifications: { normal: { durationSeconds: 5, sound: "none" }, alarm: { persistent: true, durationSeconds: 30, sound: "alarm" }, volume: .35, ttsEnabled: false },
-  mcp: { enabled: false, tools: { get_status: true, get_current_time: true, show_view: true, show_assistant_mood: true, control_music: true, search_spotify: true, get_spotify_queue: true, list_spotify_playlists: true, play_spotify_item: true, add_spotify_to_queue: true, set_tablet_volume: true, adjust_tablet_volume: true, send_notification: true, set_view_brightness: true, search_home_entities: true, get_home_entity: true } },
+  mcp: mcpSettingsSchema.parse(undefined),
   aiAssistant: aiAssistantSettingsSchema.parse(undefined),
-  tabletMenu: { enabled: true, views: ["photos", "ha", "music", "assistant-expressive"] },
+  tabletMenu: { enabled: true, views: ["photos", "ha", "timers", "music", "assistant-expressive"] },
   music: { clientId: "" },
   photoIntervalSeconds: 30,
   transitionSeconds: 1.4,
-  viewBrightness: { photos: 0.75, ha: 0.85, music: 0.65, "assistant-expressive": 0.65 },
+  viewBrightness: { photos: 0.75, ha: 0.85, music: 0.65, "assistant-expressive": 0.65, timers: 0.75 },
   assistantBrightness: { globalEnabled: true, overrides: { sleep: .05 } },
   ambientSleep: { enabled: true, source: "home-assistant", homeAssistantEntityId: null, homeAssistantSleepBelow: 5, homeAssistantResetAbove: 15, sleepEntryDelaySeconds: 1.6, sleepBelowLux: 5, resetAboveLux: 15, cameraEnabled: false, cameraSleepBelowPercent: 5, cameraResetAbovePercent: 15, cameraSampleSeconds: 30 },
   viewRouter: {
@@ -339,6 +350,38 @@ export interface AppNotification {
   sound?: NotificationSound;
   volume?: number;
   ttsText?: string;
+}
+
+export const scheduleAutomationPromptSchema = z.string().trim().max(1_000).default("");
+export const timerInputSchema = z.object({
+  durationSeconds: z.number().int().min(1).max(604_800),
+  label: z.string().trim().max(100).default(""),
+  automationPrompt: scheduleAutomationPromptSchema,
+});
+export const alarmInputSchema = z.object({
+  label: z.string().trim().max(100).default(""),
+  time: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/).optional(),
+  repeatDays: z.array(z.number().int().min(0).max(6)).max(7).default([]).transform(days => [...new Set(days)].sort()),
+  triggerAt: z.string().datetime({ offset: true }).optional(),
+  automationPrompt: scheduleAutomationPromptSchema,
+}).refine(value => value.triggerAt || (value.time && value.repeatDays.length > 0), { message: "Podaj termin jednorazowy albo godzinę i dni powtarzania" });
+export const snoozeInputSchema = z.object({ minutes: z.number().int().min(1).max(180).default(10) });
+export type TimerInput = z.infer<typeof timerInputSchema>;
+export type AlarmInput = z.infer<typeof alarmInputSchema>;
+export interface ScheduledItem {
+  id: string;
+  kind: "timer" | "alarm";
+  label: string;
+  automationPrompt: string;
+  createdAt: string;
+  triggerAt: string;
+  durationSeconds?: number;
+  time?: string;
+  repeatDays: number[];
+  enabled: boolean;
+  status: "scheduled" | "ringing" | "automation" | "error";
+  lastTriggeredAt?: string;
+  automationResult?: string;
 }
 
 export interface WeatherNow {

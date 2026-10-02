@@ -30,6 +30,8 @@ Frontend ma rejestr niezależnych widoków. Serwer przechowuje identyfikator akt
 
 Konfiguracja każdego widoku zawiera docelową jasność okna. Po zmianie aktywnego widoku frontend wywołuje metodę `brightness` Android Bridge; pozwala to przyciemniać przyszłe widoki nocne bez zmiany globalnej jasności systemu.
 
+Widok `timers` łączy zegar, wiele równoległych minutników oraz budziki jednorazowe i tygodniowe. Fastify utrzymuje `ScheduleStore`, zapisuje rekordy atomowo w `schedules.json` i wyznacza cykliczne wystąpienia według czasu lokalnego `Europe/Warsaw`, również przez zmianę czasu letniego. Półsekundowy scheduler oznacza należny wpis jako `ringing`, aktywuje widok Zegara i rozsyła zdarzenia `schedules.changed` oraz `schedule.fired`. Wyłączenie usuwa wpis jednorazowy albo planuje kolejny termin cykliczny; drzemka ustawia nowy termin. Opcjonalny prompt jest przekazywany przy wybiciu do istniejącego `AssistantService`, bez osobnego katalogu dozwolonych poleceń i bez zaszywania konkretnej integracji w harmonogramie.
+
 APK udostępnia przez bridge v2 metadane urządzenia, baterię, status uprawnień i katalog z `SensorManager`. Klient panelu przesyła raport po otwarciu WebSocket, po zmianie baterii i co 15 sekund. Serwer przechowuje ostatni raport wyłącznie w pamięci, uznaje urządzenie za online przez 45 sekund i rozsyła `device.updated`. `/api/devices` oraz sekcja Urządzenie w `/admin` pokazują ten sam stan. Odczyt sensora światła jest opcjonalny: niektóre firmware udostępniają wpis sensora aplikacji, ale rezerwują strumień pomiarów dla usług systemowych.
 
 Reguła nocy ma jawnie wybierane źródło: liczbową encję Home Assistant, natywny sensor Androida albo eksperymentalny sampler przedniej kamery. Domyślnie panel odpytuje wybraną encję HA co 10 sekund przez serwerowe API, więc token HA nie trafia do przeglądarki ani APK. Stany nieliczbowe są pomijane. Manager widoków stosuje dla każdego źródła konfigurowaną histerezę: niski próg otwiera `assistant-expressive` w `idle`, po skonfigurowanym czasie 0,3–10 sekund przechodzi animacją twarzy do `sleep`, a wysoki próg ponownie uzbraja regułę. Domyślny czas `sleepEntryDelaySeconds` wynosi 1,6 s. Sekwencja jest realizowana w komponencie widoku i sprząta timer przy zmianie żądania albo demontażu. Dotknięcie w stanie `sleep` prowadzi bezpośrednio do HA; flaga ciemnej fazy pozostaje aktywna, więc kolejny niski odczyt nie przerywa obsługi HA. Wzrost ponad próg resetuje flagę i zamyka Sen do albumu tylko wtedy, gdy nadal jest on aktywnym widokiem.
@@ -92,7 +94,7 @@ Kontrakt domenowy jest zdefiniowany w jednym rejestrze narzędzi asystenta i wys
 
 ## Warstwa MCP asystenta
 
-MCP pozostaje oddzielone od przyszłego „mózgu” opartego o OpenAI API. Serwer rejestruje tylko włączone, zadaniowe narzędzia do odczytu stanu, zmiany widoku i mimiki, sterowania muzyką/głośnością, powiadomień, jasności oraz bezpiecznego odczytu HA. Nie ma ogólnego narzędzia do edycji konfiguracji ani dowolnego wywołania usług HA. Szczegóły kontraktu i transportu opisuje [mcp.md](mcp.md).
+MCP pozostaje oddzielone od przyszłego „mózgu” opartego o OpenAI API. Serwer rejestruje tylko włączone, zadaniowe narzędzia do odczytu stanu, zmiany widoku i mimiki, sterowania muzyką/głośnością, powiadomień, jasności, harmonogramów oraz bezpiecznego odczytu HA. Nie ma ogólnego narzędzia do edycji konfiguracji ani dowolnego wywołania usług HA. Szczegóły kontraktu i transportu opisuje [mcp.md](mcp.md).
 
 ## Pipeline głosu asystenta
 

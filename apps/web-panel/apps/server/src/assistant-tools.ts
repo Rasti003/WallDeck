@@ -10,6 +10,9 @@ import {
   type SpotifyItem,
   type SpotifyQueue,
   type SpotifyStatus,
+  type AlarmInput,
+  type ScheduledItem,
+  type TimerInput,
   type WallDeckSettings,
 } from "@walldeck/contracts";
 import { currentTimeSnapshot } from "./current-time.js";
@@ -28,9 +31,15 @@ export interface AssistantToolDependencies {
   searchSpotify(query: string, types?: SpotifyItem["type"][]): Promise<SpotifyItem[]>;
   spotifyQueue(): Promise<SpotifyQueue>;
   spotifyPlaylists(): Promise<SpotifyItem[]>;
-  activateView(viewId: "photos" | "ha" | "assistant-expressive" | "music"): void;
+  activateView(viewId: "photos" | "ha" | "assistant-expressive" | "music" | "timers"): void;
   notify(notification: Record<string, unknown>): void;
   panelCommand(name: string, args: Record<string, unknown>): Promise<unknown>;
+  listSchedules(): ScheduledItem[];
+  createTimer(input: TimerInput): Promise<ScheduledItem>;
+  createAlarm(input: AlarmInput): Promise<ScheduledItem>;
+  cancelSchedule(id: string): Promise<unknown>;
+  dismissSchedule(id: string): Promise<unknown>;
+  snoozeSchedule(id: string, minutes: number): Promise<unknown>;
 }
 
 type ToolAnnotations = { readOnlyHint: boolean; destructiveHint: boolean; openWorldHint: boolean };
@@ -152,6 +161,32 @@ export const assistantToolDefinitions = {
       if (!entity) throw new Error("Encja nie jest dostępna");
       return entity;
     },
+  },
+  list_schedules: {
+    description: "Zwraca wszystkie aktywne minutniki i budziki z identyfikatorami, etykietami, terminami, dniami powtarzania i stanem.",
+    input: z.object({}), annotations: readOnly(), run: (_args, deps) => ({ items: deps.listSchedules() }),
+  },
+  create_timer: {
+    description: "Tworzy niezależny minutnik. automationPrompt jest opcjonalną instrukcją dla asystenta wykonywaną dopiero po wybiciu.",
+    input: z.object({ durationSeconds: z.number().int().min(1).max(604_800), label: z.string().trim().max(100).default(""), automationPrompt: z.string().trim().max(1_000).default("") }), annotations: action(),
+    run: (args, deps) => deps.createTimer(args),
+  },
+  create_alarm: {
+    description: "Tworzy budzik. Dla jednorazowego podaj triggerAt jako ISO 8601 z offsetem. Dla cyklicznego podaj time HH:mm i repeatDays, gdzie 0=niedziela, 1=poniedziałek, ..., 6=sobota. automationPrompt wykona asystent po wybiciu.",
+    input: z.object({ label: z.string().trim().max(100).default(""), time: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/).optional(), repeatDays: z.array(z.number().int().min(0).max(6)).max(7).default([]), triggerAt: z.string().datetime({ offset: true }).optional(), automationPrompt: z.string().trim().max(1_000).default("") }), annotations: action(),
+    run: (args, deps) => deps.createAlarm(args as AlarmInput),
+  },
+  cancel_schedule: {
+    description: "Trwale usuwa wskazany minutnik lub budzik. Użyj list_schedules, jeśli identyfikator nie jest znany.",
+    input: z.object({ id: z.string().uuid() }), annotations: action(), run: ({ id }, deps) => deps.cancelSchedule(id),
+  },
+  dismiss_schedule: {
+    description: "Wyłącza dzwoniący alarm. Budzik cykliczny planuje następne wystąpienie, a jednorazowy jest usuwany.",
+    input: z.object({ id: z.string().uuid() }), annotations: action(), run: ({ id }, deps) => deps.dismissSchedule(id),
+  },
+  snooze_schedule: {
+    description: "Odkłada minutnik lub budzik o 1–180 minut.",
+    input: z.object({ id: z.string().uuid(), minutes: z.number().int().min(1).max(180).default(10) }), annotations: action(), run: ({ id, minutes }, deps) => deps.snoozeSchedule(id, minutes),
   },
 } satisfies Record<McpToolId, AssistantToolDefinition>;
 
