@@ -1,12 +1,14 @@
 import OpenAI from "openai";
 import { LiveWS } from "openai/resources/live/ws";
 import type { FastifyInstance } from "fastify";
-import type { AiAssistantSettings } from "@walldeck/contracts";
+import type { AiAssistantSettings, McpToolId } from "@walldeck/contracts";
 import type { LiveVoiceUsageStore } from "./live-voice.js";
+import { executeLiveTool, liveTools, type LiveToolDependencies } from "./live-tools.js";
 
-type Dependencies = {
+type Dependencies = LiveToolDependencies & {
   getApiKey(): Promise<string | null>;
   getSettings(): Promise<AiAssistantSettings>;
+  getEnabledTools(): Promise<Record<McpToolId, boolean>>;
   usage: LiveVoiceUsageStore;
 };
 
@@ -52,6 +54,7 @@ export function registerLiveConversation(app: FastifyInstance, deps: Dependencie
       return;
     }
     const settings = await deps.getSettings();
+    const enabledTools = await deps.getEnabledTools();
     const key = await deps.getApiKey();
     const usage = await deps.usage.status(settings);
     if (!settings.enabled || !settings.voice.enabled || settings.voice.provider !== "openai-live" || !settings.voice.live.conversationEnabled) {
@@ -88,6 +91,7 @@ export function registerLiveConversation(app: FastifyInstance, deps: Dependencie
     let hardGraceDeadline = 0;
     let awaitingDelegationResponse = false;
     const pendingDelegations = new Set<string>();
+    const delegationsNeedingContinuation = new Set<string>();
 
     const send = (message: unknown) => {
       if (socket.readyState === 1) socket.send(JSON.stringify(message));
@@ -120,8 +124,8 @@ export function registerLiveConversation(app: FastifyInstance, deps: Dependencie
       delegationTimer = setTimeout(() => requestClose("delegation-timeout"), DELEGATION_GRACE_MS);
     };
     const delegationAnswered = () => {
+      if (pendingDelegations.size > 0) return;
       awaitingDelegationResponse = false;
-      pendingDelegations.clear();
       if (delegationTimer) clearTimeout(delegationTimer);
       delegationTimer = undefined;
     };
@@ -180,7 +184,19 @@ Delegation policy: Deleguj do klienta tylko zadania wymagające narzędzi WallDe
 Music policy: Prośba typu „wybierz mi muzykę do nauki i puść” jest kompletna: deleguj wybór oraz uruchomienie Spotify bez pytania o konkretną playlistę. Nigdy nie twierdź, że wykonujesz lub wykonałeś akcję, jeśli nie utworzyłeś delegacji i nie otrzymałeś jej wyniku.`,
               input: initialCommand ? [{ type: "message", role: "user", content: [{ type: "input_text", text: initialCommand }] }] : [],
               audio: { format: { type: "audio/pcm", rate: PCM_RATE }, output: { voice: settings.voice.live.voice } },
-              delegation: { type: "client" },
+              delegation: {
+                type: "responses",
+                responses: {
+                  model: settings.primaryModel,
+                  instructions: `${settings.systemPrompt}\nJesteś backendem narzędziowym rozmowy głosowej. Masz pełny kontekst rozmowy. Wykonuj proste, zatwierdzone działania od razu. Krótkie odpowiedzi typu „tak” interpretuj w kontekście ostatniego pytania asystenta. Raportuj sukces dopiero po potwierdzeniu narzędzia.`,
+                  tools: [...liveTools(enabledTools), { type: "web_search" as const }],
+                  tool_choice: "auto",
+                  parallel_tool_calls: false,
+                  reasoning: { effort: settings.primaryReasoning },
+                  text: { verbosity: "low" },
+                  max_output_tokens: 500,
+                },
+              },
             },
           });
           continue;
@@ -188,6 +204,35 @@ Music policy: Prośba typu „wybierz mi muzykę do nauki i puść” jest kompl
         if (envelope.type === "error") throw envelope.error;
         if (envelope.type !== "message") continue;
         const event = envelope.message;
+        if (event.type === "response.event") {
+          const delegationId = event.delegation_id ?? null;
+          const nested = event.event as { type?: unknown; item?: { type?: unknown; call_id?: unknown; name?: unknown; arguments?: unknown } };
+          if (nested.type === "response.output_item.done" && nested.item?.type === "function_call" && delegationId
+            && typeof nested.item.call_id === "string" && typeof nested.item.name === "string" && typeof nested.item.arguments === "string") {
+            waitForDelegation(delegationId);
+            let output: unknown;
+            try {
+              output = await executeLiveTool(nested.item.name, nested.item.arguments, deps);
+              app.log.info({ delegationId, tool: nested.item.name }, "GPT-Live tool completed");
+            } catch (error) {
+              output = { ok: false, error: error instanceof Error ? error.message : String(error) };
+              app.log.warn({ delegationId, tool: nested.item.name, err: error }, "GPT-Live tool failed");
+            }
+            live.send({
+              type: "response.item.create",
+              event_id: `tool_result_${Date.now()}`,
+              item: { type: "function_call_output", call_id: nested.item.call_id, output: JSON.stringify(output) },
+            });
+            delegationsNeedingContinuation.add(delegationId);
+          } else if (nested.type === "response.completed" && delegationId) {
+            if (delegationsNeedingContinuation.delete(delegationId)) {
+              live.send({ type: "response.create", event_id: `continue_${Date.now()}` });
+            } else {
+              pendingDelegations.delete(delegationId);
+            }
+          }
+          continue;
+        }
         if (event.type === "session.started") {
           sessionStarted = true;
           pendingAudio.splice(0).forEach((audio, index) => {
@@ -222,8 +267,8 @@ Music policy: Prośba typu „wybierz mi muzykę do nauki i puść” jest kompl
           }
         } else if (event.type === "session.delegation.created") {
           waitForDelegation(event.delegation.id);
-          app.log.info({ delegationId: event.delegation.id, offsetMs: event.offset_ms }, "GPT-Live delegation created");
-          send({ type: "delegation", delegationId: event.delegation.id, offsetMs: event.offset_ms });
+          app.log.info({ delegationId: event.delegation.id, target: event.delegation.target, offsetMs: event.offset_ms }, "GPT-Live delegation created");
+          if (event.delegation.target === "client") send({ type: "delegation", delegationId: event.delegation.id, offsetMs: event.offset_ms });
         } else if (event.type === "session.usage.updated") {
           finalUsage = Math.max(finalUsage, event.usage.seconds);
           send({ type: "usage", seconds: finalUsage });

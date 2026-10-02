@@ -117,6 +117,11 @@ export function PanelApp({ forcedView }: { forcedView?: ViewId }) {
             await musicController.setVolume(Number(args.value));
             return await musicController.getAudioOutputState();
           }
+          if (message.command === "tablet.volume.adjust") {
+            const current = await musicController.getAudioOutputState();
+            await musicController.setVolume(Math.max(0, Math.min(1, current.volume + Number(args.delta))));
+            return await musicController.getAudioOutputState();
+          }
           throw new Error("Nieznana komenda panelu");
         })().then(result => socket.send(JSON.stringify({ type: "mcp.commandResult", id: message.id, result })))
           .catch(error => socket.send(JSON.stringify({ type: "mcp.commandResult", id: message.id, error: error instanceof Error ? error.message : String(error) })));

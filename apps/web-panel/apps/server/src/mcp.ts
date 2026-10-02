@@ -134,6 +134,13 @@ export function createWallDeckMcpServer(settings: WallDeckSettings, deps: WallDe
     annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
   }, async ({ percent }: { percent: number }) => textResult(await deps.panelCommand("tablet.volume", { value: percent / 100 })));
 
+  registerIf(server, enabled, "adjust_tablet_volume", {
+    title: "Zmień głośność tabletu względnie",
+    description: "Podgłaśnia lub ścisza multimedia względem obecnego poziomu. Jeśli użytkownik nie podał wartości, użyj +10 dla podgłośnienia albo -10 dla ściszenia.",
+    inputSchema: { deltaPercent: z.number().min(-50).max(50) },
+    annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+  }, async ({ deltaPercent }: { deltaPercent: number }) => textResult(await deps.panelCommand("tablet.volume.adjust", { delta: deltaPercent / 100 })));
+
   registerIf(server, enabled, "send_notification", {
     title: "Wyślij powiadomienie WallDeck",
     description: "Pokazuje krótki komunikat lub alarm na panelu. Alarm może pozostać do ręcznego zamknięcia.",

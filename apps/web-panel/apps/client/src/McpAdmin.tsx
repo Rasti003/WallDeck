@@ -12,6 +12,7 @@ const tools: Record<McpToolId, { name: string; description: string; kind: "odczy
   play_spotify_item: { name: "Odtwarzanie wyniku", description: "Uruchomienie znalezionego elementu na tablecie.", kind: "akcja" },
   add_spotify_to_queue: { name: "Dodawanie do kolejki", description: "Dodanie utworu lub podcastu do kolejki tabletu.", kind: "akcja" },
   set_tablet_volume: { name: "Głośność tabletu", description: "Zmiana poziomu multimediów aktywnego wyjścia audio.", kind: "akcja" },
+  adjust_tablet_volume: { name: "Względna głośność", description: "Podgłaśnianie i ściszanie względem obecnego poziomu.", kind: "akcja" },
   send_notification: { name: "Powiadomienia i alarmy", description: "Komunikaty globalne z czasem, priorytetem i dźwiękiem.", kind: "akcja" },
   set_view_brightness: { name: "Jasność widoku", description: "Trwała zmiana jasności wybranego widoku.", kind: "akcja" },
   search_home_entities: { name: "Wyszukiwanie encji HA", description: "Odnajdywanie entity_id po nazwie lub domenie.", kind: "odczyt" },

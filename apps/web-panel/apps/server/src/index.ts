@@ -271,7 +271,14 @@ app.post("/api/assistant/speaker-observation", async (request, reply) => {
 registerLiveConversation(app, {
   getApiKey: () => openAiKeyStore.load(),
   getSettings: async () => (await readSettings()).aiAssistant,
+  getEnabledTools: async () => (await readSettings()).mcp.tools,
   usage: liveVoiceUsage,
+  currentView: () => currentView,
+  devices: deviceStatuses,
+  spotifyStatus: () => spotify.status(),
+  searchSpotify: (query, types) => spotify.search(query, types),
+  activateView,
+  panelCommand,
 });
 
 app.get("/api/spotify/status", async () => spotify.status());
