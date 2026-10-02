@@ -30,6 +30,7 @@ export class VoiceAssistantRuntime {
   private bufferedSpeechTask: Promise<void> | null = null;
   private preservedCommandActive = false;
   private nativeOutputReady = false;
+  private delegationFallbackTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(private settings: AiAssistantSettings, private callbacks: Callbacks) {}
 
@@ -50,6 +51,8 @@ export class VoiceAssistantRuntime {
     this.socket = null;
     if (this.outputResumeTimer) clearTimeout(this.outputResumeTimer);
     this.outputResumeTimer = null;
+    if (this.delegationFallbackTimer) clearTimeout(this.delegationFallbackTimer);
+    this.delegationFallbackTimer = null;
     if (nativeBridge.available) {
       await Promise.allSettled([
         nativeBridge.call("assistantAudio.stopInput"),
@@ -113,6 +116,8 @@ export class VoiceAssistantRuntime {
     this.bufferedSpeechTask = null;
     this.preservedCommandActive = remainder.length >= 2;
     this.nativeOutputReady = false;
+    if (this.delegationFallbackTimer) clearTimeout(this.delegationFallbackTimer);
+    this.delegationFallbackTimer = null;
     void nativeBridge.call("haptics").catch(() => undefined);
     await nativeBridge.call("wakeWord.pause").catch(() => undefined);
     const protocol = location.protocol === "https:" ? "wss:" : "ws:";
@@ -135,10 +140,12 @@ export class VoiceAssistantRuntime {
         this.socket.send(JSON.stringify({ type: "audio", audio }));
       }
       if (remainder.length >= 2) this.bufferedSpeechTask = this.executePreservedCommand(remainder);
+      else this.scheduleDelegationFallback(8_000);
     } else if (message.type === "inputTranscript" && typeof message.delta === "string") {
       this.inputTranscript += message.delta;
       this.lastTranscriptAt = Date.now();
       this.callbacks.setState("listening");
+      this.scheduleDelegationFallback(3_500);
     } else if (message.type === "outputTranscript") {
       this.callbacks.setState("speaking");
     } else if (message.type === "audio" && typeof message.audio === "string" && !this.bufferedSpeechTask) {
@@ -151,7 +158,9 @@ export class VoiceAssistantRuntime {
       await nativeBridge.call("assistantAudio.appendOutput", { audio: message.audio }).catch(() => undefined);
       this.scheduleCloseAfterPlayback(message.audio);
     } else if (message.type === "delegation" && typeof message.delegationId === "string") {
-      if (this.preservedCommandActive) return;
+      if (this.preservedCommandActive || this.bufferedSpeechTask) return;
+      if (this.delegationFallbackTimer) clearTimeout(this.delegationFallbackTimer);
+      this.delegationFallbackTimer = null;
       this.bufferedSpeechTask = this.handleDelegation(message.delegationId);
     } else if (message.type === "closed") {
       this.socket?.close();
@@ -182,9 +191,10 @@ export class VoiceAssistantRuntime {
     }
   }
 
-  private async handleDelegation(delegationId: string) {
-    if (this.pendingDelegations.has(delegationId)) return;
-    this.pendingDelegations.add(delegationId);
+  private async handleDelegation(delegationId: string | null) {
+    const delegationKey = delegationId ?? "transcript-fallback";
+    if (this.pendingDelegations.has(delegationKey)) return;
+    this.pendingDelegations.add(delegationKey);
     this.callbacks.setState("thinking");
     await this.waitForTranscriptToSettle();
     const command = this.inputTranscript.trim();
@@ -207,6 +217,21 @@ export class VoiceAssistantRuntime {
     } finally {
       if (socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify({ type: "close" }));
     }
+  }
+
+  private scheduleDelegationFallback(delayMs: number) {
+    if (this.preservedCommandActive || this.bufferedSpeechTask) return;
+    if (this.delegationFallbackTimer) clearTimeout(this.delegationFallbackTimer);
+    this.delegationFallbackTimer = setTimeout(() => {
+      this.delegationFallbackTimer = null;
+      if (this.bufferedSpeechTask || this.preservedCommandActive) return;
+      if (this.inputTranscript.trim()) {
+        this.bufferedSpeechTask = this.handleDelegation(null);
+        return;
+      }
+      this.callbacks.onStatus?.("Nie usłyszałem polecenia");
+      if (this.socket?.readyState === WebSocket.OPEN) this.socket.send(JSON.stringify({ type: "close" }));
+    }, delayMs);
   }
 
   private async playBufferedSpeech(text: string) {
@@ -241,6 +266,8 @@ export class VoiceAssistantRuntime {
     this.sessionReady = false;
     if (this.outputResumeTimer) clearTimeout(this.outputResumeTimer);
     this.outputResumeTimer = null;
+    if (this.delegationFallbackTimer) clearTimeout(this.delegationFallbackTimer);
+    this.delegationFallbackTimer = null;
     this.inputActive = false;
     await nativeBridge.call("assistantAudio.stopInput").catch(() => undefined);
     if (this.bufferedSpeechTask) await this.bufferedSpeechTask.catch(() => undefined);
