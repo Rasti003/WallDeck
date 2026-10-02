@@ -2,6 +2,8 @@
 
 ## Gotowe
 
+- [x] refaktor wyłącznie `/admin`: ciemny zwarty motyw, grupy Panel tabletu / Asystent / System, wyszukiwanie, osobne adresy podstron, responsywne menu i animacje z reduced motion;
+
 - [x] monorepo dla sprzętu, Androida i systemu WWW;
 - [x] prototyp APK na Kotlinie;
 - [x] konfigurowalny WebView i ukryty konfigurator;

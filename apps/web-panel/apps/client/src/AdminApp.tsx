@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import {
   defaultSettings,
   type DeviceStatus,
@@ -20,6 +20,8 @@ import { createOverlayItemId } from "./overlay-item-id";
 import { McpAdmin } from "./McpAdmin";
 import { MusicAdmin } from "./MusicAdmin";
 import { AiAssistantAdmin } from "./AiAssistantAdmin";
+
+import { adminSections, matchingSections, sectionFromPath, sectionPath, type AdminSection } from "./admin-navigation";
 
 const positions: { value: WallDeckSettings["overlay"]["position"]; label: string }[] = [
   { value: "top-left", label: "Góra — lewo" }, { value: "top-center", label: "Góra — środek" },
@@ -46,8 +48,26 @@ export function AdminApp() {
   const [entityDraft, setEntityDraft] = useState<{ entityId: string; label: string; position: WallDeckSettings["overlay"]["position"] }>({ entityId: "", label: "", position: "bottom-right" });
   const [haMessage, setHaMessage] = useState("Nie skonfigurowano");
   const [devices, setDevices] = useState<DeviceStatus[]>([]);
-  const [section, setSection] = useState<"overview" | "views" | "photos" | "notifications" | "ha" | "assistant" | "mcp" | "device" | "music" | "states">("overview");
-  useEffect(() => { const open = () => setSection("photos"); window.addEventListener("walldeck:openAdminPhotos", open); return () => window.removeEventListener("walldeck:openAdminPhotos", open); }, []);
+  const [section, setCurrentSection] = useState<AdminSection>(() => sectionFromPath(location.pathname));
+  const [search, setSearch] = useState("");
+  const [menuOpen, setMenuOpen] = useState(false);
+  const heading = useRef<HTMLHeadingElement>(null);
+  const currentSection = adminSections.find(item => item.id === section)!;
+  const results = matchingSections(search);
+  function setSection(next: AdminSection) {
+    if (next !== section) window.history.pushState(null, "", sectionPath(next));
+    setCurrentSection(next);
+    setSearch("");
+    setMenuOpen(false);
+  }
+  useEffect(() => {
+    const back = () => { setCurrentSection(sectionFromPath(location.pathname)); setMenuOpen(false); };
+    const photos = () => { window.history.pushState(null, "", sectionPath("photos")); setCurrentSection("photos"); };
+    window.addEventListener("popstate", back);
+    window.addEventListener("walldeck:openAdminPhotos", photos);
+    return () => { window.removeEventListener("popstate", back); window.removeEventListener("walldeck:openAdminPhotos", photos); };
+  }, []);
+  useEffect(() => { document.title = `${currentSection.label} · WallDeck Admin`; heading.current?.focus({ preventScroll: true }); window.scrollTo(0, 0); }, [section, currentSection.label]);
 
   useEffect(() => {
     Promise.all([api.settings(), api.views(), api.photos(), api.homeAssistant.config(), api.devices()]).then(([nextSettings, nextViews, photos, homeAssistant, nextDevices]) => {
@@ -163,29 +183,26 @@ export function AdminApp() {
     <main className="admin-shell">
       <aside className="admin-sidebar">
         <div className="admin-brand"><i>W</i><div><strong>WallDeck</strong><small>Panel administratora</small></div></div>
+        <button className="admin-menu-toggle" type="button" aria-expanded={menuOpen} aria-controls="admin-navigation" onClick={() => setMenuOpen(!menuOpen)}>{menuOpen ? "Zamknij menu ×" : "Menu konfiguracji ☰"}</button>
+        <div id="admin-navigation" className={menuOpen ? "admin-navigation is-open" : "admin-navigation"}>
+        <label className="admin-search"><span>Szukaj ustawień</span><input type="search" placeholder="Szukaj ustawień…" value={search} onChange={event => setSearch(event.target.value)} /></label>
         <nav aria-label="Sekcje konfiguracji">
-          {([
-            ["overview", "⌂", "Pulpit"],
-            ["views", "⌘", "Widoki i reguły"],
-            ["states", "⇄", "Stany i przejścia"],
-            ["photos", "▧", "Album zdjęć"],
-            ["notifications", "◈", "Powiadomienia"],
-            ["music", "♫", "Music · Spotify"],
-            ["ha", "◉", "Home Assistant"],
-            ["assistant", "◌", "Twarz asystenta"],
-            ["mcp", "✦", "Asystent AI i MCP"],
-            ["device", "▣", "Urządzenie"],
-          ] as const).map(([id, icon, label]) => (
-            <button className={section === id ? "is-active" : ""} key={id} onClick={() => setSection(id)}><span>{icon}</span>{label}</button>
-          ))}
+          {[...new Set(adminSections.map(item => item.group))].map(group => {
+            const items = results.filter(item => item.group === group);
+            return items.length > 0 && <div className="admin-nav-group" key={group}><h2>{group}</h2>{items.map(item =>
+              <a href={sectionPath(item.id)} aria-current={section === item.id ? "page" : undefined} className={section === item.id ? "is-active" : ""} key={item.id} onClick={event => { if (!event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey) { event.preventDefault(); setSection(item.id); } }}><span aria-hidden="true">{item.icon}</span>{item.label}</a>
+            )}</div>;
+          })}
+          {results.length === 0 && <p className="admin-search-empty" role="status">Brak wyników. Spróbuj „głos”, „zdjęcia” lub „jasność”.</p>}
         </nav>
-        <div className="admin-sidebar__status"><i className={haStatus?.connected ? "is-online" : ""} /><span><strong>{haStatus?.connected ? "System online" : "Połączenie częściowe"}</strong><small>{photoCount} zdjęć · {views.available.find((view) => view.id === views.current)?.name ?? views.current}</small></span></div>
+        </div>
+        <div className="admin-sidebar__status"><i className={haStatus?.connected ? "is-online" : ""} /><span><strong>{haStatus?.connected ? "Home Assistant online" : "Home Assistant offline"}</strong><small>{photoCount} zdjęć · {views.available.find((view) => view.id === views.current)?.name ?? views.current}</small></span></div>
       </aside>
 
       <div className="admin-workspace">
         <header className="admin-topbar">
-          <div><span className="admin-eyebrow">WALLDECK / ADMIN</span><h1>{section === "states" ? "Stany i przejścia" : section === "overview" ? "Pulpit" : section === "views" ? "Widoki i reguły" : section === "photos" ? "Album zdjęć" : section === "notifications" ? "Powiadomienia" : section === "assistant" ? "Twarz asystenta" : section === "mcp" ? "Asystent AI i MCP" : section === "device" ? "Urządzenie" : section === "music" ? "Music · Spotify" : "Home Assistant"}</h1></div>
-          <span className="admin-save-state">{status}</span>
+          <div><span className="admin-eyebrow">ADMINISTRACJA / {currentSection.group}</span><h1 ref={heading} tabIndex={-1}>{currentSection.label}</h1><p>{currentSection.description}</p></div>
+          <span className="admin-save-state" role="status">{status}</span>
         </header>
 
         {section === "states" && <StateMachinesAdmin settings={settings} currentView={views.current} />}
@@ -196,20 +213,18 @@ export function AdminApp() {
 
         {section === "overview" && <section className="admin-dashboard">
           <div className="summary-grid">
-            <button onClick={() => setSection("views")}><small>Aktywny ekran</small><strong>{views.available.find((view) => view.id === views.current)?.name ?? views.current}</strong><span>Zmień lub ustaw reguły →</span></button>
-            <button onClick={() => setSection("photos")}><small>Biblioteka</small><strong>{photoCount} zdjęć</strong><span>Ustaw wygląd albumu →</span></button>
+            <button onClick={() => setSection("views")}><small>Aktywny ekran</small><strong>{views.available.find((view) => view.id === views.current)?.name ?? views.current}</strong><span>Zarządzaj ekranami →</span></button>
+            <button onClick={() => setSection("photos")}><small>Biblioteka</small><strong>{photoCount} zdjęć</strong><span>Otwórz bibliotekę →</span></button>
             <button onClick={() => setSection("ha")}><small>Home Assistant</small><strong>{haStatus?.connected ? "Połączono" : "Rozłączono"}</strong><span>{haStatus?.entityCount ?? 0} dostępnych encji →</span></button>
-            <button onClick={() => setSection("device")}><small>Tablet</small><strong>{devices[0]?.online ? "Online" : "Brak danych"}</strong><span>{devices[0]?.sensors.length ?? 0} sensorów →</span></button>
+            <button onClick={() => setSection("device")}><small>Tablet</small><strong>{device?.online ? "Online" : "Brak danych"}</strong><span>{device?.sensors.length ?? 0} sensorów →</span></button>
           </div>
-          <article className="admin-card activity-card">
-            <div><span className="admin-kicker">Szybki podgląd</span><h2>Przepływ panelu</h2></div>
-            <div className="flow-preview"><span>Album zdjęć</span><b>pojedyncze dotknięcie</b><span>Home Assistant</span><b>{settings.viewRouter.inactivityAction.seconds} s bezczynności</b>{settings.viewRouter.inactivityAction.showAssistantIdleBeforePhotos && <><span>Asystent idle</span><b>{settings.viewRouter.inactivityAction.assistantIdleSeconds} s</b></>}<span>Album zdjęć</span></div>
-          </article>
+          <div className="admin-directory">{["Panel tabletu", "Asystent", "System"].map(group => <article className="admin-card" key={group}><span className="admin-kicker">Konfiguracja</span><h2>{group}</h2><div>{adminSections.filter(item => item.group === group).map(item => <a key={item.id} href={sectionPath(item.id)} onClick={event => { if (!event.ctrlKey && !event.metaKey && !event.shiftKey && !event.altKey) { event.preventDefault(); setSection(item.id); } }}><span><strong>{item.label}</strong><small>{item.description}</small></span><b aria-hidden="true">↗</b></a>)}</div></article>)}</div>
         </section>}
 
         {section === "assistant" && <AssistantAdmin settings={settings} setSettings={setSettings} save={save} status={status} />}
 
-        {section === "mcp" && <section className="ai-mcp-admin"><AiAssistantAdmin settings={settings} setSettings={setSettings} /><McpAdmin settings={settings} setSettings={setSettings} save={save} status={status} /></section>}
+        {(["ai", "voice", "console", "history"] as string[]).includes(section) && <AiAssistantAdmin page={section as "ai" | "voice" | "console" | "history"} settings={settings} setSettings={setSettings} />}
+        {section === "mcp" && <McpAdmin settings={settings} setSettings={setSettings} save={save} status={status} />}
 
         {section === "device" && <section className="device-admin">
           {!device && <article className="admin-card device-empty">
@@ -281,6 +296,9 @@ export function AdminApp() {
         </div>
       </section>
 
+      </>}
+
+      {section === "rules" && <>
       <form className="admin-card admin-form" onSubmit={save}>
         <div><span className="admin-kicker">Manager widoków</span><h2>Reguły przełączania</h2></div>
         <p className="form-intro">Reguły reagują na zdarzenia panelu. Dotknięcia wewnątrz dashboardu HA są wykrywane przez aplikację tabletową.</p>
@@ -357,7 +375,7 @@ export function AdminApp() {
 
       {section === "photos" &&
       <PhotoAdmin />}
-      {section === "photos" &&
+      {section === "display" &&
       <form className="admin-card admin-form" onSubmit={save}>
         <div><span className="admin-kicker">Widok 01</span><h2>Album zdjęć</h2></div>
         <div className="field-grid"><label>Przytrzymanie (ms)<input type="number" min="500" max="1500" step="100" value={settings.gallery.holdMilliseconds} onChange={e => setSettings({ ...settings, gallery: { ...settings.gallery, holdMilliseconds: Number(e.target.value) } })} /></label><label><input type="checkbox" checked={settings.gallery.notifyNewPhotos} onChange={e => setSettings({ ...settings, gallery: { ...settings.gallery, notifyNewPhotos: e.target.checked } })} /> Powiadomienia o nowych zdjęciach</label></div>

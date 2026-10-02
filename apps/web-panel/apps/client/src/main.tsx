@@ -5,6 +5,7 @@ import { PanelApp } from "./PanelApp";
 import "./styles.css";
 import "./photos/photos.css";
 import "./notifications.css";
+import "./admin.css";
 import { Notifications } from "./Notifications";
 
 const isAdmin = location.pathname === "/admin" || location.pathname.startsWith("/admin/");

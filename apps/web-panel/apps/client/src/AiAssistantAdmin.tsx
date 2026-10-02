@@ -2,9 +2,9 @@ import { useEffect, useState, type FormEvent } from "react";
 import { openAiVoiceSchema, type AiAssistantConversationEntry, type AiAssistantRunResult, type AiAssistantStatus, type ElevenLabsVoice, type WallDeckSettings } from "@walldeck/contracts";
 import { api } from "./api";
 
-type Props = { settings: WallDeckSettings; setSettings(value: WallDeckSettings): void };
+type Props = { page: "ai" | "voice" | "console" | "history"; settings: WallDeckSettings; setSettings(value: WallDeckSettings): void };
 
-export function AiAssistantAdmin({ settings, setSettings }: Props) {
+export function AiAssistantAdmin({ page, settings, setSettings }: Props) {
   const [apiKey, setApiKey] = useState("");
   const [elevenLabsApiKey, setElevenLabsApiKey] = useState("");
   const [elevenLabsVoices, setElevenLabsVoices] = useState<ElevenLabsVoice[]>([]);
@@ -123,8 +123,8 @@ export function AiAssistantAdmin({ settings, setSettings }: Props) {
   }
 
   return <section className="ai-admin">
-    <article className="admin-card ai-status-card">
-      <div><span className="admin-kicker">OPENAI + WALLDECK MCP</span><h2>Asystent tekstowy</h2><p>Polecenie trafia do wybranego modelu, a działania są wykonywane przez narzędzia MCP konfigurowane niżej na tej stronie.</p></div>
+    <article hidden={page !== "ai"} className="admin-card ai-status-card">
+      <div><span className="admin-kicker">OPENAI + WALLDECK MCP</span><h2>Asystent tekstowy</h2><p>Polecenie trafia do wybranego modelu, a działania są wykonywane przez narzędzia MCP dostępne w sekcji „Narzędzia i MCP”.</p></div>
       <div className="ai-status-grid">
         <span className={connection.configured ? "is-ready" : ""}><i />Klucz API<strong>{connection.configured ? "zapisany" : "brak"}</strong></span>
         <span className={connection.mcpReady ? "is-ready" : ""}><i />MCP<strong>{connection.mcpReady ? "gotowe" : "wyłączone"}</strong></span>
@@ -132,7 +132,7 @@ export function AiAssistantAdmin({ settings, setSettings }: Props) {
       </div>
     </article>
 
-    <article className="admin-card ai-mode-switcher">
+    <article hidden={page !== "voice"} className="admin-card ai-mode-switcher">
       <div><span className="admin-kicker">AKTYWNY TOR ROZMOWY</span><h2>Tryb asystenta</h2><p>Zmiana działa natychmiast. Ustawienia obu torów pozostają zachowane.</p></div>
       <div className="ai-mode-options" role="group" aria-label="Tryb rozmowy asystenta">
         <button type="button" className={config.voice.conversationMode === "gpt-live" ? "is-active" : ""} aria-pressed={config.voice.conversationMode === "gpt-live"} disabled={running} onClick={() => void switchConversationMode("gpt-live")}><strong>GPT‑Live</strong><small>rozmowa audio–audio</small></button>
@@ -141,7 +141,8 @@ export function AiAssistantAdmin({ settings, setSettings }: Props) {
       <output>{state}</output>
     </article>
 
-    <form className="admin-card admin-form ai-config" onSubmit={save}>
+    <form hidden={page !== "ai" && page !== "voice"} className="admin-card admin-form ai-config" onSubmit={save}>
+      <div className="admin-model-settings" hidden={page !== "ai"}>
       <div><span className="admin-kicker">KONFIGURACJA</span><h2>Modele i eskalacja</h2></div>
       <label className="switch-row"><input type="checkbox" checked={config.enabled} onChange={(e) => update({ enabled: e.target.checked })} /><span><strong>Włącz asystenta AI</strong><small>Konsola pozostaje zablokowana, dopóki ta opcja jest wyłączona.</small></span></label>
       <div className="ai-model-grid">
@@ -154,7 +155,8 @@ export function AiAssistantAdmin({ settings, setSettings }: Props) {
       <label>Maksymalna liczba tur modelu<input type="number" min="2" max="12" value={config.maxTurns} onChange={(e) => update({ maxTurns: Number(e.target.value) })} /></label>
       <label>Instrukcja systemowa<textarea rows={6} value={config.systemPrompt} onChange={(e) => update({ systemPrompt: e.target.value })} /></label>
       <label>Klucz OpenAI API<input type="password" autoComplete="off" placeholder={connection.configured ? "Zapisany — pozostaw puste, aby go zachować" : "sk-…"} value={apiKey} onChange={(e) => setApiKey(e.target.value)} /><small>Klucz jest szyfrowany na serwerze i nie wraca do przeglądarki.</small></label>
-      <fieldset className="ai-voice-settings"><legend>Opcjonalny głos</legend>
+      </div>
+      <fieldset hidden={page !== "voice"} className="ai-voice-settings"><legend>Głos i rozmowa</legend>
         <label className="switch-row"><input type="checkbox" checked={config.voice.enabled} onChange={(e) => update({ voice: { ...config.voice, enabled: e.target.checked } })} /><span><strong>Włącz generowanie mowy</strong><small>Na tym etapie próbka gra wyłącznie w przeglądarce administratora.</small></span></label>
         <label>Tryb rozmowy na tablecie<select value={config.voice.conversationMode} onChange={(e) => update({ voice: { ...config.voice, conversationMode: e.target.value as typeof config.voice.conversationMode } })}>
           <option value="gpt-live">GPT-Live · szybka rozmowa audio–audio</option>
@@ -163,9 +165,10 @@ export function AiAssistantAdmin({ settings, setSettings }: Props) {
         <label>Dostawca głosu próbki i fallbacku<select value={config.voice.provider} onChange={(e) => update({ voice: { ...config.voice, provider: e.target.value as typeof config.voice.provider } })}>
           <option value="openai-live">GPT-Live · naturalna rozmowa</option>
           <option value="openai-tts">OpenAI TTS · oszczędny</option>
-          <option value="elevenlabs">ElevenLabs · przygotowane, jeszcze nieaktywne</option>
+          <option value="elevenlabs">ElevenLabs</option>
         </select></label>
         {config.voice.conversationMode === "gpt-live" && <div className="ai-live-settings">
+          <details className="admin-disclosure"><summary>Model, głos i limity GPT-Live</summary><div>
           <div className="ai-usage-meter"><header><strong>Budżet GPT-Live · {connection.voiceUsage.month || "bieżący miesiąc"}</strong><span>${connection.voiceUsage.estimatedUsd.toFixed(3)} / ${config.voice.live.monthlyBudgetUsd.toFixed(2)}</span></header><progress max={config.voice.live.monthlyBudgetUsd} value={Math.min(connection.voiceUsage.estimatedUsd, config.voice.live.monthlyBudgetUsd)} /><small>{connection.voiceUsage.exhausted ? "Limit osiągnięty — aktywny jest fallback TTS." : `Pozostało około $${connection.voiceUsage.remainingUsd.toFixed(2)} · ${connection.voiceUsage.liveSeconds.toFixed(1)} s sesji Live.`}</small></div>
           <div className="ai-model-grid">
             <label>Model Live<input value={config.voice.live.model} onChange={(e) => update({ voice: { ...config.voice, live: { ...config.voice.live, model: e.target.value } } })} /></label>
@@ -175,6 +178,7 @@ export function AiAssistantAdmin({ settings, setSettings }: Props) {
             <label>Zamknięcie po ciszy<input type="number" min="750" max="10000" step="250" value={config.voice.live.idleCloseMs} onChange={(e) => update({ voice: { ...config.voice, live: { ...config.voice.live, idleCloseMs: Number(e.target.value) } } })} /><small>ms po ostatnim fragmencie audio</small></label>
           </div>
           <label className="switch-row"><input type="checkbox" checked={config.voice.live.fallbackToTts} onChange={(e) => update({ voice: { ...config.voice, live: { ...config.voice.live, fallbackToTts: e.target.checked } } })} /><span><strong>Po limicie lub błędzie przejdź na OpenAI TTS</strong><small>Próbka i przyszłe odpowiedzi nadal będą działały z modelem ustawionym niżej.</small></span></label>
+          </div></details>
           <article className="admin-note">
             <strong>Rozmowa na tablecie</strong>
             <p>Wake word działa lokalnie. Dopiero po jego wykryciu tablet wysyła dźwięk rozmowy do GPT-Live. Zwykłe odpowiedzi wracają bezpośrednio jako audio, dlatego osobne narzędzie „speak” nie jest potrzebne.</p>
@@ -208,24 +212,26 @@ export function AiAssistantAdmin({ settings, setSettings }: Props) {
           </div>
           <button type="button" className="secondary" disabled={!connection.elevenLabsConfigured} onClick={() => void loadElevenLabsVoices()}>Odśwież listę głosów</button>
         </div>}
+        <details className="admin-disclosure"><summary>OpenAI TTS · głos zapasowy i sposób mówienia</summary><div>
         <div className="ai-model-grid">
           <label>Model fallback TTS<input value={config.voice.model} onChange={(e) => update({ voice: { ...config.voice, model: e.target.value } })} /></label>
           <label>Głos fallback TTS<select value={config.voice.voice} onChange={(e) => update({ voice: { ...config.voice, voice: e.target.value as typeof config.voice.voice } })}>{openAiVoiceSchema.options.map((voice) => <option key={voice} value={voice}>{voice}</option>)}</select></label>
         </div>
         <label>Sposób mówienia<input value={config.voice.instructions} onChange={(e) => update({ voice: { ...config.voice, instructions: e.target.value } })} /></label>
+        </div></details>
         <button type="button" className="secondary" disabled={!config.voice.enabled || (config.voice.provider === "elevenlabs" ? !connection.elevenLabsConfigured || !config.voice.elevenLabs.voiceId : !connection.configured)} onClick={testVoice}>Odtwórz próbkę tutaj</button>
       </fieldset>
       <footer><button type="submit">Zapisz konfigurację</button><span>{state}</span></footer>
     </form>
 
-    <form className="admin-card ai-console" onSubmit={submit}>
+    <form hidden={page !== "console"} className="admin-card ai-console" onSubmit={submit}>
       <div><span className="admin-kicker">KONSOLA</span><h2>Wpisz polecenie</h2></div>
       <textarea aria-label="Polecenie dla asystenta" rows={4} placeholder="Np. pokaż stan WallDeck albo wyszukaj playlistę reggae" value={message} onChange={(e) => setMessage(e.target.value)} />
       <div className="ai-console-actions"><label className="switch-row"><input type="checkbox" checked={forceFallback} onChange={(e) => setForceFallback(e.target.checked)} /><span><strong>Od razu użyj mocniejszego modelu</strong></span></label><button disabled={running || !config.enabled || !connection.configured || !connection.mcpReady}>{running ? "Pracuję…" : "Wykonaj"}</button></div>
       {result && <div className="ai-result"><header><strong>{result.model}</strong><span>{result.escalated ? "eskalacja" : "model podstawowy"}</span></header><p>{result.text}</p>{result.toolCalls.length > 0 && <details><summary>Wywołania MCP ({result.toolCalls.length})</summary>{result.toolCalls.map((tool, index) => <article key={`${tool.name}-${index}`}><strong>{tool.name}</strong><code>{JSON.stringify(tool.arguments, null, 2)}</code>{tool.output !== undefined && <code>{JSON.stringify(tool.output, null, 2)}</code>}</article>)}</details>}</div>}
     </form>
 
-    <section className="admin-card ai-history">
+    <section hidden={page !== "history"} className="admin-card ai-history">
       <header><div><span className="admin-kicker">HISTORIA</span><h2>Rozmowy i działania</h2><p>Ostatnie 100 tur z tabletu i konsoli. Audio i klucze API nie są zapisywane.</p></div><button type="button" className="secondary" disabled={!history.length} onClick={() => void clearHistory()}>Wyczyść historię</button></header>
       {!history.length && <p className="admin-note">Brak zapisanych rozmów. Następne polecenie „Ej Waldek…” pojawi się tutaj automatycznie.</p>}
       <div className="ai-history-list">{history.map((entry) => <ConversationEntry key={entry.id} entry={entry} />)}</div>
@@ -237,7 +243,7 @@ function ConversationEntry({ entry }: { entry: AiAssistantConversationEntry }) {
   return <article className="ai-history-entry">
     <header><div><strong>{entry.source === "tablet-voice" ? "Tablet · głos" : "Admin · tekst"}</strong><time>{new Date(entry.startedAt).toLocaleString("pl-PL")}</time></div><span className={entry.error ? "is-error" : "is-ok"}>{entry.error ? "błąd" : `${entry.result?.durationMs ?? 0} ms`}</span></header>
     <div className="ai-history-message"><small>Rozpoznano / wpisano</small><p>{entry.transcript || "Nie uzyskano transkrypcji"}</p></div>
-    {entry.result?.modelTurns.map((turn, turnIndex) => <details key={`${entry.id}-${turnIndex}`} open={turnIndex === entry.result!.modelTurns.length - 1}>
+    {entry.result?.modelTurns.map((turn, turnIndex) => <details key={`${entry.id}-${turnIndex}`} >
       <summary>{turn.model} · wejście, odpowiedź i narzędzia ({turn.toolCalls.length})</summary>
       <div className="ai-history-turn">
         <section><small>Instrukcja systemowa</small><pre>{turn.instructions}</pre></section>

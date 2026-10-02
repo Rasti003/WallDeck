@@ -15,9 +15,22 @@ Odpowiedzi trybu Luna mogą być syntezowane przez OpenAI TTS albo ElevenLabs. K
 
 Na ekranie poziomym aplikacja losowo pokazuje jedno zdjęcie poziome albo parę zdjęć pionowych. Na ekranie pionowym reguła działa odwrotnie. Następny zestaw jest ładowany z wyprzedzeniem, a ostatnio pokazane zdjęcia są pomijane, gdy istnieją inne pasujące fotografie.
 
-Panel administratora ma stałą nawigację z osobnymi sekcjami: pulpit, widoki i reguły, album zdjęć, Home Assistant, Asystent i Urządzenie. Pozwala ustawić czas zmiany i przejścia, położenie overlayu, zegar, datę i pogodę. Sekcja Home Assistant udostępnia wyszukiwarkę wszystkich encji oraz edytor elementów overlayu: własna etykieta i jedna z sześciu stref ekranu. Sekcja Urządzenie pokazuje model, wersję Androida i aplikacji, ekran, baterię, zasilanie, uprawnienia oraz pełny katalog sensorów zgłoszony przez tablet. Ustawienia, stany i raport urządzenia są wysyłane do działającego panelu przez WebSocket bez przeładowania strony.
+Panel administratora ma nawigację pogrupowaną według zadań (szczegóły poniżej). Pozwala ustawić czas zmiany i przejścia, położenie overlayu, zegar, datę i pogodę. Sekcja Home Assistant udostępnia wyszukiwarkę wszystkich encji oraz edytor elementów overlayu: własna etykieta i jedna z sześciu stref ekranu. Sekcja Urządzenie pokazuje model, wersję Androida i aplikacji, ekran, baterię, zasilanie, uprawnienia oraz pełny katalog sensorów zgłoszony przez tablet. Ustawienia, stany i raport urządzenia są wysyłane do działającego panelu przez WebSocket bez przeładowania strony.
 
 Każdy widok ma własne ustawienie jasności. Po aktywacji widoku klient wysyła jego poziom do Android Bridge, więc przyszłe ekrany nocne mogą automatycznie przyciemniać tablet, a dzienne przywracać wyższą jasność.
+
+## Organizacja panelu administratora
+
+Panel `/admin` ma ciemny, zwarty interfejs i wyszukiwarkę nazw, opisów oraz słów kluczowych (również bez polskich znaków). Menu na telefonie rozwija przycisk „Menu konfiguracji”.
+
+- **Pulpit** (`/admin`): bieżący stan i katalog ustawień.
+- **Panel tabletu**: ekrany i menu (`views`), gesty i automatyzacje (`rules`), biblioteka (`photos`), wygląd ramki i pogoda (`display`), Spotify (`music`), powiadomienia (`notifications`).
+- **Asystent**: modele i instrukcje (`ai`), głos i nasłuch (`voice`), mimika i tryb nocny (`assistant`), konsola (`console`), historia (`history`).
+- **System**: narzędzia i MCP (`mcp`), Home Assistant (`ha`), urządzenie (`device`), mapa stanów (`states`).
+
+Każda sekcja ma adres `/admin/<sekcja>` obsługujący odświeżenie oraz Wstecz/Dalej. Rzadziej zmieniane parametry głosu i szczegóły tur historii są zwijane. Formularze zachowują dotychczasowy zapis przyciskiem; przełącznik aktywnego toru GPT-Live/Luna działa natychmiast.
+
+Nowy motyw w `apps/client/src/admin.css` jest ograniczony do `.admin-shell`. Widoki tabletu, Android, API i uprawnienia pozostają bez zmian. Animacje respektują `prefers-reduced-motion`, kontrolki mają widoczny fokus, a menu oznacza stronę przez `aria-current`.
 
 ## Uruchomienie
 
