@@ -132,7 +132,8 @@ export class VoiceAssistantRuntime {
     void nativeBridge.call("haptics").catch(() => undefined);
     await nativeBridge.call("wakeWord.pause").catch(() => undefined);
     const protocol = location.protocol === "https:" ? "wss:" : "ws:";
-    const socket = new WebSocket(`${protocol}//${location.host}/api/assistant/live`);
+    const initial = remainder.length >= 2 ? `?initial=${encodeURIComponent(remainder.slice(0, 500))}` : "";
+    const socket = new WebSocket(`${protocol}//${location.host}/api/assistant/live${initial}`);
     this.socket = socket;
     socket.addEventListener("message", (message) => { void this.handleMessage(JSON.parse(String(message.data)) as Record<string, unknown>, remainder); });
     socket.addEventListener("close", () => { void this.finish(); });
@@ -190,13 +191,12 @@ export class VoiceAssistantRuntime {
   private async executePreservedCommand(command: string) {
     const socket = this.socket;
     if (!socket || socket.readyState !== WebSocket.OPEN) return;
-    socket.send(JSON.stringify({ type: "context", content: `Użytkownik właśnie powiedział po frazie wybudzającej: „${command}”. Potraktuj to jako bieżącą wypowiedź użytkownika: odpowiedz bezpośrednio albo deleguj tylko wtedy, gdy potrzebujesz backendu.` }));
     this.preservedCommandActive = false;
     setTimeout(() => {
       if (!this.outputStarted && !this.bufferedSpeechTask && this.socket?.readyState === WebSocket.OPEN) {
         this.startDelegation(null, command);
       }
-    }, 7_000);
+    }, 4_000);
   }
 
   private startDelegation(delegationId: string | null, commandOverride?: string) {

@@ -35,6 +35,8 @@ function containsAudiblePcm(pcm: Buffer): boolean {
 export function registerLiveConversation(app: FastifyInstance, deps: Dependencies) {
   let active = false;
   app.get("/api/assistant/live", { websocket: true }, async (socket, request) => {
+    const query = request.query as { initial?: unknown };
+    const initialCommand = typeof query.initial === "string" ? query.initial.trim().slice(0, 500) : "";
     const origin = request.headers.origin;
     if (!origin || !request.headers.host || new URL(origin).host !== request.headers.host) {
       socket.send(JSON.stringify({ type: "error", error: "Nieprawidłowy origin rozmowy" }));
@@ -135,10 +137,11 @@ export function registerLiveConversation(app: FastifyInstance, deps: Dependencie
               model: settings.voice.live.model,
               store: false,
               instructions: `${settings.voice.instructions}
-Język i styl: Rozmawiaj wyłącznie po polsku, naturalnie i zwięźle. Odpowiadaj głosem bezpośrednio na zwykłe pytania i swobodną rozmowę.
+Język i styl: Rozmawiaj wyłącznie po polsku, naturalnie i zwięźle. Odpowiadaj głosem bezpośrednio na zwykłe pytania i swobodną rozmowę. Jeżeli startowy input kończy się wiadomością użytkownika, odpowiedz na nią natychmiast po uruchomieniu sesji.
 Backchannel policy: Nie deleguj prostych odpowiedzi, powitań, krótkich wyjaśnień ani wiedzy, którą znasz. Możesz krótko powiedzieć, że sprawdzasz, gdy backend rzeczywiście pracuje.
 Interruption policy: Słuchaj także podczas mówienia. Gdy użytkownik zacznie mówić lub Cię poprawi, przerwij obecną wypowiedź, wysłuchaj go i odpowiedz na najnowszą intencję.
 Delegation policy: Deleguj do klienta tylko zadania wymagające narzędzi WallDeck/MCP, Spotify, Home Assistant, aktualnych danych, działania w systemie, pamięci albo wyraźnie trudniejszego rozumowania. Po otrzymaniu wyniku delegacji przedstaw go naturalnie użytkownikowi.`,
+              input: initialCommand ? [{ type: "message", role: "user", content: [{ type: "input_text", text: initialCommand }] }] : [],
               audio: { format: { type: "audio/pcm", rate: PCM_RATE }, output: { voice: settings.voice.live.voice } },
               delegation: { type: "client" },
             },
