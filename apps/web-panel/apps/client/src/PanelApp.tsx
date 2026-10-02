@@ -36,6 +36,7 @@ export function PanelApp({ forcedView }: { forcedView?: ViewId }) {
   const previousView = useRef<ViewId>(forcedView ?? "photos");
   const activeViewRef = useRef<ViewId>(forcedView ?? "photos");
   const voiceReturnView = useRef<ViewId>("photos");
+  const voiceRuntime = useRef<VoiceAssistantRuntime | null>(null);
   const [assistantState, setAssistantState] = useState<AssistantState>("idle");
   const [requestedAssistantState, setRequestedAssistantState] = useState<AssistantState | null>(null);
   const connection = useRef<ReturnType<typeof connectEvents> | null>(null);
@@ -182,9 +183,17 @@ export function PanelApp({ forcedView }: { forcedView?: ViewId }) {
       },
       onStatus: status => window.dispatchEvent(new CustomEvent("walldeck:voiceStatus", { detail: { status } })),
     });
+    voiceRuntime.current = runtime;
     void runtime.start();
-    return () => { void runtime.dispose(); };
-  }, [activate, forcedView, settings.aiAssistant]);
+    return () => {
+      if (voiceRuntime.current === runtime) voiceRuntime.current = null;
+      void runtime.dispose();
+    };
+  }, [activate, forcedView]);
+
+  useEffect(() => {
+    void voiceRuntime.current?.updateSettings(settings.aiAssistant);
+  }, [settings.aiAssistant]);
 
   const playbackView = useRef(activeView);
   playbackView.current = activeView;

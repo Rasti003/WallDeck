@@ -48,6 +48,20 @@ export class VoiceAssistantRuntime {
     await this.configureWake();
   }
 
+  async updateSettings(settings: AiAssistantSettings) {
+    if (settings === this.settings || this.disposed) return;
+    const modeChanged = settings.voice.conversationMode !== this.settings.voice.conversationMode;
+    this.settings = settings;
+    if (this.socket) {
+      if (modeChanged) {
+        if (this.socket.readyState === WebSocket.OPEN) this.socket.send(JSON.stringify({ type: "close" }));
+        this.socket.close();
+      }
+      return;
+    }
+    await this.configureWake();
+  }
+
   async dispose() {
     this.disposed = true;
     window.removeEventListener("wallpanel:wakeWordDetected", this.onWake as EventListener);
@@ -341,7 +355,7 @@ export class VoiceAssistantRuntime {
     if (!this.disposed) {
       this.callbacks.setState("success");
       this.callbacks.onStatus?.("Rozmowa zakończona");
-      await nativeBridge.call("wakeWord.resume").catch(() => undefined);
+      await this.configureWake();
       this.callbacks.hideAssistant();
     }
   }
