@@ -105,6 +105,8 @@ export async function renderLiveSpeech(
   let idleTimer: ReturnType<typeof setTimeout> | undefined;
   let hardTimer: ReturnType<typeof setTimeout> | undefined;
   let forceTimer: ReturnType<typeof setTimeout> | undefined;
+  let silenceTimer: ReturnType<typeof setInterval> | undefined;
+  const silenceFrame = Buffer.alloc(PCM_RATE / 10 * 2).toString("base64");
 
   const requestClose = () => {
     if (closeRequested) return;
@@ -136,6 +138,10 @@ export async function renderLiveSpeech(
       const event = envelope.message;
       if (event.type === "session.started") {
         sessionStarted = true;
+        connection.send({ type: "session.input_audio.append", event_id: `silence_${Date.now()}`, audio: silenceFrame });
+        silenceTimer = setInterval(() => {
+          if (!closeRequested) connection.send({ type: "session.input_audio.append", event_id: `silence_${Date.now()}`, audio: silenceFrame });
+        }, 100);
         connection.send({
           type: "session.instructions.append",
           event_id: `speak_${Date.now()}`,
@@ -161,6 +167,7 @@ export async function renderLiveSpeech(
     if (idleTimer) clearTimeout(idleTimer);
     if (hardTimer) clearTimeout(hardTimer);
     if (forceTimer) clearTimeout(forceTimer);
+    if (silenceTimer) clearInterval(silenceTimer);
     connection.close({ code: 1000, reason: "WallDeck finished" });
     if (sessionStarted) {
       usageSeconds = usageSeconds || Math.max(0, (Date.now() - startedAt) / 1_000);
