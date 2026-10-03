@@ -235,7 +235,7 @@ export function AiAssistantAdmin({ page, settings, setSettings }: Props) {
     </form>
 
     <section hidden={page !== "history"} className="admin-card ai-history">
-      <header><div><span className="admin-kicker">HISTORIA</span><h2>Rozmowy i działania</h2><p>Ostatnie 100 sesji GPT‑Live, Luny i konsoli wraz z narzędziami oraz fingerprintem mówcy. Audio i klucze API nie są zapisywane.</p></div><button type="button" className="secondary" disabled={!history.length} onClick={() => void clearHistory()}>Wyczyść historię</button></header>
+      <header><div><span className="admin-kicker">HISTORIA</span><h2>Rozmowy i działania</h2><p>Ostatnie 100 sesji GPT‑Live, Luny, harmonogramu i konsoli wraz z narzędziami oraz fingerprintem mówcy. Audio i klucze API nie są zapisywane.</p></div><button type="button" className="secondary" disabled={!history.length} onClick={() => void clearHistory()}>Wyczyść historię</button></header>
       {!history.length && <p className="admin-note">Brak zapisanych rozmów. Następne polecenie „Ej Waldek…” pojawi się tutaj automatycznie.</p>}
       <div className="ai-history-list">{history.map((entry) => <ConversationEntry key={entry.id} entry={entry} />)}</div>
     </section>
@@ -244,7 +244,7 @@ export function AiAssistantAdmin({ page, settings, setSettings }: Props) {
 
 function ConversationEntry({ entry }: { entry: AiAssistantConversationEntry }) {
   const live = entry.liveSession;
-  const sourceLabel = entry.source === "tablet-live" ? "Tablet · GPT‑Live" : entry.source === "tablet-voice" ? "Tablet · Luna" : "Admin · tekst";
+  const sourceLabel = entry.source === "tablet-live" ? "Tablet · GPT‑Live" : entry.source === "tablet-voice" ? "Tablet · Luna" : entry.source === "scheduled-task" ? "Harmonogram · Luna" : "Admin · tekst";
   const durationMs = live?.durationMs ?? entry.result?.durationMs ?? 0;
   const fingerprints = live ? [...new Map(live.speakerObservations.filter(item => item.fingerprintId).map(item => [item.fingerprintId, item])).values()] : [];
   return <article className="ai-history-entry">

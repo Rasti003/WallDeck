@@ -231,7 +231,7 @@ export interface AiAssistantLiveSessionTrace {
 }
 export interface AiAssistantConversationEntry {
   id: string;
-  source: "tablet-voice" | "tablet-live" | "admin-text";
+  source: "tablet-voice" | "tablet-live" | "admin-text" | "scheduled-task";
   startedAt: string;
   completedAt: string;
   transcript: string;

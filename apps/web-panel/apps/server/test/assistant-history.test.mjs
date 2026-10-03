@@ -22,6 +22,22 @@ test("assistant history persists newest-first, applies its limit and can be clea
       liveSession: { model: "gpt-live-1", durationMs: 1200, usageSeconds: 1.2, closeReason: "done", transcript: [], toolCalls: [], delegations: [], speakerObservations: [] },
     });
     assert.equal((await new AssistantHistoryStore(file, 2).list())[0].liveSession.model, "gpt-live-1");
+    await restored.add({
+      source: "scheduled-task",
+      startedAt: "2026-10-02T10:02:00.000Z",
+      transcript: "przypomnij o ziemniakach",
+      result: {
+        text: "Powiadomienie wysłane",
+        model: "gpt-6-luna",
+        escalated: false,
+        toolCalls: [{ name: "send_notification", arguments: { message: "Wstaw ziemniaki" }, output: { ok: true } }],
+        modelTurns: [],
+        durationMs: 250,
+      },
+    });
+    const scheduled = (await new AssistantHistoryStore(file, 2).list())[0];
+    assert.equal(scheduled.source, "scheduled-task");
+    assert.equal(scheduled.result.toolCalls[0].name, "send_notification");
     await restored.clear();
     assert.deepEqual(await new AssistantHistoryStore(file, 2).list(), []);
   } finally {

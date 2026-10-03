@@ -155,13 +155,18 @@ schedules = new ScheduleStore(path.join(runtimeRoot, "schedules.json"), {
     if (item.kind !== "task") activateView("timers");
     broadcast({ type: "schedule.fired", item });
     if (!item.automationPrompt) return;
+    const startedAt = new Date().toISOString();
     try {
       const settings = await readSettings();
       const result = await assistant.execute(scheduledTaskPrompt(item.label, item.automationPrompt, item.kind), settings.aiAssistant);
       await schedules.setAutomationResult(item.id, result.text);
+      await assistantHistory.add({ source: "scheduled-task", startedAt, transcript: item.automationPrompt, result }).catch(error => {
+        void recordDiagnostic({ level: "error", category: "assistant", title: "Nie zapisano historii zadania", message: item.label, details: error instanceof Error ? error.message : String(error) });
+      });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       await schedules.setAutomationResult(item.id, `Błąd zadania: ${message}`, true);
+      await assistantHistory.add({ source: "scheduled-task", startedAt, transcript: item.automationPrompt, error: message }).catch(() => undefined);
       void recordDiagnostic({ level: "error", category: "scheduler", title: "Błąd zadania asystenta", message: item.label, details: message });
     }
   },
