@@ -57,10 +57,29 @@ test("GPT-Live exposes and executes the current time tool", async () => {
 
 test("GPT-Live derives its complete tool list from the shared assistant registry", () => {
   const names = liveTools(structuredClone(defaultSettings.mcp.tools)).map(tool => tool.name);
-  assert.deepEqual(names, [...mcpToolIds]);
+  assert.deepEqual(names, mcpToolIds.filter(id => !["speak_on_tablet", "start_live_conversation"].includes(id)));
 });
 
 test("GPT-Live executes tools that were previously available only through MCP", async () => {
   const result = await executeLiveTool("get_home_entity", JSON.stringify({ entityId: "sensor.salon" }), dependencies([]), structuredClone(defaultSettings.mcp.tools));
   assert.equal(result.state, "22");
 });
+
+ test("Live rejects nested voice sessions even when called directly", async () => {
+   for (const name of ["speak_on_tablet", "start_live_conversation"]) {
+     await assert.rejects(executeLiveTool(name, '{}', dependencies([])), /własny kanał głosowy/);
+   }
+ });
+ test("background Canvas honors parent feature switches", async () => {
+   const enabled = structuredClone(defaultSettings.mcp.tools);
+   const calls = [];
+   const deps = { ...dependencies([]), prepareAssistantCanvas: input => { calls.push(input); return { ok: true, jobId: "job" }; } };
+   enabled.show_assistant_canvas = false;
+   await assert.rejects(executeLiveTool("prepare_assistant_canvas", '{"topic":"Husky"}', deps, enabled), /wyłączony/);
+   enabled.show_assistant_canvas = true;
+   enabled.search_web = false;
+   await assert.rejects(executeLiveTool("prepare_assistant_canvas", '{"topic":"Husky"}', deps, enabled), /wyłączone/);
+   const result = await executeLiveTool("prepare_assistant_canvas", '{"topic":"Husky","includeImages":false}', deps, enabled);
+   assert.equal(result.jobId, "job");
+   assert.equal(calls.length, 1);
+ });

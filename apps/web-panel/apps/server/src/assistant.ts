@@ -1,5 +1,6 @@
+import { liveBackendInstructions } from "./live-prompts.js";
 import { Agent, OpenAIProvider, Runner, type RunItem, type Tool } from "@openai/agents";
-import type { AiAssistantModelTurn, AiAssistantRunResult, AiAssistantSettings, AiAssistantToolTrace } from "@walldeck/contracts";
+import type { AiAssistantRunResult, AiAssistantSettings, AiAssistantToolTrace } from "@walldeck/contracts";
 
 const escalationMarker = /^\s*ESCALATE\s*:\s*/i;
 
@@ -46,17 +47,15 @@ export class AssistantService {
       try {
         const first = await this.runOnce(message, settings, apiKey, primaryModel, primaryReasoning);
         const requestsEscalation = escalationMarker.test(first.text);
-        if (!forceFallback && requestsEscalation && settings.escalationEnabled) {
+        if (!forceFallback && requestsEscalation && settings.escalationEnabled && first.toolCalls.length === 0) {
           const second = await this.runOnce(`${message}\n\nModel podstawowy poprosił o eskalację. Rozwiąż polecenie samodzielnie.`, settings, apiKey, settings.fallbackModel, settings.fallbackReasoning);
           return { ...second, modelTurns: [...first.modelTurns, ...second.modelTurns], escalated: true, durationMs: Date.now() - started };
         }
         return { ...first, text: first.text.replace(escalationMarker, ""), escalated: forceFallback, durationMs: Date.now() - started };
       } catch (error) {
-        if (forceFallback || !settings.escalationEnabled) throw error;
-        const reason = error instanceof Error ? error.message : String(error);
-        const second = await this.runOnce(`${message}\n\nModel podstawowy nie ukończył zadania: ${reason}. Spróbuj je wykonać.`, settings, apiKey, settings.fallbackModel, settings.fallbackReasoning);
-        const failedTurn: AiAssistantModelTurn = { model: primaryModel, input: message, instructions: settings.systemPrompt, error: reason, toolCalls: [] };
-        return { ...second, modelTurns: [failedTurn, ...second.modelTurns], escalated: true, durationMs: Date.now() - started };
+        // A failed run may already have executed an external action. Replaying
+        // the whole request with another model can create duplicate reminders.
+        throw error;
       }
     } finally {
       this.running = false;
@@ -67,7 +66,7 @@ export class AssistantService {
     const provider = new OpenAIProvider({ apiKey });
     try {
       const tools = await this.options.getTools();
-      const instructions = `${settings.systemPrompt}\n\nGdy odpowiedź ma być pokazana na tablecie, użyj show_assistant_canvas. Jeżeli użytkownik prosi, aby opowiedzieć o konkretnym temacie, który zyska na zdjęciu i uporządkowanych faktach — na przykład rasie zwierzęcia, miejscu, planecie, roślinie, pojeździe, dziele lub potrawie — proaktywnie przygotuj krótką prezentację Canvas nawet bez jawnego słowa „pokaż”. Nie przełączaj ekranu dla powitań, dowcipów ani prostych krótkich odpowiedzi. Pytania o temperatury, CO₂ lub inne pomiary Home Assistant przedstaw jako duże metrics. W metric pole value musi być tekstem. Chart wymaga co najmniej 2 dostępnych punktów liczbowych; przy jednym czujniku przekaż charts: []. Dla aktualnych informacji z internetu najpierw użyj search_web, a potem pokaż wynik w Canvas wraz ze źródłami i dostępnymi obrazami. Dla prezentacji wizualnego tematu oraz jawnej prośby o zdjęcie wywołaj search_web z includeImages=true i przekaż zwrócone images do Canvas. Nie twierdź, że zdjęcie zostało pokazane, jeżeli images jest puste. Nie wymyślaj adresów URL ani wartości encji.`;
+      const instructions = liveBackendInstructions(settings.systemPrompt).replace("Nie wywołuj speak_on_tablet ani start_live_conversation: aktywna rozmowa ma swój głos.", "") + "\nW tym trybie sam odpowiadasz użytkownikowi tekstowo: udziel odpowiedzi z wiedzy ogólnej zaraz po przyjęciu zlecenia Canvas. Narzędzia głosowe stosuj tylko dla jawnie zleconych powiadomień i zadań harmonogramu.";
       const agent = new Agent({
         name: "WallDeck Assistant",
         instructions,

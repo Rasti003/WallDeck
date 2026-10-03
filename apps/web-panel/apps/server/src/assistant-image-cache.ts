@@ -40,16 +40,15 @@ export class AssistantImageCache {
 
   get(id: string) { return this.entries.get(id); }
 
-  async cache(images: CanvasImage[]) {
+  async cache(images: CanvasImage[], signal?: AbortSignal) {
     const downloaded = await Promise.all(images.map(async image => {
       try {
-        const entry = await this.download(image.url);
+        const entry = await this.download(image.url, signal);
         return { image, entry };
       } catch (error) {
         return { image, error: error instanceof Error ? error.message : String(error) };
       }
     }));
-    const next = new Map<string, { body: Buffer; contentType: string }>();
     const cached: CanvasImage[] = [];
     const rejected: { url: string; reason: string }[] = [];
     for (const result of downloaded) {
@@ -59,10 +58,16 @@ export class AssistantImageCache {
         continue;
       }
       const id = randomUUID();
-      next.set(id, entry);
+      this.entries.set(id, entry);
       cached.push({ ...result.image, url: `/api/assistant/images/${id}` });
     }
-    this.entries = next;
+    // Keep previous presentations available while clients apply the new document.
+    let bytes = [...this.entries.values()].reduce((sum, entry) => sum + entry.body.length, 0);
+    while (this.entries.size > 32 || bytes > 80 * 1024 * 1024) {
+      const id = this.entries.keys().next().value!;
+      bytes -= this.entries.get(id)!.body.length;
+      this.entries.delete(id);
+    }
     return { images: cached, rejected };
   }
 
@@ -72,13 +77,15 @@ export class AssistantImageCache {
     if (!addresses.length || addresses.some(item => !isPublicAddress(item.address))) throw new Error("Adres obrazu nie jest publiczny");
   }
 
-  private async download(rawUrl: string) {
+  private async download(rawUrl: string, signal?: AbortSignal) {
+    const timeout = AbortSignal.timeout(12_000);
+    const downloadSignal = signal ? AbortSignal.any([signal, timeout]) : timeout;
     let url = new URL(rawUrl);
     for (let redirects = 0; redirects <= 3; redirects += 1) {
       await this.validate(url);
       const response = await this.fetcher(url, {
         redirect: "manual",
-        signal: AbortSignal.timeout(12_000),
+        signal: downloadSignal,
         headers: { accept: "image/avif,image/webp,image/png,image/jpeg,image/gif", "user-agent": "WallDeck/1.0 image-cache" },
       });
       if (response.status >= 300 && response.status < 400) {

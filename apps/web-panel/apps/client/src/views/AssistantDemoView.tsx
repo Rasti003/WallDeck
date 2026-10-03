@@ -55,7 +55,7 @@ export function AssistantDemoView() {
   }, [simulate, state]);
   return <section className="assistant-demo" aria-label="Asystent demo">
     <ExpressiveAssistantFace state={!isPresent ? "sleep" : state} audioLevel={simulate ? simulatedAudio : audio} accentColor={accent} reducedMotion={reduced} />
-    <AnimatePresence>{!studio && voiceStatus && <motion.div className="assistant-voice-status" role="status" aria-live="polite" initial={{ opacity: 0, y: 12, scale: .96 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 8 }} transition={{ duration: reduced ? 0 : .28 }}>
+    <AnimatePresence>{!studio && voiceStatus && <motion.div className="assistant-voice-status" style={{ x: "-50%" }} role="status" aria-live="polite" initial={{ opacity: 0, y: 12, scale: .96 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 8 }} transition={{ duration: reduced ? 0 : .28 }}>
       <i aria-hidden="true"><b/><b/><b/></i><span>{voiceStatus}</span>
     </motion.div>}</AnimatePresence>
     {studio && <button className="assistant-controls-toggle" aria-expanded={controls} onClick={() => setControls(!controls)}>{controls ? "Ukryj sterowanie ↘" : "Mimika ↗"}</button>}

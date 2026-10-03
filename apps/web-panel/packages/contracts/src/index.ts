@@ -4,7 +4,7 @@ export type { MusicState, AudioOutputState, MusicController, SpotifyItem, Spotif
 export const assistantStates = ["idle", "attention", "listening", "thinking", "speaking", "success", "error", "sleep", "curious", "uncertain", "confirm", "surprised", "wink", "laughing", "dancing"] as const;
 export const assistantStateSchema = z.enum(assistantStates);
 export type AssistantState = z.infer<typeof assistantStateSchema>;
-export const mcpToolIds = ["get_status", "get_current_time", "show_view", "show_assistant_mood", "search_web", "show_assistant_canvas", "control_music", "search_spotify", "get_spotify_queue", "list_spotify_playlists", "play_spotify_item", "add_spotify_to_queue", "set_tablet_volume", "adjust_tablet_volume", "send_notification", "speak_on_tablet", "start_live_conversation", "set_view_brightness", "search_home_entities", "get_home_entity", "list_schedules", "create_timer", "create_alarm", "create_assistant_task", "set_alarm_enabled", "cancel_schedule", "dismiss_schedule", "snooze_schedule"] as const;
+export const mcpToolIds = ["get_status", "get_current_time", "show_view", "show_assistant_mood", "search_web", "prepare_assistant_canvas", "show_assistant_canvas", "control_music", "search_spotify", "get_spotify_queue", "list_spotify_playlists", "play_spotify_item", "add_spotify_to_queue", "set_tablet_volume", "adjust_tablet_volume", "send_notification", "speak_on_tablet", "start_live_conversation", "set_view_brightness", "search_home_entities", "get_home_entity", "list_schedules", "create_timer", "create_alarm", "create_assistant_task", "set_alarm_enabled", "cancel_schedule", "dismiss_schedule", "snooze_schedule"] as const;
 export const mcpToolIdSchema = z.enum(mcpToolIds);
 export type McpToolId = z.infer<typeof mcpToolIdSchema>;
 export const assistantToolCatalog = {
@@ -13,6 +13,7 @@ export const assistantToolCatalog = {
   show_view: { label: "Przełączanie widoku", summary: "Zdjęcia, Dom, Music lub ekran asystenta.", kind: "akcja" },
   show_assistant_mood: { label: "Mimika asystenta", summary: "Pokazanie konkretnego nastroju lub stanu twarzy.", kind: "akcja" },
   search_web: { label: "Wyszukiwanie internetu", summary: "Aktualne informacje, źródła i obrazy przez OpenAI web search.", kind: "odczyt" },
+  prepare_assistant_canvas: { label: "Canvas w tle", summary: "Luna przygotowuje prezentację niezależnie od rozmowy; zdjęcia uzupełnia później.", kind: "akcja" },
   show_assistant_canvas: { label: "Canvas asystenta", summary: "Czytelna prezentacja odpowiedzi, pomiarów, wykresów, zdjęć i źródeł.", kind: "akcja" },
   control_music: { label: "Sterowanie muzyką", summary: "Play, pauza, następny, poprzedni, seek, shuffle i repeat.", kind: "akcja" },
   search_spotify: { label: "Wyszukiwanie Spotify", summary: "Utwory, albumy, artyści, playlisty i podcasty.", kind: "odczyt" },
@@ -45,6 +46,7 @@ export const mcpSettingsSchema = z.object({
     show_view: z.boolean().default(true),
     show_assistant_mood: z.boolean().default(true),
     search_web: z.boolean().default(true),
+    prepare_assistant_canvas: z.boolean().default(true),
     show_assistant_canvas: z.boolean().default(true),
     control_music: z.boolean().default(true),
     search_spotify: z.boolean().default(true),
@@ -63,7 +65,7 @@ export const mcpSettingsSchema = z.object({
     list_schedules: z.boolean().default(true), create_timer: z.boolean().default(true), create_alarm: z.boolean().default(true), create_assistant_task: z.boolean().default(true),
     set_alarm_enabled: z.boolean().default(true), cancel_schedule: z.boolean().default(true), dismiss_schedule: z.boolean().default(true), snooze_schedule: z.boolean().default(true),
   }).default({
-    get_status: true, get_current_time: true, show_view: true, show_assistant_mood: true, search_web: true, show_assistant_canvas: true, control_music: true, search_spotify: true, get_spotify_queue: true, list_spotify_playlists: true, play_spotify_item: true, add_spotify_to_queue: true,
+    get_status: true, get_current_time: true, show_view: true, show_assistant_mood: true, search_web: true, prepare_assistant_canvas: true, show_assistant_canvas: true, control_music: true, search_spotify: true, get_spotify_queue: true, list_spotify_playlists: true, play_spotify_item: true, add_spotify_to_queue: true,
     set_tablet_volume: true, adjust_tablet_volume: true, send_notification: true, speak_on_tablet: true, start_live_conversation: true, set_view_brightness: true,
     search_home_entities: true, get_home_entity: true,
     list_schedules: true, create_timer: true, create_alarm: true, create_assistant_task: true, set_alarm_enabled: true, cancel_schedule: true, dismiss_schedule: true, snooze_schedule: true,
@@ -71,7 +73,7 @@ export const mcpSettingsSchema = z.object({
 }).default({
   enabled: false,
   tools: {
-    get_status: true, get_current_time: true, show_view: true, show_assistant_mood: true, search_web: true, show_assistant_canvas: true, control_music: true, search_spotify: true, get_spotify_queue: true, list_spotify_playlists: true, play_spotify_item: true, add_spotify_to_queue: true,
+    get_status: true, get_current_time: true, show_view: true, show_assistant_mood: true, search_web: true, prepare_assistant_canvas: true, show_assistant_canvas: true, control_music: true, search_spotify: true, get_spotify_queue: true, list_spotify_playlists: true, play_spotify_item: true, add_spotify_to_queue: true,
     set_tablet_volume: true, adjust_tablet_volume: true, send_notification: true, speak_on_tablet: true, start_live_conversation: true, set_view_brightness: true,
     search_home_entities: true, get_home_entity: true,
     list_schedules: true, create_timer: true, create_alarm: true, create_assistant_task: true, set_alarm_enabled: true, cancel_schedule: true, dismiss_schedule: true, snooze_schedule: true,
@@ -453,9 +455,9 @@ export const assistantCanvasChartSchema = z.object({
 });
 export const assistantCanvasImageSchema = z.object({
   url: z.string().url().max(2_000).refine(value => value.startsWith("https://"), "Obraz musi używać HTTPS"), alt: z.string().trim().min(1).max(180),
-  caption: z.string().trim().max(180).optional(), sourceUrl: z.string().url().max(2_000).optional(),
+  caption: z.string().trim().max(180).optional(), sourceUrl: z.string().url().max(2_000).refine(value => /^https?:\/\//.test(value), "Źródło musi używać HTTP lub HTTPS").optional(),
 });
-export const assistantCanvasSourceSchema = z.object({ title: z.string().trim().min(1).max(180), url: z.string().url().max(2_000) });
+export const assistantCanvasSourceSchema = z.object({ title: z.string().trim().min(1).max(180), url: z.string().url().max(2_000).refine(value => /^https?:\/\//.test(value), "Źródło musi używać HTTP lub HTTPS") });
 export const assistantCanvasInputSchema = z.object({
   eyebrow: z.string().trim().max(50).optional(), title: z.string().trim().min(1).max(140),
   summary: z.string().trim().max(1_200).optional(),
@@ -466,7 +468,7 @@ export const assistantCanvasInputSchema = z.object({
   sources: z.array(assistantCanvasSourceSchema).max(10).default([]),
 });
 export type AssistantCanvasInput = z.infer<typeof assistantCanvasInputSchema>;
-export interface AssistantCanvasDocument extends AssistantCanvasInput { id: string; updatedAt: string; }
+export interface AssistantCanvasDocument extends AssistantCanvasInput { id: string; updatedAt: string; revision?: number; status?: "preparing" | "ready" | "error"; imagesStatus?: "loading" | "ready" | "unavailable"; }
 export interface ScheduledItem {
   id: string;
   kind: "timer" | "alarm" | "task";

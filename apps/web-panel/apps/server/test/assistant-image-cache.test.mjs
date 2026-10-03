@@ -27,3 +27,10 @@ test("drops invalid image responses instead of exposing remote URLs", async () =
   assert.deepEqual(result.images, []);
   assert.equal(result.rejected.length, 1);
 });
+
+test("a later presentation does not invalidate earlier image URLs", async () => {
+  const cache = new AssistantImageCache(async () => new Response(new Uint8Array([1,2]), {headers:{"content-type":"image/png"}}), async () => [{address:"8.8.8.8"}]);
+  const a=await cache.cache([{url:"https://example.com/a",alt:"A"}]);
+  await cache.cache([{url:"https://example.com/b",alt:"B"}]);
+  assert.ok(cache.get(a.images[0].url.split('/').at(-1)));
+});

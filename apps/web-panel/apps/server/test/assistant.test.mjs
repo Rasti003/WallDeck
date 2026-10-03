@@ -56,3 +56,22 @@ test("scheduled task prompt makes Luna choose quiet, spoken or conversational de
   assert.match(prompt, /start_live_conversation/);
   assert.match(prompt, /potrzebujesz odpowiedzi użytkownika/);
 });
+
+test("failed execution is not replayed automatically with another model", async () => {
+  const { AssistantService } = await import("../dist/assistant.js");
+  let calls=0;
+  const assistant=new AssistantService({getApiKey:async()=>"test",getTools:async()=>[]});
+  assistant.runOnce=async()=>{calls++;throw Error("action may already have succeeded");};
+  const { defaultSettings }=await import("@walldeck/contracts");
+  await assert.rejects(assistant.execute("create reminder",{...defaultSettings.aiAssistant,enabled:true,escalationEnabled:true}));
+  assert.equal(calls,1);
+});
+test("an escalation after tool calls cannot duplicate those actions", async () => {
+  const { AssistantService } = await import("../dist/assistant.js");
+  let calls=0;
+  const assistant=new AssistantService({getApiKey:async()=>"test",getTools:async()=>[]});
+  assistant.runOnce=async()=>{calls++;return {text:"ESCALATE: missing image",toolCalls:[{name:"create_alarm",arguments:{}}],modelTurns:[]};};
+  const { defaultSettings }=await import("@walldeck/contracts");
+  await assistant.execute("reminder",{...defaultSettings.aiAssistant,enabled:true,escalationEnabled:true});
+  assert.equal(calls,1);
+});

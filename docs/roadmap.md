@@ -158,3 +158,11 @@
 - [ ] Interaktywne akcje Canvas: minutnik, przypomnienie, odtworzenie i potwierdzenie działania.
 - [x] Jawne wyszukiwanie obrazów dla próśb o zdjęcie (`search_content_types: image,text`), z podpisem, stroną źródłową i przekazaniem prawdziwych wyników do Canvas.
 - [x] Proaktywny tryb prezentacyjny: opowieści o wizualnych tematach automatycznie łączą tekst, ciekawostki, zdjęcia i źródła w Canvas bez wymagania słowa „pokaż”.
+
+## Audyt opóźnień asystenta — 2026-10-03
+
+- [x] Rozdzielenie odpowiedzi GPT-Live od prezentacji Luny i pobierania zdjęć.
+- [x] Canvas w tle, częściowe wyniki, anulowanie starego tematu, terminy, diagnostyki i przełącznik MCP.
+- [x] Usunięcie wymuszania prezentacji słowami kluczowymi oraz podwójnej delegacji klienta.
+- [x] Narzędzia poza pętlą odbioru audio, blokada zagnieżdżonego głosu i niebezpiecznego odtwarzania polecenia po błędzie.
+- [ ] Ocena subiektywnej płynności mikrofon → głośnik podczas kilku naturalnych rozmów domowników.

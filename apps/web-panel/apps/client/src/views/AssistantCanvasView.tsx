@@ -6,13 +6,18 @@ import { connectEvents } from "../events";
 export function AssistantCanvasView() {
   const [canvas, setCanvas] = useState<AssistantCanvasDocument | null>(null);
   useEffect(() => {
-    api.assistant.canvas().then(setCanvas).catch(() => undefined);
+    let disposed = false;
+    const update = (incoming: AssistantCanvasDocument | null) => {
+      if (disposed || !incoming) return;
+      setCanvas(current => current && (current.revision ?? 0) > (incoming.revision ?? 0) ? current : incoming);
+    };
+    api.assistant.canvas().then(update).catch(() => undefined);
     const socket = connectEvents(event => {
       const message = JSON.parse(event.data) as { type: string; canvas?: AssistantCanvasDocument | null; assistantCanvas?: AssistantCanvasDocument | null };
-      if (message.type === "assistant.canvas" && message.canvas) setCanvas(message.canvas);
-      if (message.type === "snapshot" && message.assistantCanvas) setCanvas(message.assistantCanvas);
+      if (message.type === "assistant.canvas" && message.canvas) update(message.canvas);
+      if (message.type === "snapshot" && message.assistantCanvas) update(message.assistantCanvas);
     });
-    return () => socket.close();
+    return () => { disposed = true; socket.close(); };
   }, []);
 
   if (!canvas) return <main className="assistant-canvas assistant-canvas--empty"><div className="canvas-orb"/><span>CANVAS</span><h1>Zapytaj mnie o coś</h1><p>Mogę pokazać informacje z internetu, dane domu, zdjęcia i porównania.</p></main>;
@@ -27,7 +32,11 @@ export function AssistantCanvasView() {
       <small>{metric.label}</small><strong>{metric.value}<em>{metric.unit}</em></strong>{metric.note && <p>{metric.note}</p>}
     </article>)}</section>}
 
+    {canvas.status === "preparing" && <div className="canvas-loading" role="status"><i/>Luna przygotowuje prezentację…</div>}
+    {canvas.status === "error" && <p className="canvas-notice" role="status">Nie udało się przygotować tekstu prezentacji. Możesz poprosić ponownie.</p>}
     <div className="canvas-grid">
+      {canvas.imagesStatus === "loading" && !canvas.images.length && <section className="canvas-image-placeholder" role="status"><div className="canvas-orb"/><span>Dobieram zdjęcia</span><small>Możesz dalej słuchać odpowiedzi</small></section>}
+      {canvas.imagesStatus === "unavailable" && !canvas.images.length && <p className="canvas-notice">Zdjęcia są teraz niedostępne.</p>}
       {!!canvas.images.length && <section className={`canvas-images count-${Math.min(canvas.images.length, 3)}`}>{canvas.images.map((item, index) => <figure key={`${item.url}-${index}`}>
         <img src={item.url} alt={item.alt} referrerPolicy="no-referrer" onError={event => { event.currentTarget.closest("figure")?.classList.add("is-broken"); }} />
         {(item.caption || item.sourceUrl) && <figcaption>{item.sourceUrl ? <a href={item.sourceUrl} target="_blank" rel="noreferrer">{item.caption || item.alt}</a> : item.caption}</figcaption>}

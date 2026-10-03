@@ -2,7 +2,6 @@ import type { AiAssistantSettings, AssistantState } from "@walldeck/contracts";
 import { api } from "./api";
 import { nativeBridge } from "./native";
 import { delegatedCommandWithContext } from "./voice-delegation";
-import { looksLikeIncompleteVoiceTurn } from "./voice-turn";
 
 type Callbacks = {
   setState(state: AssistantState): void;
@@ -41,9 +40,7 @@ export class VoiceAssistantRuntime {
   private pendingAudio: string[] = [];
   private sessionReady = false;
   private bufferedSpeechTask: Promise<void> | null = null;
-  private preservedCommandActive = false;
   private nativeOutputReady = false;
-  private delegationFallbackTimer: ReturnType<typeof setTimeout> | null = null;
   private handledTranscriptLength = 0;
   private liveAudioChunks: string[] = [];
   private liveAudioBytes = 0;
@@ -53,7 +50,6 @@ export class VoiceAssistantRuntime {
   private pendingUserTurn = false;
   private activeLunaPipeline = false;
   private scheduledConversation = false;
-  private incompleteFallbackDeferred = false;
 
   constructor(private settings: AiAssistantSettings, private callbacks: Callbacks) {}
 
@@ -129,8 +125,6 @@ export class VoiceAssistantRuntime {
     this.socket = null;
     if (this.livePrebufferTimer) clearTimeout(this.livePrebufferTimer);
     this.livePrebufferTimer = null;
-    if (this.delegationFallbackTimer) clearTimeout(this.delegationFallbackTimer);
-    this.delegationFallbackTimer = null;
     if (nativeBridge.available) {
       await Promise.allSettled([
         nativeBridge.call("assistantAudio.stopInput"),
@@ -201,7 +195,6 @@ export class VoiceAssistantRuntime {
     this.sessionReady = false;
     this.pendingDelegations.clear();
     this.bufferedSpeechTask = null;
-    this.preservedCommandActive = remainder.length >= 2;
     this.nativeOutputReady = false;
     this.handledTranscriptLength = 0;
     this.liveAudioChunks = [];
@@ -209,9 +202,6 @@ export class VoiceAssistantRuntime {
     this.livePlaybackStarted = false;
     this.audioWriteChain = Promise.resolve();
     this.pendingUserTurn = false;
-    this.incompleteFallbackDeferred = false;
-    if (this.delegationFallbackTimer) clearTimeout(this.delegationFallbackTimer);
-    this.delegationFallbackTimer = null;
     void nativeBridge.call("haptics").catch(() => undefined);
     await nativeBridge.call("wakeWord.pause").catch(() => undefined);
     const protocol = location.protocol === "https:" ? "wss:" : "ws:";
@@ -222,13 +212,13 @@ export class VoiceAssistantRuntime {
     const route = lunaPipeline ? "/api/assistant/luna" : "/api/assistant/live";
     const socket = new WebSocket(`${protocol}//${location.host}${route}${initial}`);
     this.socket = socket;
-    socket.addEventListener("message", (message) => { void this.handleMessage(JSON.parse(String(message.data)) as Record<string, unknown>, remainder); });
+    socket.addEventListener("message", (message) => { void this.handleMessage(JSON.parse(String(message.data)) as Record<string, unknown>); });
     socket.addEventListener("close", () => { void this.finish(); });
     socket.addEventListener("error", () => this.callbacks.onStatus?.(lunaPipeline ? "Błąd połączenia z Luną" : "Błąd połączenia GPT-Live"));
     await this.startInput();
   }
 
-  private async handleMessage(message: Record<string, unknown>, remainder: string) {
+  private async handleMessage(message: Record<string, unknown>) {
     if (message.type === "ready") {
       this.sessionReady = true;
       this.callbacks.setState("listening");
@@ -237,11 +227,6 @@ export class VoiceAssistantRuntime {
       for (const audio of this.pendingAudio.splice(0)) {
         if (this.socket?.readyState !== WebSocket.OPEN) break;
         this.socket.send(JSON.stringify({ type: "audio", audio }));
-      }
-      if (!this.activeLunaPipeline) {
-        if (this.scheduledConversation) return;
-        if (remainder.length >= 2) void this.executePreservedCommand(remainder);
-        else this.scheduleDelegationFallback(8_000);
       }
     } else if (message.type === "processing") {
       await this.stopInput();
@@ -257,10 +242,8 @@ export class VoiceAssistantRuntime {
       this.inputTranscript += message.delta;
       this.lastTranscriptAt = Date.now();
       this.pendingUserTurn = true;
-      this.incompleteFallbackDeferred = false;
-      this.callbacks.setState("listening");
+        this.callbacks.setState("listening");
       this.callbacks.onStatus?.("Słucham");
-      this.scheduleDelegationFallback(3_500);
     } else if (message.type === "inputTranscript" && typeof message.transcript === "string") {
       this.inputTranscript = message.transcript;
       this.callbacks.setState("thinking");
@@ -277,14 +260,10 @@ export class VoiceAssistantRuntime {
       }
       this.callbacks.setState("speaking");
       this.callbacks.onStatus?.("Mówię — możesz mi przerwać");
-      if (this.delegationFallbackTimer) clearTimeout(this.delegationFallbackTimer);
-      this.delegationFallbackTimer = null;
-      this.queueLiveAudio(message.audio);
+          this.queueLiveAudio(message.audio);
     } else if (message.type === "delegation" && typeof message.delegationId === "string") {
-      if (this.preservedCommandActive || this.bufferedSpeechTask) return;
-      if (this.delegationFallbackTimer) clearTimeout(this.delegationFallbackTimer);
-      this.delegationFallbackTimer = null;
-      this.startDelegation(message.delegationId);
+      if (this.bufferedSpeechTask) return;
+          this.startDelegation(message.delegationId);
     } else if (message.type === "closed") {
       this.socket?.close();
     } else if (message.type === "error") {
@@ -292,17 +271,6 @@ export class VoiceAssistantRuntime {
       this.callbacks.onStatus?.(typeof message.error === "string" ? message.error : "Błąd GPT-Live");
       this.socket?.close();
     }
-  }
-
-  private async executePreservedCommand(command: string) {
-    const socket = this.socket;
-    if (!socket || socket.readyState !== WebSocket.OPEN) return;
-    this.preservedCommandActive = false;
-    setTimeout(() => {
-      if (!this.outputStarted && !this.bufferedSpeechTask && this.socket?.readyState === WebSocket.OPEN) {
-        this.startDelegation(null, command);
-      }
-    }, 4_000);
   }
 
   private startDelegation(delegationId: string | null, commandOverride?: string) {
@@ -357,29 +325,6 @@ export class VoiceAssistantRuntime {
       this.callbacks.onStatus?.("Backend odpowiedział");
     }
     this.pendingDelegations.delete(delegationKey);
-  }
-
-  private scheduleDelegationFallback(delayMs: number) {
-    if (this.preservedCommandActive || this.bufferedSpeechTask) return;
-    if (this.delegationFallbackTimer) clearTimeout(this.delegationFallbackTimer);
-    this.delegationFallbackTimer = setTimeout(() => {
-      this.delegationFallbackTimer = null;
-      if (this.bufferedSpeechTask || this.preservedCommandActive) return;
-      if (this.inputTranscript.trim()) {
-        const latestTurn = this.inputTranscript.slice(this.handledTranscriptLength).trim();
-        if (!this.incompleteFallbackDeferred && looksLikeIncompleteVoiceTurn(latestTurn)) {
-          this.incompleteFallbackDeferred = true;
-          this.callbacks.setState("listening");
-          this.callbacks.onStatus?.("Czekam na dokończenie…");
-          this.scheduleDelegationFallback(3_000);
-          return;
-        }
-        this.startDelegation(null);
-        return;
-      }
-      this.callbacks.onStatus?.("Nie usłyszałem polecenia");
-      if (this.socket?.readyState === WebSocket.OPEN) this.socket.send(JSON.stringify({ type: "close" }));
-    }, delayMs);
   }
 
   private queueLiveAudio(audio: string) {
@@ -453,8 +398,6 @@ export class VoiceAssistantRuntime {
     this.scheduledConversation = false;
     if (this.livePrebufferTimer) clearTimeout(this.livePrebufferTimer);
     this.livePrebufferTimer = null;
-    if (this.delegationFallbackTimer) clearTimeout(this.delegationFallbackTimer);
-    this.delegationFallbackTimer = null;
     this.inputActive = false;
     await nativeBridge.call("assistantAudio.stopInput").catch(() => undefined);
     if (this.bufferedSpeechTask) await this.bufferedSpeechTask.catch(() => undefined);

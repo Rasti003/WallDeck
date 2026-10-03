@@ -172,3 +172,11 @@ Zdarzenia `photos.changed` odświeżają kolekcję bez przeładowania, `photos.s
 ## Powiadomienia zwykłe i alarmowe
 
 Warstwa `Notifications` utrzymuje deduplikowaną kolejkę do 10 pozycji. Alarm jest wstawiany na początek, używa `role=alert` i może nie mieć timera; każdy komunikat zachowuje ręczne zamknięcie. Prezentację rozwiązuje globalna konfiguracja z opcjonalnymi nadpisaniami zdarzenia. Na tablecie `notification.playSound` syntezuje krótki ton przez natywny `AudioTrack` z preferowanym wbudowanym głośnikiem; dzięki temu muzyka może pozostać na Bluetooth. Web Audio jest fallbackiem dla przeglądarki. `ttsText` jest częścią kontraktu, ale nie jest jeszcze wykonywane.
+
+## Rozmowa i asynchroniczny Canvas — 2026-10-03
+
+Jedynym właścicielem delegacji rozmowy jest serwer GPT-Live/Responses; klient nie uruchamia zastępczego agenta po ciszy. LiveToolQueue oddziela I/O narzędzi od iteratora audio i emituje response.create dopiero po wszystkich function_call_output oraz response.completed. Identyfikatory call_id deduplikują wywołania. Nie wstrzykujemy instrukcji wizualnych podczas fragmentów transkrypcji.
+
+CanvasPresentationService to osobna ścieżka poza blokadą AssistantService. prepare_assistant_canvas zwraca potwierdzenie kolejki, nie wykonania. Dwa anulowalne zadania (tekst bez narzędzi i wyszukiwanie samych obrazów) aktualizują jeden dokument. Wspólny jobId łączy historię wywołania z trwałymi diagnostykami. Publikacja sprawdza tożsamość aktywnego zadania; tylko pierwsza aktywuje widok. Rewizje dokumentów chronią klienta przed nadpisaniem WebSocket przez spóźniony GET. Bezpośredni Canvas również publikuje tekst przed pobraniem obrazów.
+
+Cache obrazów zachowuje poprzednie adresy do limitu 32 wpisów / 80 MB, zamiast kasować je przy każdym odświeżeniu. Worker zamyka się po 60 s; obrazy mają 12 s na cały łańcuch pobrania. Głos, tekst i zdjęcia nie mają wspólnej bariery zakończenia. Aktualne pomiary pozostają w torze narzędzi HA, nie w generacji wiedzy ogólnej.

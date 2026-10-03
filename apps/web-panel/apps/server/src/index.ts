@@ -46,6 +46,7 @@ import { listElevenLabsVoices, renderElevenLabsSpeech } from "./elevenlabs.js";
 import { AssistantHistoryStore } from "./assistant-history.js";
 import { ScheduleStore } from "./schedules.js";
 import { DiagnosticStore } from "./diagnostics.js";
+import { CanvasPresentationService, prepareCanvasText, type PresentationRequest } from "./canvas-presentation.js";
 import { searchWeb } from "./web-search.js";
 import { AssistantImageCache } from "./assistant-image-cache.js";
 
@@ -74,12 +75,20 @@ async function readSettings(): Promise<WallDeckSettings> {
 async function writeSettingsValue(settings: WallDeckSettings): Promise<WallDeckSettings> {
   const parsed = settingsSchema.parse(settings);
   await writeFile(settingsPath, `${JSON.stringify(parsed, null, 2)}\n`, "utf8");
+  if (!parsed.aiAssistant.enabled || !parsed.mcp.tools.prepare_assistant_canvas || !parsed.mcp.tools.show_assistant_canvas || !parsed.mcp.tools.search_web) canvasPresentations?.cancel("settings-changed");
   broadcast({ type: "settings.changed", settings: parsed });
   return parsed;
 }
 
 let currentView: ViewId = "photos";
 let assistantCanvas: AssistantCanvasDocument | null = null;
+let canvasRevision = Date.now();
+let directCanvasGeneration = 0;
+let canvasPresentations: CanvasPresentationService | undefined;
+function publishCanvas(canvas: AssistantCanvasDocument) {
+  assistantCanvas = { ...canvas, revision: ++canvasRevision };
+  broadcast({ type: "assistant.canvas", canvas: assistantCanvas });
+}
 type PanelSocket = { send(data: string): void; readyState: number };
 const sockets = new Set<PanelSocket>();
 const panelSockets = new Set<PanelSocket>();
@@ -102,6 +111,7 @@ function broadcast(message: unknown) {
 
 function activateView(viewId: ViewId) {
   const previousView = currentView;
+  if (viewId !== "assistant-canvas") { canvasPresentations?.cancel("navigation"); directCanvasGeneration++; }
   currentView = viewId;
   broadcast({ type: "view.activated", viewId });
   if (previousView !== viewId) void recordDiagnostic({ level: "info", category: "tablet", title: "Zmiana ekranu", message: `${previousView} → ${viewId}` });
@@ -441,6 +451,33 @@ app.post("/api/assistant/speaker-observation", async (request, reply) => {
   return lastSpeakerObservation;
 });
 
+canvasPresentations = new CanvasPresentationService({
+  text: async (request, signal) => {
+    const apiKey = await openAiKeyStore.load();
+    if (!apiKey) throw new Error("Brak klucza OpenAI");
+    const settings = await readSettings();
+    if (!settings.aiAssistant.enabled || !settings.mcp.tools.prepare_assistant_canvas || !settings.mcp.tools.show_assistant_canvas) throw new Error("Canvas jest wyłączony");
+    return prepareCanvasText(apiKey, settings.aiAssistant.primaryModel, request, signal);
+  },
+  images: async (request, signal) => {
+    const apiKey = await openAiKeyStore.load();
+    if (!apiKey) throw new Error("Brak klucza OpenAI");
+    const settings = await readSettings();
+    if (!settings.aiAssistant.enabled || !settings.mcp.tools.search_web) throw new Error("Wyszukiwanie jest wyłączone");
+    const result = await searchWeb(apiKey, settings.aiAssistant.primaryModel, request.topic, true, { imagesOnly: true, signal });
+    signal.throwIfAborted();
+    return assistantImageCache.cache(result.images.filter(image => image.url.startsWith("https://")).slice(0, 3), signal);
+  },
+  publish: (document, initial) => {
+    publishCanvas(document);
+    if (initial) activateView("assistant-canvas");
+  },
+  log: (jobId, phase, elapsedMs, detail) => {
+    void recordDiagnostic({ level: phase.includes("error") || detail === "timeout" ? "warning" : "info", category: "assistant",
+      title: `Canvas w tle · ${phase}`, message: `${elapsedMs} ms · ${detail ?? ""}`, details: `jobId=${jobId}` });
+  },
+});
+
 const assistantToolDependencies = {
   readSettings,
   writeSettings: writeSettingsValue,
@@ -455,17 +492,25 @@ const assistantToolDependencies = {
     const settings = (await readSettings()).aiAssistant;
     return searchWeb(apiKey, settings.primaryModel, query, includeImages);
   },
+  prepareAssistantCanvas: (request: PresentationRequest) => {
+    directCanvasGeneration++;
+    return canvasPresentations!.start(request);
+  },
   showAssistantCanvas: async (canvas: AssistantCanvasInput) => {
-    const cached = await assistantImageCache.cache(canvas.images);
-    assistantCanvas = { ...canvas, images: cached.images, id: randomUUID(), updatedAt: new Date().toISOString() };
-    broadcast({ type: "assistant.canvas", canvas: assistantCanvas });
+    canvasPresentations!.cancel("direct-canvas");
+    const generation = ++directCanvasGeneration;
+    const id = randomUUID();
+    publishCanvas({ ...canvas, images: [], id, updatedAt: new Date().toISOString(), status: "ready", imagesStatus: canvas.images.length ? "loading" : undefined });
     activateView("assistant-canvas");
+    const cached = await assistantImageCache.cache(canvas.images);
+    if (generation !== directCanvasGeneration) return { ok: false, status: "superseded", canvasId: id };
+    publishCanvas({ ...canvas, images: cached.images, id, updatedAt: new Date().toISOString(), status: "ready", imagesStatus: cached.images.length ? "ready" : canvas.images.length ? "unavailable" : undefined });
     if (cached.rejected.length) void recordDiagnostic({
       level: "warning", category: "assistant", title: "Pominięto niedostępne obrazy Canvas",
       message: `${cached.rejected.length} z ${canvas.images.length} obrazów nie przeszło bezpiecznego pobierania`,
       details: cached.rejected.map(item => `${new URL(item.url).hostname}: ${item.reason}`).join("\n"),
     });
-    return { ok: true, canvasId: assistantCanvas.id, imagesCached: cached.images.length, imagesRejected: cached.rejected.length };
+    return { ok: true, canvasId: id, imagesCached: cached.images.length, imagesRejected: cached.rejected.length };
   },
   spotifyStatus: () => spotify.status(),
   searchSpotify: (query: string, types?: import("@walldeck/contracts").SpotifyItem["type"][]) => spotify.search(query, types),
@@ -729,7 +774,7 @@ app.get("/api/events", { websocket: true }, (socket) => {
 app.addHook("onError", async (request, _reply, error) => {
   await recordDiagnostic({ level: "error", category: "server", title: "Błąd serwera", message: `${request.method} ${request.url.split("?")[0]}`, details: error.stack ?? error.message });
 });
-app.addHook("onClose", async () => { schedules.stop(); homeAssistant.stop(); });
+app.addHook("onClose", async () => { canvasPresentations?.cancel("shutdown"); schedules.stop(); homeAssistant.stop(); });
 
 try {
   await registerClient(app, webRoot);

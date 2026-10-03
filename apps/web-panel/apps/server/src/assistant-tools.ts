@@ -36,6 +36,7 @@ export interface AssistantToolDependencies {
   spotifyPlaylists(): Promise<SpotifyItem[]>;
   activateView(viewId: "photos" | "ha" | "assistant-expressive" | "assistant-canvas" | "music" | "timers"): void;
   searchWeb(query: string, includeImages?: boolean): Promise<unknown>;
+  prepareAssistantCanvas(request: { topic: string; context: string; includeImages: boolean }): unknown;
   showAssistantCanvas(canvas: AssistantCanvasInput): unknown;
   notify(notification: Record<string, unknown>): void;
   panelCommand(name: string, args: Record<string, unknown>): Promise<unknown>;
@@ -149,6 +150,15 @@ export const assistantToolDefinitions = {
     description: "Wyszukuje aktualne informacje w internecie i zwraca zwięzłą odpowiedź, klikalne źródła oraz obrazy. Gdy użytkownik prosi o zdjęcie lub obraz, ustaw includeImages=true. Po wyszukaniu przedstaw wynik narzędziem show_assistant_canvas i przekaż jego images bez wymyślania adresów URL.",
     input: z.object({ query: z.string().trim().min(2).max(300), includeImages: z.boolean().default(false) }), annotations: readOnly(true),
     run: ({ query, includeImages }, deps) => deps.searchWeb(query, includeImages),
+  },
+  prepare_assistant_canvas: {
+    description: "Zleca Lunie Canvas w tle i natychmiast zwraca jobId. Użyj dla prezentacji wiedzy ogólnej i zdjęć. Podaj pełny temat i kontekst, następnie odpowiadaj użytkownikowi bez czekania. Tekst i zdjęcia pojawią się niezależnie. To nie potwierdza ukończenia prezentacji. Nie używaj do aktualnych danych ani pomiarów HA: pobierz je i użyj show_assistant_canvas.",
+    input: z.object({ topic: z.string().trim().min(2).max(300), context: z.string().trim().max(1800).default(""), includeImages: z.boolean().default(true) }), annotations: action(true),
+    run: (args, deps, enabled) => {
+      if (!enabled.show_assistant_canvas) throw new Error("Canvas jest wyłączony");
+      if (args.includeImages && !enabled.search_web) throw new Error("Wyszukiwanie zdjęć jest wyłączone; ustaw includeImages=false");
+      return deps.prepareAssistantCanvas(args);
+    },
   },
   show_assistant_canvas: {
     description: "Pokazuje na tablecie uniwersalny Canvas. Użyj do odpowiedzi internetowych oraz zestawień wielu encji Home Assistant. Temperatury i CO₂ prezentuj jako duże metrics. Pole value w metric zawsze podawaj jako tekst, np. \"1174\". Chart twórz tylko dla co najmniej 2 dostępnych punktów liczbowych; dla jednego czujnika ustaw charts na pustą tablicę. tone może mieć wyłącznie wartość neutral, good, warning albo danger. Zachowaj krótki summary i dołącz źródła wyszukiwania. Wynik narzędzia podaje imagesCached i imagesRejected; potwierdzaj pokazanie zdjęć tylko wtedy, gdy imagesCached jest większe od zera.",

@@ -38,24 +38,26 @@ export function extractWebSearchImages(output: unknown[], query: string): WebSea
   return uniqueByUrl(images).slice(0, 6);
 }
 
-export async function searchWeb(apiKey: string, model: string, query: string, includeImages = false): Promise<WebSearchResult> {
-  const client = new OpenAI({ apiKey });
+export async function searchWeb(apiKey: string, model: string, query: string, includeImages = false, options: { imagesOnly?: boolean; signal?: AbortSignal } = {}): Promise<WebSearchResult> {
+  const client = new OpenAI({ apiKey, maxRetries: 0, timeout: 45_000 });
   const webSearchTool = includeImages
     ? {
         type: "web_search",
-        search_context_size: "medium",
-        search_content_types: ["image", "text"],
-        image_settings: { max_results: 6, caption: true },
+        search_context_size: "low",
+        search_content_types: options.imagesOnly ? ["image"] : ["image", "text"],
+        image_settings: { max_results: options.imagesOnly ? 3 : 6, caption: true },
       }
     : { type: "web_search", search_context_size: "medium" };
   const response = await client.responses.create({
       model,
+      reasoning: { effort: "low" },
+      max_output_tokens: options.imagesOnly ? 600 : 2000,
       tools: [webSearchTool],
       tool_choice: "required",
-      input: `Wyszukaj aktualne informacje dla użytkownika WallDeck. Odpowiedz po polsku, zwięźle i rzeczowo.${includeImages ? " Znajdź także prawdziwe, trafne zdjęcia do pokazania na ekranie." : ""} Zapytanie: ${query}`,
+      input: options.imagesOnly ? `Znajdź do 3 prawdziwych zdjęć ilustrujących temat: ${query}. Nie opracowuj odpowiedzi ani artykułu, tylko wyszukaj obrazy.` : `Wyszukaj aktualne informacje dla użytkownika WallDeck. Odpowiedz po polsku, zwięźle i rzeczowo.${includeImages ? " Znajdź także prawdziwe, trafne zdjęcia do pokazania na ekranie." : ""} Zapytanie: ${query}`,
       include: ["web_search_call.action.sources", "web_search_call.results"],
       store: false,
-  } as any);
+  } as any, { signal: options.signal });
   const sources: { title: string; url: string }[] = [];
   const output = (response as any).output ?? [];
   for (const item of output) {

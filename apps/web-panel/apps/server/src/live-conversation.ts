@@ -1,4 +1,5 @@
 import OpenAI from "openai";
+import { LiveToolQueue } from "./live-tool-queue.js";
 import { LiveWS } from "openai/resources/live/ws";
 import type { FastifyInstance } from "fastify";
 import type {
@@ -12,7 +13,7 @@ import type {
 } from "@walldeck/contracts";
 import type { LiveVoiceUsageStore } from "./live-voice.js";
 import { executeLiveTool, liveTools, type LiveToolDependencies } from "./live-tools.js";
-import { LIVE_DELEGATION_MAX_OUTPUT_TOKENS, liveBackendInstructions, liveConversationInstructions, needsVisualDelegation, visualDelegationInstruction } from "./live-prompts.js";
+import { LIVE_DELEGATION_MAX_OUTPUT_TOKENS, liveBackendInstructions, liveConversationInstructions } from "./live-prompts.js";
 import type { SpeakerObserverClient, SpeakerObservationSession } from "./speaker-observer.js";
 
 type Dependencies = LiveToolDependencies & {
@@ -159,11 +160,7 @@ export function registerLiveConversation(app: FastifyInstance, deps: Dependencie
     let delegationTimer: ReturnType<typeof setTimeout> | undefined;
     let hardGraceDeadline = 0;
     let awaitingDelegationResponse = false;
-    let currentUserTurn = "";
-    let lastTranscriptRole: "user" | "assistant" | null = null;
-    let visualSteerSentForTurn = false;
     const pendingDelegations = new Set<string>();
-    const delegationsNeedingContinuation = new Set<string>();
     let speakerSession: SpeakerObservationSession | null = settings.voice.live.speakerObservationEnabled
       ? deps.speakerObserver.session(
         observation => {
@@ -193,7 +190,7 @@ export function registerLiveConversation(app: FastifyInstance, deps: Dependencie
       // audio deltas is not an end-of-turn signal, so keep enough generation grace
       // to avoid closing a session in the middle of a sentence.
       idleTimer = setTimeout(
-        () => requestClose("output-idle"),
+        () => { if (!awaitingDelegationResponse) requestClose("output-idle"); },
         Math.max(OUTPUT_GENERATION_GRACE_MS, queuedPlaybackMs + Math.max(settings.voice.live.idleCloseMs, FOLLOW_UP_WINDOW_MS)),
       );
     };
@@ -220,6 +217,12 @@ export function registerLiveConversation(app: FastifyInstance, deps: Dependencie
       requestClose("hard-limit");
     };
 
+    const toolQueue = new LiveToolQueue(
+      () => { if (!closeRequested) live.send({ type: "response.create", event_id: `continue_${Date.now()}` }); },
+      id => { pendingDelegations.delete(id); delegationAnswered(); postponeIdleClose(0); },
+      error => { deps.recordError(String(error)); requestClose("tool-transport-error"); },
+    );
+
     socket.on("message", (raw: Buffer) => {
       if (raw.length > 180_000) return;
       try {
@@ -233,7 +236,7 @@ export function registerLiveConversation(app: FastifyInstance, deps: Dependencie
             pendingAudio.push(message.audio);
             if (pendingAudio.length > 50) pendingAudio.shift();
           }
-        } else if (message.type === "delegation.result" && typeof message.content === "string" && message.content.length <= 4_000 && !closeRequested) {
+        } else if (message.type === "delegation.result" && typeof message.delegationId === "string" && pendingDelegations.has(message.delegationId) && typeof message.content === "string" && message.content.length <= 4_000 && !closeRequested) {
           if (message.delegationId) pendingDelegations.delete(message.delegationId);
           lastTurnActivityAt = Date.now();
           waitForDelegation();
@@ -298,41 +301,40 @@ export function registerLiveConversation(app: FastifyInstance, deps: Dependencie
           if (nested.type === "response.output_item.done" && nested.item?.type === "function_call" && delegationId
             && typeof nested.item.call_id === "string" && typeof nested.item.name === "string" && typeof nested.item.arguments === "string") {
             waitForDelegation(delegationId);
+            const item = nested.item as { name: string; arguments: string; call_id: string };
+            toolQueue.enqueue(delegationId, item.call_id, async () => {
             const toolStartedAt = new Date().toISOString();
-            let parsedArguments: unknown = nested.item.arguments;
-            try { parsedArguments = JSON.parse(nested.item.arguments); } catch { /* Preserve malformed arguments for diagnostics. */ }
+            let parsedArguments: unknown = item.arguments;
+            try { parsedArguments = JSON.parse(item.arguments); } catch { /* Preserve malformed arguments for diagnostics. */ }
             let output: unknown;
             let toolError: string | undefined;
             try {
-              output = await executeLiveTool(nested.item.name, nested.item.arguments, deps, enabledTools);
-              app.log.info({ delegationId, tool: nested.item.name }, "GPT-Live tool completed");
+              output = await executeLiveTool(item.name, item.arguments, deps, enabledTools);
+              app.log.info({ delegationId, tool: item.name }, "GPT-Live tool completed");
             } catch (error) {
               toolError = error instanceof Error ? error.message : String(error);
               output = { ok: false, error: toolError };
-              app.log.warn({ delegationId, tool: nested.item.name, err: error }, "GPT-Live tool failed");
+              app.log.warn({ delegationId, tool: item.name, err: error }, "GPT-Live tool failed");
             }
             toolCalls.push({
-              name: nested.item.name,
+              name: item.name,
               arguments: parsedArguments,
               output,
-              callId: nested.item.call_id,
+              callId: item.call_id,
               delegationId,
               startedAt: toolStartedAt,
               completedAt: new Date().toISOString(),
               ...(toolError ? { error: toolError } : {}),
             });
+            if (closeRequested) return;
             live.send({
               type: "response.item.create",
               event_id: `tool_result_${Date.now()}`,
-              item: { type: "function_call_output", call_id: nested.item.call_id, output: JSON.stringify(output) },
+              item: { type: "function_call_output", call_id: item.call_id, output: JSON.stringify(output) },
             });
-            delegationsNeedingContinuation.add(delegationId);
+            });
           } else if (nested.type === "response.completed" && delegationId) {
-            if (delegationsNeedingContinuation.delete(delegationId)) {
-              live.send({ type: "response.create", event_id: `continue_${Date.now()}` });
-            } else {
-              pendingDelegations.delete(delegationId);
-            }
+            toolQueue.completed(delegationId);
           }
           continue;
         }
@@ -342,28 +344,17 @@ export function registerLiveConversation(app: FastifyInstance, deps: Dependencie
           pendingAudio.splice(0).forEach((audio, index) => {
             live.send({ type: "session.input_audio.append", event_id: `buffered_${Date.now()}_${index}`, audio });
           });
+          if (!initialCommand) idleTimer = setTimeout(() => requestClose("no-input"), 15_000);
           send({ type: "ready", sessionId: event.session.id, sampleRate: PCM_RATE });
         } else if (event.type === "session.input_transcript.delta") {
           if (idleTimer) clearTimeout(idleTimer);
           lastTurnActivityAt = Date.now();
           inputTranscript += event.delta;
-          if (lastTranscriptRole !== "user") {
-            currentUserTurn = "";
-            visualSteerSentForTurn = false;
-          }
-          lastTranscriptRole = "user";
-          currentUserTurn += event.delta;
-          if (!visualSteerSentForTurn && needsVisualDelegation(currentUserTurn)) {
-            visualSteerSentForTurn = true;
-            live.send({ type: "session.instructions.append", event_id: `visual_${Date.now()}`, delegation_id: null, content: visualDelegationInstruction });
-            app.log.info({ transcript: currentUserTurn.slice(-240) }, "GPT-Live visual delegation guard applied");
-          }
           const lastAssistant = [...transcript].reverse().find(segment => segment.role === "assistant");
           if (lastAssistant && outputPlaybackUntil > Date.now()) lastAssistant.interrupted = true;
           appendLiveTranscript(transcript, "user", event.delta, event.start_ms, event.end_ms);
           send({ type: "inputTranscript", delta: event.delta, startMs: event.start_ms, endMs: event.end_ms });
         } else if (event.type === "session.output_transcript.delta") {
-          lastTranscriptRole = "assistant";
           delegationAnswered();
           lastTurnActivityAt = Date.now();
           outputTranscript += event.delta;
@@ -409,6 +400,8 @@ export function registerLiveConversation(app: FastifyInstance, deps: Dependencie
       deps.recordError(message);
       send({ type: "error", error: message });
     } finally {
+      closeRequested = true;
+      toolQueue.stop();
       if (idleTimer) clearTimeout(idleTimer);
       if (hardTimer) clearTimeout(hardTimer);
       if (delegationTimer) clearTimeout(delegationTimer);

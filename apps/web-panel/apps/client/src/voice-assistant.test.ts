@@ -1,6 +1,10 @@
-import { expect, it } from "vitest";
+import { expect, it, vi } from "vitest";
 import { delegatedCommandWithContext } from "./voice-delegation";
-import { looksLikeIncompleteVoiceTurn } from "./voice-turn";
+import { VoiceAssistantRuntime } from "./voice-assistant";
+import { defaultSettings } from "@walldeck/contracts";
+import { api } from "./api";
+vi.mock("./api", () => ({ api: { assistant: { run: vi.fn() } } }));
+vi.mock("./native", () => ({ nativeBridge: { available: false, call: vi.fn() } }));
 
 it("preserves earlier corrections when GPT-Live delegates after starting its reply", () => {
   const command = delegatedCommandWithContext("Muzyka do nauki. Nie, do pracy. Wybierz jedną i włącz.");
@@ -9,9 +13,16 @@ it("preserves earlier corrections when GPT-Live delegates after starting its rep
   expect(command).toContain("Wybierz jedną i włącz");
 });
 
-it("waits for a missing qualifier instead of delegating an incomplete voice turn", () => {
-  expect(looksLikeIncompleteVoiceTurn("Powiedz mi coś o psach rasy")).toBe(true);
-  expect(looksLikeIncompleteVoiceTurn("Pokaż temperaturę w")).toBe(true);
-  expect(looksLikeIncompleteVoiceTurn("Powiedz mi coś o psach rasy husky")).toBe(false);
-  expect(looksLikeIncompleteVoiceTurn("Opowiedz mi coś o psach")).toBe(false);
+it("does not invent a second delegation after a partial transcript or silence", async () => {
+  vi.useFakeTimers();
+  const run = vi.spyOn(api.assistant, "run");
+  try {
+    const runtime = new VoiceAssistantRuntime(defaultSettings.aiAssistant, { setState: vi.fn(), showAssistant: vi.fn(), hideAssistant: vi.fn() });
+    await (runtime as any).handleMessage({ type: "inputTranscript", delta: "Opowiedz o psach rasy" });
+    await vi.advanceTimersByTimeAsync(15_000);
+    expect(run).not.toHaveBeenCalled();
+    await (runtime as any).handleMessage({ type: "inputTranscript", delta: " husky" });
+    await vi.advanceTimersByTimeAsync(15_000);
+    expect(run).not.toHaveBeenCalled();
+  } finally { run.mockRestore(); vi.useRealTimers(); }
 });
