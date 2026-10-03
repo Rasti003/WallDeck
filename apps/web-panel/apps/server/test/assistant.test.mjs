@@ -39,6 +39,16 @@ test("internal assistant tools stay available while the public MCP endpoint is d
   assert.deepEqual(tools.map(item => item.name), [...mcpToolIds]);
 });
 
+test("invalid Canvas layout is returned to Luna for self-correction", async () => {
+  const tools = createAssistantAgentTools({}, structuredClone(defaultSettings.mcp.tools));
+  const canvas = tools.find(item => item.name === "show_assistant_canvas");
+  assert.ok(canvas && canvas.type === "function");
+  const output = await canvas.invoke({}, JSON.stringify({
+    title: "CO2", metrics: [{ label: "Salon", value: 1174 }], charts: [], bullets: [], images: [], sources: [],
+  }));
+  assert.match(String(output), /try again/i);
+});
+
 test("scheduled task prompt makes Luna choose quiet, spoken or conversational delivery", () => {
   const prompt = scheduledTaskPrompt("Ziemniaki", "Przypomnij o wstawieniu ziemniaków", "task");
   assert.match(prompt, /Domyślnie działaj cicho/);

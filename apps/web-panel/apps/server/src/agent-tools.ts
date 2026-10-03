@@ -10,7 +10,10 @@ export function createAssistantAgentTools(deps: AssistantToolDependencies, enabl
       description: definition.description,
       parameters: definition.input,
       execute: args => executeAssistantTool(id, args, deps, enabled),
-      errorFunction: null,
+      // Canvas is a presentation boundary, so malformed model-authored layout
+      // should be returned to the model for correction instead of failing the
+      // whole user request. Operational tools keep fail-fast behavior.
+      ...(id === "show_assistant_canvas" ? {} : { errorFunction: null }),
     });
   });
 }

@@ -151,7 +151,7 @@ export const assistantToolDefinitions = {
     run: ({ query }, deps) => deps.searchWeb(query),
   },
   show_assistant_canvas: {
-    description: "Pokazuje na tablecie uniwersalny Canvas. Użyj do odpowiedzi internetowych oraz zestawień wielu encji Home Assistant. Temperatury i CO₂ prezentuj jako duże metrics, a porównanie pomieszczeń także jako chart z wartościami liczbowymi. Zachowaj krótki summary i dołącz źródła wyszukiwania.",
+    description: "Pokazuje na tablecie uniwersalny Canvas. Użyj do odpowiedzi internetowych oraz zestawień wielu encji Home Assistant. Temperatury i CO₂ prezentuj jako duże metrics. Pole value w metric zawsze podawaj jako tekst, np. \"1174\". Chart twórz tylko dla co najmniej 2 dostępnych punktów liczbowych; dla jednego czujnika ustaw charts na pustą tablicę. tone może mieć wyłącznie wartość neutral, good, warning albo danger. Zachowaj krótki summary i dołącz źródła wyszukiwania.",
     input: assistantCanvasInputSchema, annotations: action(),
     run: (canvas, deps) => deps.showAssistantCanvas(canvas),
   },

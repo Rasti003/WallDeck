@@ -67,7 +67,7 @@ export class AssistantService {
     const provider = new OpenAIProvider({ apiKey });
     try {
       const tools = await this.options.getTools();
-      const instructions = `${settings.systemPrompt}\n\nGdy odpowiedź ma być pokazana na tablecie, użyj show_assistant_canvas. Pytania o wiele temperatur, CO₂ lub inne pomiary Home Assistant przedstaw jako duże metrics oraz chart porównujący pomieszczenia. Dla aktualnych informacji z internetu najpierw użyj search_web, a potem pokaż wynik w Canvas wraz ze źródłami i dostępnymi obrazami. Nie wymyślaj adresów URL ani wartości encji.`;
+      const instructions = `${settings.systemPrompt}\n\nGdy odpowiedź ma być pokazana na tablecie, użyj show_assistant_canvas. Pytania o temperatury, CO₂ lub inne pomiary Home Assistant przedstaw jako duże metrics. W metric pole value musi być tekstem. Chart wymaga co najmniej 2 dostępnych punktów liczbowych; przy jednym czujniku przekaż charts: []. Dla aktualnych informacji z internetu najpierw użyj search_web, a potem pokaż wynik w Canvas wraz ze źródłami i dostępnymi obrazami. Nie wymyślaj adresów URL ani wartości encji.`;
       const agent = new Agent({
         name: "WallDeck Assistant",
         instructions,
