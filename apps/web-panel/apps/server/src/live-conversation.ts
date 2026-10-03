@@ -14,6 +14,7 @@ type Dependencies = LiveToolDependencies & {
   usage: LiveVoiceUsageStore;
   speakerObserver: SpeakerObserverClient;
   onSpeakerObservation(observation: SpeakerObservation): void;
+  recordError(message: string): void;
 };
 
 type ClientMessage =
@@ -294,7 +295,9 @@ Music policy: Prośba typu „wybierz mi muzykę do nauki i puść” jest kompl
       }
     } catch (error) {
       app.log.error({ err: error }, "GPT-Live conversation failed");
-      send({ type: "error", error: error instanceof Error ? error.message : String(error) });
+      const message = error instanceof Error ? error.message : String(error);
+      deps.recordError(message);
+      send({ type: "error", error: message });
     } finally {
       if (idleTimer) clearTimeout(idleTimer);
       if (hardTimer) clearTimeout(hardTimer);

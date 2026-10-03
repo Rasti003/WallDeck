@@ -13,6 +13,7 @@ type Dependencies = {
   onSpeakerObservation(observation: SpeakerObservation): void;
   renderSpeechPcm(apiKey: string, text: string, settings: AiAssistantSettings): Promise<Buffer>;
   recordConversation(value: { source: "tablet-voice"; startedAt: string; transcript: string; result?: AiAssistantRunResult; error?: string }): Promise<void>;
+  recordError(message: string): void;
 };
 
 type ClientMessage = { type: "audio"; audio: string } | { type: "close" };
@@ -183,6 +184,7 @@ export function registerLunaConversation(app: FastifyInstance, deps: Dependencie
         send({ type: "closed", reason: "completed" });
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
+        deps.recordError(message);
         await deps.recordConversation({ source: "tablet-voice", startedAt: new Date(startedAt).toISOString(), transcript, result: assistantResult, error: message }).catch(() => undefined);
         send({ type: "error", error: message });
       } finally {

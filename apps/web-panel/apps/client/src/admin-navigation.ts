@@ -14,6 +14,7 @@ export const adminSections = [
   { id: "mcp", group: "System", label: "Narzędzia i MCP", icon: "⌘", description: "Uprawnienia funkcji asystenta i zewnętrzny endpoint MCP.", keywords: "integracje api narzędzia" },
   { id: "ha", group: "System", label: "Home Assistant", icon: "⌂", description: "Połączenie z domem, dashboard i encje na zdjęciach.", keywords: "ha token sensory overlay" },
   { id: "device", group: "System", label: "Urządzenie", icon: "▯", description: "Stan tabletu, uprawnienia Androida i czujniki.", keywords: "bateria sensory diagnostyka" },
+  { id: "diagnostics", group: "System", label: "Dziennik systemowy", icon: "≣", description: "Trwała historia błędów oraz aktywności tabletu.", keywords: "logi błędy zdarzenia aktywność tablet" },
   { id: "states", group: "System", label: "Mapa stanów", icon: "⋈", description: "Dokumentacja przejść i reguł działania panelu.", keywords: "diagnostyka stany przejścia" },
 ] as const;
 

@@ -13,6 +13,7 @@ import {
   aiAssistantSpeechInputSchema,
   alarmInputSchema,
   assistantTaskInputSchema,
+  diagnosticEntryInputSchema,
   deviceReportSchema,
   homeAssistantConfigInputSchema,
   notificationPreviewSchema,
@@ -26,6 +27,7 @@ import {
   type DeviceReport,
   type DeviceStatus,
   type SpeakerObservation,
+  type DiagnosticEntryInput,
 } from "@walldeck/contracts";
 import { HomeAssistantClient, HomeAssistantConfigStore } from "./home-assistant.js";
 import { registerMcpEndpoint } from "./mcp.js";
@@ -39,6 +41,7 @@ import { SpeakerObserverClient } from "./speaker-observer.js";
 import { listElevenLabsVoices, renderElevenLabsSpeech } from "./elevenlabs.js";
 import { AssistantHistoryStore } from "./assistant-history.js";
 import { ScheduleStore } from "./schedules.js";
+import { DiagnosticStore } from "./diagnostics.js";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const webRoot = path.resolve(here, "../../client/dist");
@@ -48,6 +51,8 @@ const settingsPath = path.join(runtimeRoot, "settings.json");
 const port = Number(process.env.PORT ?? 8080);
 
 await mkdir(runtimeRoot, { recursive: true });
+const diagnostics = new DiagnosticStore(path.join(runtimeRoot, "diagnostics.json"));
+const recordDiagnostic = (entry: DiagnosticEntryInput) => diagnostics.add(entry).catch(() => undefined);
 
 async function readSettings(): Promise<WallDeckSettings> {
   try {
@@ -72,6 +77,7 @@ const sockets = new Set<PanelSocket>();
 const panelSockets = new Set<PanelSocket>();
 const pendingPanelCommands = new Map<string, { resolve(value: unknown): void; reject(reason: Error): void; timer: ReturnType<typeof setTimeout> }>();
 const devices = new Map<string, DeviceReport & { lastSeen: string }>();
+const loggedBatteryLevels = new Map<string, number>();
 let weatherCache: { key: string; expiresAt: number; value: WeatherNow } | null = null;
 
 function deviceStatuses(): DeviceStatus[] {
@@ -87,8 +93,10 @@ function broadcast(message: unknown) {
 }
 
 function activateView(viewId: ViewId) {
+  const previousView = currentView;
   currentView = viewId;
   broadcast({ type: "view.activated", viewId });
+  if (previousView !== viewId) void recordDiagnostic({ level: "info", category: "tablet", title: "Zmiana ekranu", message: `${previousView} → ${viewId}` });
 }
 
 function panelCommand(name: string, args: Record<string, unknown>) {
@@ -103,8 +111,14 @@ function panelCommand(name: string, args: Record<string, unknown>) {
 }
 
 const haConfigStore = new HomeAssistantConfigStore(runtimeRoot);
+let lastHomeAssistantDiagnosticError = "";
 const homeAssistant = new HomeAssistantClient((event) => {
-  if (event.type === "status") broadcast({ type: "ha.statusChanged", status: homeAssistant.status() });
+  if (event.type === "status") {
+    const status = homeAssistant.status();
+    broadcast({ type: "ha.statusChanged", status });
+    if (status.lastError && status.lastError !== lastHomeAssistantDiagnosticError) void recordDiagnostic({ level: "error", category: "home-assistant", title: "Błąd Home Assistant", message: status.lastError });
+    lastHomeAssistantDiagnosticError = status.lastError ?? "";
+  }
   else broadcast({ type: "ha.stateChanged", entities: event.entities });
 });
 
@@ -143,7 +157,9 @@ schedules = new ScheduleStore(path.join(runtimeRoot, "schedules.json"), {
       const result = await assistant.execute(`${context} Wykonaj teraz zapisaną instrukcję: ${item.automationPrompt}`, settings.aiAssistant);
       await schedules.setAutomationResult(item.id, result.text);
     } catch (error) {
-      await schedules.setAutomationResult(item.id, `Błąd zadania: ${error instanceof Error ? error.message : String(error)}`, true);
+      const message = error instanceof Error ? error.message : String(error);
+      await schedules.setAutomationResult(item.id, `Błąd zadania: ${message}`, true);
+      void recordDiagnostic({ level: "error", category: "scheduler", title: "Błąd zadania asystenta", message: item.label, details: message });
     }
   },
 });
@@ -151,6 +167,20 @@ await schedules.load();
 
 app.get("/api/health", async () => ({ status: "ok", view: currentView }));
 app.get("/api/devices", async () => deviceStatuses());
+app.get<{ Querystring: { scope?: string; limit?: string } }>("/api/diagnostics", async (request) => {
+  const scope = request.query.scope === "errors" || request.query.scope === "activity" ? request.query.scope : "all";
+  return diagnostics.list(scope, Number(request.query.limit ?? 250));
+});
+app.delete<{ Querystring: { scope?: string } }>("/api/diagnostics", async (request) => {
+  const scope = request.query.scope === "errors" || request.query.scope === "activity" ? request.query.scope : "all";
+  await diagnostics.clear(scope); return { ok: true as const };
+});
+app.post("/api/diagnostics/client", async (request, reply) => {
+  const parsed = diagnosticEntryInputSchema.safeParse(request.body);
+  if (!parsed.success) return reply.code(400).send({ error: "Nieprawidłowy wpis diagnostyczny" });
+  const entry = await diagnostics.add({ ...parsed.data, category: "client" });
+  return reply.code(201).send({ ok: true as const, id: entry.id });
+});
 app.post("/api/notifications/preview", async (request, reply) => {
   const parsed = notificationPreviewSchema.safeParse(request.body);
   if (!parsed.success) return reply.code(400).send({ error: "Nieprawidłowa próbka powiadomienia" });
@@ -260,6 +290,7 @@ app.post("/api/assistant/run", async (request, reply) => {
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     await assistantHistory.add({ source: "admin-text", startedAt, transcript: parsed.data.message, error: message }).catch(() => undefined);
+    void recordDiagnostic({ level: "error", category: "assistant", title: "Błąd polecenia asystenta", message, details: `Źródło: konsola administratora` });
     return reply.code(502).send({ error: message });
   }
 });
@@ -305,7 +336,9 @@ app.post("/api/assistant/speech", async (request, reply) => {
       .header("x-walldeck-voice-provider", settings.voice.provider === "openai-live" ? "openai-tts-fallback" : "openai-tts")
       .send(audio);
   } catch (error) {
-    return reply.code(502).send({ error: error instanceof Error ? error.message : String(error) });
+    const message = error instanceof Error ? error.message : String(error);
+    void recordDiagnostic({ level: "error", category: "assistant", title: "Błąd generowania głosu", message });
+    return reply.code(502).send({ error: message });
   } finally {
     voiceBusy = false;
   }
@@ -338,7 +371,9 @@ app.post("/api/assistant/speech-pcm", async (request, reply) => {
       .header("x-walldeck-voice-provider", provider)
       .send(pcm);
   } catch (error) {
-    return reply.code(502).send({ error: error instanceof Error ? error.message : String(error) });
+    const message = error instanceof Error ? error.message : String(error);
+    void recordDiagnostic({ level: "error", category: "assistant", title: "Błąd głosu tabletu", message });
+    return reply.code(502).send({ error: message });
   } finally {
     voiceBusy = false;
   }
@@ -405,6 +440,7 @@ registerLiveConversation(app, {
     lastSpeakerObservation = observation;
     broadcast({ type: "assistant.speakerObserved", observation });
   },
+  recordError: message => { void recordDiagnostic({ level: "error", category: "assistant", title: "Błąd rozmowy GPT-Live", message }); },
 });
 
 registerLunaConversation(app, {
@@ -417,6 +453,7 @@ registerLunaConversation(app, {
     broadcast({ type: "assistant.speakerObserved", observation });
   },
   recordConversation: value => assistantHistory.add(value).then(() => undefined),
+  recordError: message => { void recordDiagnostic({ level: "error", category: "assistant", title: "Błąd rozmowy Luna", message }); },
   renderSpeechPcm: async (apiKey, text, settings) => {
     if (settings.voice.provider === "elevenlabs") {
       const elevenLabsApiKey = await elevenLabsKeyStore.load();
@@ -561,6 +598,8 @@ app.get("/api/events", { websocket: true }, (socket) => {
     devices: deviceStatuses(),
   }));
   let lastActivity = 0;
+  let lastLoggedActivity = 0;
+  let reportedDeviceId: string | null = null;
   socket.on("message", (raw: Buffer) => {
     if (raw.toString().length > 65_536) return;
     try {
@@ -568,13 +607,32 @@ app.get("/api/events", { websocket: true }, (socket) => {
       if (message.type === "panel.activity" && Date.now() - lastActivity > 400) {
         lastActivity = Date.now();
         broadcast({ type: "panel.activity" });
+        if (reportedDeviceId && Date.now() - lastLoggedActivity > 30_000) {
+          lastLoggedActivity = Date.now();
+          void recordDiagnostic({ level: "info", category: "tablet", title: "Aktywność na ekranie", message: "Wykryto interakcję użytkownika", deviceId: reportedDeviceId });
+        }
       } else if (message.type === "device.report") {
         const parsed = deviceReportSchema.safeParse(message.report);
         if (!parsed.success) return;
+        const firstReportOnSocket = reportedDeviceId === null;
+        const previous = devices.get(parsed.data.deviceId);
         const device = { ...parsed.data, lastSeen: new Date().toISOString() };
         devices.set(device.deviceId, device);
+        reportedDeviceId = device.deviceId;
         panelSockets.add(socket);
         broadcast({ type: "device.updated", device: { ...device, online: true } satisfies DeviceStatus });
+        if (!previous || firstReportOnSocket) void recordDiagnostic({ level: "info", category: "tablet", title: "Tablet online", message: `${device.manufacturer} ${device.model} · WallDeck ${device.appVersion.name}`, deviceId: device.deviceId });
+        else {
+          if (previous.battery.powerConnected !== device.battery.powerConnected) void recordDiagnostic({ level: "info", category: "tablet", title: device.battery.powerConnected ? "Podłączono zasilanie" : "Odłączono zasilanie", message: `Bateria ${device.battery.percent}%`, deviceId: device.deviceId });
+          if (previous.battery.charging !== device.battery.charging) void recordDiagnostic({ level: "info", category: "tablet", title: device.battery.charging ? "Rozpoczęto ładowanie" : "Zakończono ładowanie", message: `Bateria ${device.battery.percent}%`, deviceId: device.deviceId });
+          if (previous.appVersion.code !== device.appVersion.code) void recordDiagnostic({ level: "info", category: "tablet", title: "Nowa wersja aplikacji", message: `${previous.appVersion.name} → ${device.appVersion.name}`, deviceId: device.deviceId });
+        }
+        const loggedBattery = loggedBatteryLevels.get(device.deviceId);
+        if (loggedBattery == null) loggedBatteryLevels.set(device.deviceId, device.battery.percent);
+        else if (Math.abs(loggedBattery - device.battery.percent) >= 5) {
+          void recordDiagnostic({ level: device.battery.percent <= 15 ? "warning" : "info", category: "tablet", title: "Zmiana poziomu baterii", message: `${loggedBattery}% → ${device.battery.percent}%`, deviceId: device.deviceId });
+          loggedBatteryLevels.set(device.deviceId, device.battery.percent);
+        }
       } else if (message.type === "mcp.commandResult" && typeof message.id === "string") {
         const pending = pendingPanelCommands.get(message.id);
         if (!pending) return;
@@ -585,9 +643,15 @@ app.get("/api/events", { websocket: true }, (socket) => {
       }
     } catch { /* Ignore malformed activity messages. */ }
   });
-  socket.on("close", () => { sockets.delete(socket); panelSockets.delete(socket); });
+  socket.on("close", () => {
+    sockets.delete(socket); panelSockets.delete(socket);
+    if (reportedDeviceId) void recordDiagnostic({ level: "warning", category: "tablet", title: "Połączenie tabletu przerwane", message: "WebSocket panelu został zamknięty", deviceId: reportedDeviceId });
+  });
 });
 
+app.addHook("onError", async (request, _reply, error) => {
+  await recordDiagnostic({ level: "error", category: "server", title: "Błąd serwera", message: `${request.method} ${request.url.split("?")[0]}`, details: error.stack ?? error.message });
+});
 app.addHook("onClose", async () => { schedules.stop(); homeAssistant.stop(); });
 
 try {
@@ -597,3 +661,4 @@ try {
 }
 
 await app.listen({ port, host: "0.0.0.0" });
+void recordDiagnostic({ level: "info", category: "server", title: "WallDeck uruchomiony", message: `Serwer nasłuchuje na porcie ${port}` });

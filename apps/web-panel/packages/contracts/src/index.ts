@@ -378,6 +378,18 @@ export const snoozeInputSchema = z.object({ minutes: z.number().int().min(1).max
 export type TimerInput = z.infer<typeof timerInputSchema>;
 export type AlarmInput = z.infer<typeof alarmInputSchema>;
 export type AssistantTaskInput = z.infer<typeof assistantTaskInputSchema>;
+export const diagnosticLevelSchema = z.enum(["info", "warning", "error"]);
+export const diagnosticCategorySchema = z.enum(["tablet", "assistant", "scheduler", "home-assistant", "client", "server"]);
+export const diagnosticEntryInputSchema = z.object({
+  level: diagnosticLevelSchema,
+  category: diagnosticCategorySchema,
+  title: z.string().trim().min(1).max(140),
+  message: z.string().trim().min(1).max(2_000),
+  details: z.string().trim().max(6_000).optional(),
+  deviceId: z.string().trim().max(128).optional(),
+});
+export type DiagnosticEntryInput = z.infer<typeof diagnosticEntryInputSchema>;
+export interface DiagnosticEntry extends DiagnosticEntryInput { id: string; timestamp: string; }
 export interface ScheduledItem {
   id: string;
   kind: "timer" | "alarm" | "task";

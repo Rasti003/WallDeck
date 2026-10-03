@@ -8,6 +8,7 @@ import type {
   ElevenLabsVoice,
   SpeakerObservation,
   DeviceStatus,
+  DiagnosticEntry,
   HomeAssistantConfigInput,
   HomeAssistantEntity,
   HomeAssistantSelectedState,
@@ -27,11 +28,18 @@ import type {
   WallDeckSettings,
   WeatherNow,
 } from "@walldeck/contracts";
+import { reportClientError } from "./client-diagnostics";
 
 async function json<T>(url: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(url, init);
+  let response: Response;
+  try { response = await fetch(url, init); }
+  catch (error) {
+    if (!url.startsWith("/api/diagnostics")) reportClientError("Błąd połączenia z API", `${init?.method ?? "GET"} ${url.split("?")[0]}`, error instanceof Error ? error.message : String(error));
+    throw error;
+  }
   if (!response.ok) {
     const body = await response.json().catch(() => null) as { error?: string } | null;
+    if (!url.startsWith("/api/diagnostics")) reportClientError("Błąd odpowiedzi API", `${init?.method ?? "GET"} ${url.split("?")[0]} · ${response.status}`, body?.error);
     throw new Error(body?.error ?? `${response.status} ${response.statusText}`);
   }
   return response.json() as Promise<T>;
@@ -39,6 +47,10 @@ async function json<T>(url: string, init?: RequestInit): Promise<T> {
 
 export const api = {
   devices: () => json<DeviceStatus[]>("/api/devices"),
+  diagnostics: {
+    list: () => json<DiagnosticEntry[]>("/api/diagnostics?scope=all&limit=1000", { cache: "no-store" }),
+    clear: (scope: "errors" | "activity") => json<{ ok: true }>(`/api/diagnostics?scope=${scope}`, { method: "DELETE" }),
+  },
   photos: () => json<PhotoItem[]>("/api/photos"),
   photoSyncStatus: () => json<PhotoSyncStatus>("/api/photos/sync"),
   syncPhotos: () => json<PhotoSyncStatus>("/api/photos/sync", { method: "POST" }),

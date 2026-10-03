@@ -5,6 +5,7 @@ describe("admin navigation", () => {
   it("restores a bookmarked subsection and safely handles unknown paths", () => {
     expect(sectionFromPath("/admin/voice/")).toBe("voice");
     expect(sectionFromPath("/admin/history")).toBe("history");
+    expect(sectionFromPath("/admin/diagnostics")).toBe("diagnostics");
     expect(sectionFromPath("/admin")).toBe("overview");
     expect(sectionFromPath("/admin/not-a-page")).toBe("overview");
     expect(sectionPath("voice")).toBe("/admin/voice");
@@ -14,6 +15,7 @@ describe("admin navigation", () => {
     expect(matchingSections("GLOS").map(item => item.id)).toContain("voice");
     expect(matchingSections("zdjecia").map(item => item.id)).toContain("photos");
     expect(matchingSections("glos budzet").map(item => item.id)).toEqual(["voice"]);
+    expect(matchingSections("dziennik bledow").map(item => item.id)).toEqual(["diagnostics"]);
     expect(matchingSections("nieistniejaca funkcja")).toEqual([]);
   });
 });

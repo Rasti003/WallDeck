@@ -6,6 +6,9 @@ import "./styles.css";
 import "./photos/photos.css";
 import "./notifications.css";
 import "./admin.css";
+import { installClientDiagnostics } from "./client-diagnostics";
+
+installClientDiagnostics();
 import { Notifications } from "./Notifications";
 
 const isAdmin = location.pathname === "/admin" || location.pathname.startsWith("/admin/");

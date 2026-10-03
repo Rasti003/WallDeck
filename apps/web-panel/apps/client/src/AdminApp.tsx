@@ -20,6 +20,7 @@ import { createOverlayItemId } from "./overlay-item-id";
 import { McpAdmin } from "./McpAdmin";
 import { MusicAdmin } from "./MusicAdmin";
 import { AiAssistantAdmin } from "./AiAssistantAdmin";
+import { SystemLogAdmin } from "./SystemLogAdmin";
 
 import { adminSections, matchingSections, sectionFromPath, sectionPath, type AdminSection } from "./admin-navigation";
 
@@ -225,6 +226,7 @@ export function AdminApp() {
 
         {(["ai", "voice", "console", "history"] as string[]).includes(section) && <AiAssistantAdmin page={section as "ai" | "voice" | "console" | "history"} settings={settings} setSettings={setSettings} />}
         {section === "mcp" && <McpAdmin settings={settings} setSettings={setSettings} save={save} status={status} />}
+        {section === "diagnostics" && <SystemLogAdmin />}
 
         {section === "device" && <section className="device-admin">
           {!device && <article className="admin-card device-empty">
