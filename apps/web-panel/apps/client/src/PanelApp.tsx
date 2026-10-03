@@ -82,6 +82,7 @@ export function PanelApp({ forcedView }: { forcedView?: ViewId }) {
       const message = JSON.parse(event.data) as { type: string; viewId?: ViewId; settings?: WallDeckSettings; items?: ScheduledItem[]; item?: ScheduledItem; id?: string; command?: string; args?: Record<string, unknown> };
       if (!forcedView && (message.type === "snapshot" || message.type === "view.activated") && message.viewId) {
         const nextView = pinnedTimerId.current && message.viewId !== "timers" ? "timers" : message.viewId;
+        if (nextView === "assistant-canvas") voiceReturnView.current = "assistant-canvas";
         setViewId(nextView);
         if (nextView !== message.viewId) void api.activateView(nextView);
         if (nextView !== "assistant-expressive") setAssistantIdleTransition(false);

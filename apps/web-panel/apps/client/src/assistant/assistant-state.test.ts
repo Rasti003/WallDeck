@@ -23,7 +23,7 @@ describe("assistant state machine", () => {
     expect(assistantEntryState(null, "curious")).toBe("curious");
   });
   it("migrates existing settings and accepts the new view in routing", () => {
-    expect(settingsSchema.parse({ ...defaultSettings, viewBrightness: { photos: .3, ha: .4 } }).viewBrightness).toEqual({ photos: .3, ha: .4, music: .65, timers: .75, "assistant-expressive": .65 });
+    expect(settingsSchema.parse({ ...defaultSettings, viewBrightness: { photos: .3, ha: .4 } }).viewBrightness).toEqual({ photos: .3, ha: .4, music: .65, timers: .75, "assistant-expressive": .65, "assistant-canvas": .75 });
     expect(viewIdSchema.parse("assistant-demo")).toBe("assistant-expressive");
     const migrated = settingsSchema.parse({ ...defaultSettings, viewRouter: { ...defaultSettings.viewRouter, tapAction: { enabled: true, sourceView: "photos", targetView: "assistant-demo" } } });
     expect(migrated.viewRouter.tapAction.targetView).toBe("assistant-expressive");

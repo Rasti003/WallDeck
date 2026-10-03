@@ -260,7 +260,7 @@ Music policy: Prośba typu „wybierz mi muzykę do nauki i puść” jest kompl
                 type: "responses",
                 responses: {
                   model: settings.primaryModel,
-                  instructions: `${settings.systemPrompt}\nJesteś backendem narzędziowym rozmowy głosowej. Masz pełny kontekst rozmowy. Wykonuj proste, zatwierdzone działania od razu. Krótkie odpowiedzi typu „tak” interpretuj w kontekście ostatniego pytania asystenta. Raportuj sukces dopiero po potwierdzeniu narzędzia.`,
+                  instructions: `${settings.systemPrompt}\nJesteś backendem narzędziowym rozmowy głosowej. Masz pełny kontekst rozmowy. Wykonuj proste, zatwierdzone działania od razu. Krótkie odpowiedzi typu „tak” interpretuj w kontekście ostatniego pytania asystenta. Raportuj sukces dopiero po potwierdzeniu narzędzia. Aktualne odpowiedzi internetowe oraz zestawienia wielu temperatur, CO₂ i innych encji Home Assistant pokazuj narzędziem show_assistant_canvas; używaj dużych metrics, wykresu porównawczego i prawdziwych źródeł.`,
                   tools: [...liveTools(enabledTools), { type: "web_search" as const }],
                   tool_choice: "auto",
                   parallel_tool_calls: false,

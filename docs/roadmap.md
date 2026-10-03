@@ -144,3 +144,13 @@
 - [ ] Rejestracja nazwanych profili domowników i test progów na rzeczywistych głosach.
 - [ ] Dopiero po walidacji: bramka profilu dla kalendarza, pamięci i innych prywatnych narzędzi.
 - [ ] Opcjonalny benchmark `pyannote.audio`; pozostaje poza domyślnym obrazem i torem wykonawczym.
+
+## Canvas asystenta — 2026-10-03
+
+- [x] Uniwersalny, animowany widok odpowiedzi z kaflami, wykresami porównawczymi, obrazami, punktami i źródłami.
+- [x] Wspólne narzędzie prezentacji dla GPT‑Live, Luny i MCP.
+- [x] Wyszukiwanie internetowe przez Responses API `web_search` z cytowaniami i wynikami obrazowymi.
+- [x] Prezentacja wielu bieżących temperatur, CO₂ i innych encji HA jako dużych wartości oraz wykresu pomieszczeń.
+- [ ] Historia encji HA w czasie i wykresy liniowe z wyborem zakresu.
+- [ ] Kontrolowane proxy obrazów z limitami pobierania i ochroną SSRF.
+- [ ] Interaktywne akcje Canvas: minutnik, przypomnienie, odtworzenie i potwierdzenie działania.

@@ -4,7 +4,7 @@ export type { MusicState, AudioOutputState, MusicController, SpotifyItem, Spotif
 export const assistantStates = ["idle", "attention", "listening", "thinking", "speaking", "success", "error", "sleep", "curious", "uncertain", "confirm", "surprised", "wink", "laughing", "dancing"] as const;
 export const assistantStateSchema = z.enum(assistantStates);
 export type AssistantState = z.infer<typeof assistantStateSchema>;
-export const mcpToolIds = ["get_status", "get_current_time", "show_view", "show_assistant_mood", "control_music", "search_spotify", "get_spotify_queue", "list_spotify_playlists", "play_spotify_item", "add_spotify_to_queue", "set_tablet_volume", "adjust_tablet_volume", "send_notification", "speak_on_tablet", "start_live_conversation", "set_view_brightness", "search_home_entities", "get_home_entity", "list_schedules", "create_timer", "create_alarm", "create_assistant_task", "set_alarm_enabled", "cancel_schedule", "dismiss_schedule", "snooze_schedule"] as const;
+export const mcpToolIds = ["get_status", "get_current_time", "show_view", "show_assistant_mood", "search_web", "show_assistant_canvas", "control_music", "search_spotify", "get_spotify_queue", "list_spotify_playlists", "play_spotify_item", "add_spotify_to_queue", "set_tablet_volume", "adjust_tablet_volume", "send_notification", "speak_on_tablet", "start_live_conversation", "set_view_brightness", "search_home_entities", "get_home_entity", "list_schedules", "create_timer", "create_alarm", "create_assistant_task", "set_alarm_enabled", "cancel_schedule", "dismiss_schedule", "snooze_schedule"] as const;
 export const mcpToolIdSchema = z.enum(mcpToolIds);
 export type McpToolId = z.infer<typeof mcpToolIdSchema>;
 export const assistantToolCatalog = {
@@ -12,6 +12,8 @@ export const assistantToolCatalog = {
   get_current_time: { label: "Aktualna data i godzina", summary: "Dokładny czas lokalny w strefie Europe/Warsaw oraz czas UTC.", kind: "odczyt" },
   show_view: { label: "Przełączanie widoku", summary: "Zdjęcia, Dom, Music lub ekran asystenta.", kind: "akcja" },
   show_assistant_mood: { label: "Mimika asystenta", summary: "Pokazanie konkretnego nastroju lub stanu twarzy.", kind: "akcja" },
+  search_web: { label: "Wyszukiwanie internetu", summary: "Aktualne informacje, źródła i obrazy przez OpenAI web search.", kind: "odczyt" },
+  show_assistant_canvas: { label: "Canvas asystenta", summary: "Czytelna prezentacja odpowiedzi, pomiarów, wykresów, zdjęć i źródeł.", kind: "akcja" },
   control_music: { label: "Sterowanie muzyką", summary: "Play, pauza, następny, poprzedni, seek, shuffle i repeat.", kind: "akcja" },
   search_spotify: { label: "Wyszukiwanie Spotify", summary: "Utwory, albumy, artyści, playlisty i podcasty.", kind: "odczyt" },
   get_spotify_queue: { label: "Kolejka Spotify", summary: "Aktualnie odtwarzany element i kolejne pozycje.", kind: "odczyt" },
@@ -42,6 +44,8 @@ export const mcpSettingsSchema = z.object({
     get_current_time: z.boolean().default(true),
     show_view: z.boolean().default(true),
     show_assistant_mood: z.boolean().default(true),
+    search_web: z.boolean().default(true),
+    show_assistant_canvas: z.boolean().default(true),
     control_music: z.boolean().default(true),
     search_spotify: z.boolean().default(true),
     get_spotify_queue: z.boolean().default(true),
@@ -59,7 +63,7 @@ export const mcpSettingsSchema = z.object({
     list_schedules: z.boolean().default(true), create_timer: z.boolean().default(true), create_alarm: z.boolean().default(true), create_assistant_task: z.boolean().default(true),
     set_alarm_enabled: z.boolean().default(true), cancel_schedule: z.boolean().default(true), dismiss_schedule: z.boolean().default(true), snooze_schedule: z.boolean().default(true),
   }).default({
-    get_status: true, get_current_time: true, show_view: true, show_assistant_mood: true, control_music: true, search_spotify: true, get_spotify_queue: true, list_spotify_playlists: true, play_spotify_item: true, add_spotify_to_queue: true,
+    get_status: true, get_current_time: true, show_view: true, show_assistant_mood: true, search_web: true, show_assistant_canvas: true, control_music: true, search_spotify: true, get_spotify_queue: true, list_spotify_playlists: true, play_spotify_item: true, add_spotify_to_queue: true,
     set_tablet_volume: true, adjust_tablet_volume: true, send_notification: true, speak_on_tablet: true, start_live_conversation: true, set_view_brightness: true,
     search_home_entities: true, get_home_entity: true,
     list_schedules: true, create_timer: true, create_alarm: true, create_assistant_task: true, set_alarm_enabled: true, cancel_schedule: true, dismiss_schedule: true, snooze_schedule: true,
@@ -67,7 +71,7 @@ export const mcpSettingsSchema = z.object({
 }).default({
   enabled: false,
   tools: {
-    get_status: true, get_current_time: true, show_view: true, show_assistant_mood: true, control_music: true, search_spotify: true, get_spotify_queue: true, list_spotify_playlists: true, play_spotify_item: true, add_spotify_to_queue: true,
+    get_status: true, get_current_time: true, show_view: true, show_assistant_mood: true, search_web: true, show_assistant_canvas: true, control_music: true, search_spotify: true, get_spotify_queue: true, list_spotify_playlists: true, play_spotify_item: true, add_spotify_to_queue: true,
     set_tablet_volume: true, adjust_tablet_volume: true, send_notification: true, speak_on_tablet: true, start_live_conversation: true, set_view_brightness: true,
     search_home_entities: true, get_home_entity: true,
     list_schedules: true, create_timer: true, create_alarm: true, create_assistant_task: true, set_alarm_enabled: true, cancel_schedule: true, dismiss_schedule: true, snooze_schedule: true,
@@ -264,7 +268,7 @@ export const ambientSleepSchema = z.object({
   path: ["homeAssistantResetAbove"],
 }).default({ enabled: true, source: "home-assistant", homeAssistantEntityId: null, homeAssistantSleepBelow: 5, homeAssistantResetAbove: 15, sleepEntryDelaySeconds: 1.6, sleepBelowLux: 5, resetAboveLux: 15, cameraEnabled: false, cameraSleepBelowPercent: 5, cameraResetAbovePercent: 15, cameraSampleSeconds: 30 });
 
-export const viewIdSchema = z.preprocess(value => value === "assistant-demo" ? "assistant-expressive" : value, z.enum(["photos", "ha", "assistant-expressive", "music", "timers"]));
+export const viewIdSchema = z.preprocess(value => value === "assistant-demo" ? "assistant-expressive" : value, z.enum(["photos", "ha", "assistant-expressive", "assistant-canvas", "music", "timers"]));
 export type ViewId = z.infer<typeof viewIdSchema>;
 
 export const viewRouterSettingsSchema = z.object({
@@ -306,7 +310,7 @@ export const settingsSchema = z.object({
   }).default({ normal: { durationSeconds: 5, sound: "none" }, alarm: { persistent: true, durationSeconds: 30, sound: "alarm" }, volume: .35, ttsEnabled: false }),
   mcp: mcpSettingsSchema,
   aiAssistant: aiAssistantSettingsSchema,
-  tabletMenu: z.object({ enabled: z.boolean().default(true), showHandle: z.boolean().default(false), views: z.array(z.enum(["photos", "ha", "music", "assistant-expressive", "timers"])).min(1).max(5).refine(v => new Set(v).size === v.length).default(["photos", "ha", "timers", "music", "assistant-expressive"]) }).default({ enabled: true, showHandle: false, views: ["photos", "ha", "timers", "music", "assistant-expressive"] }),
+  tabletMenu: z.object({ enabled: z.boolean().default(true), showHandle: z.boolean().default(false), views: z.array(z.enum(["photos", "ha", "music", "assistant-expressive", "assistant-canvas", "timers"])).min(1).max(6).refine(v => new Set(v).size === v.length).default(["photos", "ha", "timers", "music", "assistant-expressive"]) }).default({ enabled: true, showHandle: false, views: ["photos", "ha", "timers", "music", "assistant-expressive"] }),
   music: z.object({ clientId: z.string().trim().regex(/^([a-fA-F0-9]{32})?$/).default("") }).default({ clientId: "" }),
   photoIntervalSeconds: z.number().int().min(10).max(3600),
   transitionSeconds: z.number().min(0.3).max(5),
@@ -315,8 +319,9 @@ export const settingsSchema = z.object({
     ha: z.number().min(0.05).max(1).default(0.85),
     music: z.number().min(0.05).max(1).default(0.65),
     "assistant-expressive": z.number().min(0.05).max(1).default(0.65),
+    "assistant-canvas": z.number().min(0.05).max(1).default(0.75),
     timers: z.number().min(0.05).max(1).default(0.75),
-  }).default({ photos: 0.75, ha: 0.85, music: 0.65, "assistant-expressive": 0.65, timers: 0.75 }),
+  }).default({ photos: 0.75, ha: 0.85, music: 0.65, "assistant-expressive": 0.65, "assistant-canvas": 0.75, timers: 0.75 }),
   viewRouter: viewRouterSettingsSchema,
   assistantBrightness: assistantBrightnessSchema,
   ambientSleep: ambientSleepSchema,
@@ -345,7 +350,7 @@ export const defaultSettings: WallDeckSettings = {
   music: { clientId: "" },
   photoIntervalSeconds: 30,
   transitionSeconds: 1.4,
-  viewBrightness: { photos: 0.75, ha: 0.85, music: 0.65, "assistant-expressive": 0.65, timers: 0.75 },
+  viewBrightness: { photos: 0.75, ha: 0.85, music: 0.65, "assistant-expressive": 0.65, "assistant-canvas": 0.75, timers: 0.75 },
   assistantBrightness: { globalEnabled: true, overrides: { sleep: .05 } },
   ambientSleep: { enabled: true, source: "home-assistant", homeAssistantEntityId: null, homeAssistantSleepBelow: 5, homeAssistantResetAbove: 15, sleepEntryDelaySeconds: 1.6, sleepBelowLux: 5, resetAboveLux: 15, cameraEnabled: false, cameraSleepBelowPercent: 5, cameraResetAbovePercent: 15, cameraSampleSeconds: 30 },
   viewRouter: {
@@ -437,6 +442,31 @@ export const diagnosticEntryInputSchema = z.object({
 });
 export type DiagnosticEntryInput = z.infer<typeof diagnosticEntryInputSchema>;
 export interface DiagnosticEntry extends DiagnosticEntryInput { id: string; timestamp: string; }
+export const assistantCanvasMetricSchema = z.object({
+  label: z.string().trim().min(1).max(80), value: z.string().trim().min(1).max(40),
+  unit: z.string().trim().max(20).optional(), note: z.string().trim().max(100).optional(),
+  tone: z.enum(["neutral", "good", "warning", "danger"]).default("neutral"),
+});
+export const assistantCanvasChartSchema = z.object({
+  title: z.string().trim().min(1).max(100), unit: z.string().trim().max(20).optional(),
+  points: z.array(z.object({ label: z.string().trim().min(1).max(50), value: z.number().finite() })).min(2).max(16),
+});
+export const assistantCanvasImageSchema = z.object({
+  url: z.string().url().max(2_000).refine(value => value.startsWith("https://"), "Obraz musi używać HTTPS"), alt: z.string().trim().min(1).max(180),
+  caption: z.string().trim().max(180).optional(), sourceUrl: z.string().url().max(2_000).optional(),
+});
+export const assistantCanvasSourceSchema = z.object({ title: z.string().trim().min(1).max(180), url: z.string().url().max(2_000) });
+export const assistantCanvasInputSchema = z.object({
+  eyebrow: z.string().trim().max(50).optional(), title: z.string().trim().min(1).max(140),
+  summary: z.string().trim().max(1_200).optional(),
+  metrics: z.array(assistantCanvasMetricSchema).max(12).default([]),
+  charts: z.array(assistantCanvasChartSchema).max(4).default([]),
+  bullets: z.array(z.string().trim().min(1).max(300)).max(10).default([]),
+  images: z.array(assistantCanvasImageSchema).max(6).default([]),
+  sources: z.array(assistantCanvasSourceSchema).max(10).default([]),
+});
+export type AssistantCanvasInput = z.infer<typeof assistantCanvasInputSchema>;
+export interface AssistantCanvasDocument extends AssistantCanvasInput { id: string; updatedAt: string; }
 export interface ScheduledItem {
   id: string;
   kind: "timer" | "alarm" | "task";

@@ -4,6 +4,7 @@ import type {
   AiAssistantRunResult,
   AiAssistantConversationEntry,
   AiAssistantSettings,
+  AssistantCanvasDocument,
   AiAssistantStatus,
   ElevenLabsVoice,
   SpeakerObservation,
@@ -114,6 +115,12 @@ export const api = {
     action: (uri: string, action: "play" | "queue") => json<unknown>("/api/spotify/action", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ uri, action }) }),
   },
   assistant: {
+    canvas: async () => {
+      const response = await fetch("/api/assistant/canvas", { cache: "no-store" });
+      if (response.status === 204) return null;
+      if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
+      return response.json() as Promise<AssistantCanvasDocument>;
+    },
     config: () => json<{ settings: AiAssistantSettings; status: AiAssistantStatus }>("/api/assistant/config"),
     save: (config: AiAssistantConfigInput) => json<{ settings: AiAssistantSettings; status: AiAssistantStatus }>("/api/assistant/config", {
       method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify(config),

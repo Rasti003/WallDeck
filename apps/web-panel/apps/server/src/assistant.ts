@@ -67,9 +67,10 @@ export class AssistantService {
     const provider = new OpenAIProvider({ apiKey });
     try {
       const tools = await this.options.getTools();
+      const instructions = `${settings.systemPrompt}\n\nGdy odpowiedź ma być pokazana na tablecie, użyj show_assistant_canvas. Pytania o wiele temperatur, CO₂ lub inne pomiary Home Assistant przedstaw jako duże metrics oraz chart porównujący pomieszczenia. Dla aktualnych informacji z internetu najpierw użyj search_web, a potem pokaż wynik w Canvas wraz ze źródłami i dostępnymi obrazami. Nie wymyślaj adresów URL ani wartości encji.`;
       const agent = new Agent({
         name: "WallDeck Assistant",
-        instructions: settings.systemPrompt,
+        instructions,
         model,
         modelSettings: { reasoning: { effort: reasoning }, store: false },
         tools,
@@ -81,7 +82,7 @@ export class AssistantService {
       const text = typeof result.finalOutput === "string" ? result.finalOutput.trim() : "";
       if (!text) throw new Error("Model nie zwrócił odpowiedzi");
       const toolCalls = collectToolTrace(result.newItems);
-      return { text, model, escalated: false, toolCalls, modelTurns: [{ model, input: message, instructions: settings.systemPrompt, output: text, toolCalls }], durationMs: 0 };
+      return { text, model, escalated: false, toolCalls, modelTurns: [{ model, input: message, instructions, output: text, toolCalls }], durationMs: 0 };
     } finally {
       await provider.close().catch(() => undefined);
     }

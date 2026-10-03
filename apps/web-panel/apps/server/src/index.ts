@@ -28,6 +28,8 @@ import {
   type DeviceStatus,
   type SpeakerObservation,
   type DiagnosticEntryInput,
+  type AssistantCanvasDocument,
+  type AssistantCanvasInput,
 } from "@walldeck/contracts";
 import { HomeAssistantClient, HomeAssistantConfigStore } from "./home-assistant.js";
 import { registerMcpEndpoint } from "./mcp.js";
@@ -44,6 +46,7 @@ import { listElevenLabsVoices, renderElevenLabsSpeech } from "./elevenlabs.js";
 import { AssistantHistoryStore } from "./assistant-history.js";
 import { ScheduleStore } from "./schedules.js";
 import { DiagnosticStore } from "./diagnostics.js";
+import { searchWeb } from "./web-search.js";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const webRoot = path.resolve(here, "../../client/dist");
@@ -74,6 +77,7 @@ async function writeSettingsValue(settings: WallDeckSettings): Promise<WallDeckS
 }
 
 let currentView: ViewId = "photos";
+let assistantCanvas: AssistantCanvasDocument | null = null;
 type PanelSocket = { send(data: string): void; readyState: number };
 const sockets = new Set<PanelSocket>();
 const panelSockets = new Set<PanelSocket>();
@@ -443,6 +447,18 @@ const assistantToolDependencies = {
   homeAssistantStatus: () => homeAssistant.status(),
   searchHomeEntities: (query?: string) => homeAssistant.searchEntities(query),
   homeEntity: (entityId: string) => homeAssistant.entity(entityId),
+  searchWeb: async (query: string) => {
+    const apiKey = await openAiKeyStore.load();
+    if (!apiKey) throw new Error("Najpierw zapisz klucz OpenAI API");
+    const settings = (await readSettings()).aiAssistant;
+    return searchWeb(apiKey, settings.primaryModel, query);
+  },
+  showAssistantCanvas: (canvas: AssistantCanvasInput) => {
+    assistantCanvas = { ...canvas, id: randomUUID(), updatedAt: new Date().toISOString() };
+    broadcast({ type: "assistant.canvas", canvas: assistantCanvas });
+    activateView("assistant-canvas");
+    return { ok: true, canvasId: assistantCanvas.id };
+  },
   spotifyStatus: () => spotify.status(),
   searchSpotify: (query: string, types?: import("@walldeck/contracts").SpotifyItem["type"][]) => spotify.search(query, types),
   spotifyQueue: () => spotify.queue(),
@@ -554,9 +570,11 @@ app.get("/api/views", async () => ({ current: currentView, available: [
   { id: "photos", name: "Album zdjęć" },
   { id: "ha", name: "Home Assistant" },
   { id: "assistant-expressive", name: "Asystent — ekspresyjny" },
+  { id: "assistant-canvas", name: "Asystent — Canvas" },
   { id: "music", name: "Music · Spotify" },
   { id: "timers", name: "Czas · minutniki i budziki" },
 ] }));
+app.get("/api/assistant/canvas", async (_request, reply) => assistantCanvas ?? reply.code(204).send());
 app.post("/api/views/activate", async (request, reply) => {
   const parsed = viewIdSchema.safeParse((request.body as { viewId?: unknown } | null)?.viewId);
   if (!parsed.success) return reply.code(400).send({ error: "Nieznany widok" });
@@ -639,6 +657,7 @@ app.get("/api/events", { websocket: true }, (socket) => {
     viewId: currentView,
     homeAssistant: homeAssistant.status(),
     homeAssistantStates: homeAssistant.selectedStates(),
+    assistantCanvas,
     devices: deviceStatuses(),
   }));
   let lastActivity = 0;

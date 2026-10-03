@@ -83,3 +83,9 @@ Istniejący prototyp API nadal zakłada zaufaną sieć LAN; funkcje admina nie s
 # Metadane zdjęć — 2026-09-28
 
 Odczyt EXIF/IPTC/XMP odbywa się lokalnie na serwerze. Endpoint metadanych zwraca tylko datę wykonania i podpis miejsca (lub zaokrąglone współrzędne), bez pełnego EXIF, numerów seryjnych aparatu i prywatnego źródła albumu. Brak wysyłania GPS do usług zewnętrznych. Podpis renderowany jako tekst React, bez HTML.
+
+# Canvas asystenta — 2026-10-03
+
+Canvas przyjmuje wyłącznie dane zgodne ze wspólnym schematem i renderuje je jako komponenty React; model nie może dostarczyć HTML, JavaScriptu ani stylów. Adresy obrazów wymagają HTTPS, obrazy są ładowane bez nagłówka Referer, a błąd pobrania usuwa wyłącznie wadliwą kartę. Kliknięcie źródła pozostaje jawną akcją użytkownika. Zdalny serwer obrazu nadal widzi adres sieciowy klienta, dlatego docelowy wariant wymagający pełnej prywatności powinien użyć kontrolowanego proxy obrazów z ochroną SSRF i limitem rozmiaru.
+
+`search_web` wysyła zapytanie do hostowanego narzędzia OpenAI web search i może przekazać dostawcy treść pytania. Odpowiedź, cytowania i metadane obrazów trafiają do śladu narzędzia w prywatnej historii asystenta. Narzędzie korzysta z tego samego szyfrowanego klucza OpenAI co pozostałe tory i nie przekazuje go do klienta.

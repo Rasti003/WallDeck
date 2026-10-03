@@ -36,6 +36,11 @@ describe("view manager", () => {
     expect(inactivityTransition("timers", router, false, true)).toBeNull();
   });
 
+  it("returns Canvas through the assistant idle transition", () => {
+    const router = defaultSettings.viewRouter;
+    expect(inactivityTransition("assistant-canvas", router)).toEqual({ target: "assistant-expressive", seconds: 60, startsAssistantIdle: true, completesAssistantIdle: false });
+  });
+
   it("can bypass the assistant idle transition", () => {
     const router = { ...defaultSettings.viewRouter, inactivityAction: { ...defaultSettings.viewRouter.inactivityAction, showAssistantIdleBeforePhotos: false } };
     expect(inactivityTransition("ha", router)).toEqual({ target: "photos", seconds: 30, startsAssistantIdle: false, completesAssistantIdle: false });

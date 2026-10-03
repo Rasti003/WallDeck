@@ -13,6 +13,8 @@ function dependencies(calls) {
     homeAssistantStatus: () => ({ connected: true }),
     searchHomeEntities: query => [{ entityId: "sensor.salon", friendlyName: "Salon", state: "22" }].filter(entity => entity.friendlyName.toLowerCase().includes((query ?? "").toLowerCase())),
     homeEntity: entityId => entityId === "sensor.salon" ? { entityId, friendlyName: "Salon", state: "22" } : null,
+    searchWeb: async query => ({ answer: query, sources: [], images: [] }),
+    showAssistantCanvas: canvas => { calls.push(["canvas", canvas]); return { ok: true }; },
     spotifyStatus: () => ({ configured: true, connected: true, account: "Test", lastError: null, redirectUri: "http://127.0.0.1/callback" }),
     searchSpotify: async () => [],
     spotifyQueue: async () => ({ currentlyPlaying: null, items: [] }),

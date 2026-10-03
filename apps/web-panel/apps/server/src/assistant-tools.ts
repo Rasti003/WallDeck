@@ -1,6 +1,7 @@
 import { z } from "zod";
 import {
   assistantStateSchema,
+  assistantCanvasInputSchema,
   assistantToolCatalog,
   mcpToolIds,
   notificationSoundSchema,
@@ -11,6 +12,7 @@ import {
   type SpotifyQueue,
   type SpotifyStatus,
   type AlarmInput,
+  type AssistantCanvasInput,
   type AssistantTaskInput,
   type ScheduledItem,
   type TimerInput,
@@ -32,7 +34,9 @@ export interface AssistantToolDependencies {
   searchSpotify(query: string, types?: SpotifyItem["type"][]): Promise<SpotifyItem[]>;
   spotifyQueue(): Promise<SpotifyQueue>;
   spotifyPlaylists(): Promise<SpotifyItem[]>;
-  activateView(viewId: "photos" | "ha" | "assistant-expressive" | "music" | "timers"): void;
+  activateView(viewId: "photos" | "ha" | "assistant-expressive" | "assistant-canvas" | "music" | "timers"): void;
+  searchWeb(query: string): Promise<unknown>;
+  showAssistantCanvas(canvas: AssistantCanvasInput): unknown;
   notify(notification: Record<string, unknown>): void;
   panelCommand(name: string, args: Record<string, unknown>): Promise<unknown>;
   listSchedules(): ScheduledItem[];
@@ -140,6 +144,16 @@ export const assistantToolDefinitions = {
       const alarm = priority === "alarm";
       return deps.panelCommand("notification.show", { id: `assistant:${Date.now()}:${Math.random().toString(36).slice(2, 8)}`, message, kind: alarm ? "error" : "info", priority, ...(persistent === undefined ? {} : { persistent }), ...(durationSeconds === undefined ? {} : { durationMs: durationSeconds * 1000 }), ...(sound === undefined ? {} : { sound }) });
     },
+  },
+  search_web: {
+    description: "Wyszukuje aktualne informacje w internecie i zwraca zwięzłą odpowiedź, klikalne źródła oraz dostępne obrazy. Po wyszukaniu przedstaw wynik narzędziem show_assistant_canvas.",
+    input: z.object({ query: z.string().trim().min(2).max(300) }), annotations: readOnly(true),
+    run: ({ query }, deps) => deps.searchWeb(query),
+  },
+  show_assistant_canvas: {
+    description: "Pokazuje na tablecie uniwersalny Canvas. Użyj do odpowiedzi internetowych oraz zestawień wielu encji Home Assistant. Temperatury i CO₂ prezentuj jako duże metrics, a porównanie pomieszczeń także jako chart z wartościami liczbowymi. Zachowaj krótki summary i dołącz źródła wyszukiwania.",
+    input: assistantCanvasInputSchema, annotations: action(),
+    run: (canvas, deps) => deps.showAssistantCanvas(canvas),
   },
   speak_on_tablet: {
     description: "Wypowiada jednorazowy krótki komunikat przez głośnik tabletu bez rozpoczynania rozmowy. Użyj tylko wtedy, gdy informacja powinna zwrócić uwagę głosem; większość automatyzacji wykonuj cicho.",

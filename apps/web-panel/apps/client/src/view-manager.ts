@@ -57,6 +57,7 @@ export function inactivityTransition(current: ViewId, router: RouterSettings, as
       completesAssistantIdle: true,
     } : null;
   }
+  if (current === "assistant-canvas") return { target: "assistant-expressive", seconds: 60, startsAssistantIdle: true, completesAssistantIdle: false };
   if (current === "timers") {
     if (stayOnThisView) return null;
     const showAssistant = rule.targetView === "photos" && rule.showAssistantIdleBeforePhotos;
