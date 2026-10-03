@@ -7,6 +7,7 @@ type Callbacks = {
   setState(state: AssistantState): void;
   showAssistant(): void;
   hideAssistant(): void;
+  playActivationSound?(): void;
   onStatus?(status: string): void;
 };
 
@@ -190,6 +191,7 @@ export class VoiceAssistantRuntime {
     this.callbacks.showAssistant();
     this.callbacks.setState("attention");
     this.callbacks.onStatus?.(lunaPipeline ? "Uruchamiam Lunę…" : "Łączenie z GPT-Live…");
+    if (!forcedMode) this.callbacks.playActivationSound?.();
     this.inputTranscript = "";
     this.lastTranscriptAt = 0;
     this.outputStarted = false;
@@ -245,6 +247,9 @@ export class VoiceAssistantRuntime {
     } else if (message.type === "answer") {
       this.callbacks.setState("thinking");
       this.callbacks.onStatus?.("Luna przygotowała odpowiedź");
+    } else if (message.type === "working") {
+      this.callbacks.setState("thinking");
+      this.callbacks.onStatus?.(typeof message.status === "string" ? message.status : "Pracuję nad odpowiedzią…");
     } else if (message.type === "inputTranscript" && typeof message.delta === "string") {
       this.inputTranscript += message.delta;
       this.lastTranscriptAt = Date.now();
@@ -309,6 +314,7 @@ export class VoiceAssistantRuntime {
     if (this.pendingDelegations.has(delegationKey)) return;
     this.pendingDelegations.add(delegationKey);
     this.callbacks.setState("thinking");
+    this.callbacks.onStatus?.("Pracuję nad odpowiedzią…");
     if (!commandOverride) await this.waitForTranscriptToSettle();
     const latestTurn = this.inputTranscript.slice(this.handledTranscriptLength).trim();
     const fullTranscript = this.inputTranscript.trim();

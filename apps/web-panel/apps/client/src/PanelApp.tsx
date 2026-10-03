@@ -13,6 +13,7 @@ import { musicController } from "./music/controller";
 import { ensureMusicConnected } from "./music/connection";
 import type { MusicState } from "@walldeck/contracts";
 import { VoiceAssistantRuntime } from "./voice-assistant";
+import { playNotificationSound } from "./notification-sound";
 
 export function PanelApp({ forcedView }: { forcedView?: ViewId }) {
   const [interactionLocked, setInteractionLocked] = useState(false);
@@ -40,6 +41,7 @@ export function PanelApp({ forcedView }: { forcedView?: ViewId }) {
   const voiceReturnView = useRef<ViewId>("photos");
   const voiceRuntime = useRef<VoiceAssistantRuntime | null>(null);
   const [assistantState, setAssistantState] = useState<AssistantState>("idle");
+  const [voiceStatus, setVoiceStatus] = useState("");
   const [requestedAssistantState, setRequestedAssistantState] = useState<AssistantState | null>(null);
   const connection = useRef<ReturnType<typeof connectEvents> | null>(null);
   const touchStart = useRef<{ x: number; y: number; time: number } | null>(null);
@@ -251,11 +253,16 @@ export function PanelApp({ forcedView }: { forcedView?: ViewId }) {
         activate("assistant-expressive", true);
       },
       hideAssistant: () => {
+        setVoiceStatus("");
         if (pinnedTimerId.current || schedulePresentationRef.current || scheduleReturnTransitionRef.current) return;
         const target = musicPlaying.current ? "music" : voiceReturnView.current;
         activate(target === "assistant-expressive" ? "photos" : target, true);
       },
-      onStatus: status => window.dispatchEvent(new CustomEvent("walldeck:voiceStatus", { detail: { status } })),
+      playActivationSound: () => playNotificationSound("soft", Math.min(.22, Math.max(.06, settingsRef.current.notifications.volume * .45))),
+      onStatus: status => {
+        setVoiceStatus(status);
+        window.dispatchEvent(new CustomEvent("walldeck:voiceStatus", { detail: { status } }));
+      },
     });
     voiceRuntime.current = runtime;
     void runtime.start();
@@ -550,7 +557,7 @@ export function PanelApp({ forcedView }: { forcedView?: ViewId }) {
       }}
     >
       {!forcedView && settings.tabletMenu.enabled && <TabletMenu open={menuOpen} showHandle={settings.tabletMenu.showHandle} current={activeView} views={settings.tabletMenu.views} onOpen={activateSwipeDown} onClose={() => setMenuOpen(false)} onSelect={view => { setMenuOpen(false); setDanceTransition(false); setAssistantIdleTransition(false); setRequestedAssistantState(null); activate(view); }} />}
-      <PanelContext.Provider value={{ settings, activeView, requestedAssistantState, schedulePresentation, menuOpen, stayOnThisView, setStayOnThisView, setInteractionLocked }}>
+      <PanelContext.Provider value={{ settings, activeView, requestedAssistantState, voiceStatus, schedulePresentation, menuOpen, stayOnThisView, setStayOnThisView, setInteractionLocked }}>
       <AnimatePresence mode="wait" custom={instantTransition}>
         <motion.div
           key={activeView}

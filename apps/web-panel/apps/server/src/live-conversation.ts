@@ -371,6 +371,7 @@ export function registerLiveConversation(app: FastifyInstance, deps: Dependencie
         } else if (event.type === "session.delegation.created") {
           waitForDelegation(event.delegation.id);
           delegationStartedAt.set(event.delegation.id, new Date().toISOString());
+          send({ type: "working", status: "Pracuję nad odpowiedzią…" });
           app.log.info({ delegationId: event.delegation.id, target: event.delegation.target, offsetMs: event.offset_ms }, "GPT-Live delegation created");
           if (event.delegation.target === "client") send({ type: "delegation", delegationId: event.delegation.id, offsetMs: event.offset_ms });
         } else if (event.type === "session.usage.updated") {

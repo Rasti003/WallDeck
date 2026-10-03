@@ -3,14 +3,14 @@ import { assistantStateSchema } from "@walldeck/contracts";
 import { PanelContext } from "../panel-context";
 import { nativeBridge } from "../native";
 import { assistantBrightness } from "../assistant/brightness";
-import { useIsPresent } from "motion/react";
+import { AnimatePresence, motion, useIsPresent } from "motion/react";
 import { ExpressiveAssistantFace } from "../assistant/ExpressiveAssistantFace";
 import { assistantEntryState, assistantStates, assistantTransition, stateLabels, transientDelay } from "../assistant/assistant-state";
 
 export function AssistantDemoView() {
   const studio = location.pathname.startsWith("/assistant-expressive");
   const isPresent = useIsPresent();
-  const { settings, activeView, requestedAssistantState } = useContext(PanelContext);
+  const { settings, activeView, requestedAssistantState, voiceStatus } = useContext(PanelContext);
   const [state, dispatch] = useReducer(assistantTransition, "idle", () => assistantEntryState(requestedAssistantState, assistantStateSchema.safeParse(new URLSearchParams(location.search).get("state")).data ?? "idle"));
   const brightness = assistantBrightness(settings, state);
   useEffect(() => {
@@ -55,6 +55,9 @@ export function AssistantDemoView() {
   }, [simulate, state]);
   return <section className="assistant-demo" aria-label="Asystent demo">
     <ExpressiveAssistantFace state={!isPresent ? "sleep" : state} audioLevel={simulate ? simulatedAudio : audio} accentColor={accent} reducedMotion={reduced} />
+    <AnimatePresence>{!studio && voiceStatus && <motion.div className="assistant-voice-status" role="status" aria-live="polite" initial={{ opacity: 0, y: 12, scale: .96 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 8 }} transition={{ duration: reduced ? 0 : .28 }}>
+      <i aria-hidden="true"><b/><b/><b/></i><span>{voiceStatus}</span>
+    </motion.div>}</AnimatePresence>
     {studio && <button className="assistant-controls-toggle" aria-expanded={controls} onClick={() => setControls(!controls)}>{controls ? "Ukryj sterowanie ↘" : "Mimika ↗"}</button>}
     {studio && controls && <aside className="assistant-console" aria-label="Sterowanie demonstracją">
       <header><span>WALLDECK / ASYSTENT</span><strong>{stateLabels[state]}</strong><small>Demo · bez mikrofonu</small></header>

@@ -23,6 +23,8 @@ test("Live and backend prompts make display requests mandatory", () => {
   assert.match(live, /Każda prośba typu „pokaż”/);
   assert.match(live, /Nigdy nie twierdź, że nie możesz nic pokazać/);
   assert.match(live, /preferuj delegację i prezentację Canvas/);
+  assert.match(live, /prawdopodobnie potrwa dłużej niż 2 sekundy/);
+  assert.match(live, /maksymalnie 8 słów/);
   assert.match(backend, /obowiązkowo zakończ zadanie wywołaniem show_assistant_canvas/);
   assert.match(backend, /krótką prezentację Canvas/);
   assert.ok(LIVE_DELEGATION_MAX_OUTPUT_TOKENS >= 1_500, "Canvas tool arguments must fit in the delegated response budget");
