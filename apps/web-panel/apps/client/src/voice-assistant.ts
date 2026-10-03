@@ -2,6 +2,7 @@ import type { AiAssistantSettings, AssistantState } from "@walldeck/contracts";
 import { api } from "./api";
 import { nativeBridge } from "./native";
 import { delegatedCommandWithContext } from "./voice-delegation";
+import { looksLikeIncompleteVoiceTurn } from "./voice-turn";
 
 type Callbacks = {
   setState(state: AssistantState): void;
@@ -52,6 +53,7 @@ export class VoiceAssistantRuntime {
   private pendingUserTurn = false;
   private activeLunaPipeline = false;
   private scheduledConversation = false;
+  private incompleteFallbackDeferred = false;
 
   constructor(private settings: AiAssistantSettings, private callbacks: Callbacks) {}
 
@@ -207,6 +209,7 @@ export class VoiceAssistantRuntime {
     this.livePlaybackStarted = false;
     this.audioWriteChain = Promise.resolve();
     this.pendingUserTurn = false;
+    this.incompleteFallbackDeferred = false;
     if (this.delegationFallbackTimer) clearTimeout(this.delegationFallbackTimer);
     this.delegationFallbackTimer = null;
     void nativeBridge.call("haptics").catch(() => undefined);
@@ -254,7 +257,9 @@ export class VoiceAssistantRuntime {
       this.inputTranscript += message.delta;
       this.lastTranscriptAt = Date.now();
       this.pendingUserTurn = true;
+      this.incompleteFallbackDeferred = false;
       this.callbacks.setState("listening");
+      this.callbacks.onStatus?.("Słucham");
       this.scheduleDelegationFallback(3_500);
     } else if (message.type === "inputTranscript" && typeof message.transcript === "string") {
       this.inputTranscript = message.transcript;
@@ -361,6 +366,14 @@ export class VoiceAssistantRuntime {
       this.delegationFallbackTimer = null;
       if (this.bufferedSpeechTask || this.preservedCommandActive) return;
       if (this.inputTranscript.trim()) {
+        const latestTurn = this.inputTranscript.slice(this.handledTranscriptLength).trim();
+        if (!this.incompleteFallbackDeferred && looksLikeIncompleteVoiceTurn(latestTurn)) {
+          this.incompleteFallbackDeferred = true;
+          this.callbacks.setState("listening");
+          this.callbacks.onStatus?.("Czekam na dokończenie…");
+          this.scheduleDelegationFallback(3_000);
+          return;
+        }
         this.startDelegation(null);
         return;
       }

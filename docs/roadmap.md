@@ -78,6 +78,7 @@
 - [x] przełączany tryb „Ej Waldek” → lokalne śledzenie mówcy → transkrypcja → Luna/MCP → OpenAI TTS, obok zachowanego GPT-Live;
 - [x] trwała historia GPT-Live: pełna tekstowa oś rozmowy, przerwania, delegacje, narzędzia, wyniki, zużycie i dane obserwacji mówcy;
 - [x] natychmiastowe UX rozmowy: delikatny sygnał wake wordu, animacje `attention/listening/thinking`, wycentrowany status pracy, krótki komunikat GPT‑Live i ograniczenie sztucznej ciszy przed dłuższą delegacją;
+- [x] ochrona niedokończonych tur głosowych: końcówki typu „rasy” lub „w” dostają dodatkowe trzy sekundy na dalszy fragment przed uruchomieniem fallbacku;
 - [x] niezależne od publicznego MCP wykonanie zadań przez Lunę oraz hybrydowa dostawa: ciche powiadomienie, TTS albo rozmowa GPT‑Live wybrana przez model;
 - [ ] fizyczny test obu trybów w hałasie tła i dostrojenie progu ECAPA/czasu końca tury;
 - [ ] dopracować barge-in i echo cancellation; wake word ma regulowany próg confidence oraz trwały dziennik zaakceptowanych i odrzuconych kandydatów, a dalsza ewaluacja wymaga danych z docelowego pomieszczenia;
