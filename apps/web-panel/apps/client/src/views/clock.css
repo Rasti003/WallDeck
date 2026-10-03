@@ -136,10 +136,12 @@
 .clock-fullscreen-time h2 { max-width: 82%; margin: clamp(22px, 3.5vh, 38px) 0 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: clamp(20px, 2.3vw, 34px); font-weight: 390; letter-spacing: -.035em; }
 .clock-fullscreen-time p { margin: 10px 0 0; color: #c8bdf6; font-size: 10px; }
 .clock-fullscreen-cancel { position: absolute; z-index: 3; right: clamp(27px, 5vw, 64px); bottom: clamp(26px, 5vh, 48px); padding: 10px 15px; border: 1px solid rgba(255,255,255,.11); border-radius: 13px; color: rgba(255,255,255,.48) !important; font-size: 10px !important; background: rgba(255,255,255,.035); cursor: pointer; }
-.clock-card { position: relative; display: grid; grid-template-columns: 62px minmax(0, 1fr) auto 30px; align-items: center; gap: 17px; min-height: 86px; margin-bottom: 10px; padding: 12px 12px 12px 14px; border: 1px solid var(--clock-line); border-radius: 23px; background: rgba(255,255,255,.05); overflow: hidden; }
+.clock-card { position: relative; display: grid; grid-template-columns: 62px minmax(0, 1fr) auto auto; align-items: center; gap: 17px; min-height: 86px; margin-bottom: 10px; padding: 12px 12px 12px 14px; border: 1px solid var(--clock-line); border-radius: 23px; background: rgba(255,255,255,.05); overflow: hidden; }
 .clock-card::after { content: ""; position: absolute; inset: auto 15% 0; height: 1px; background: linear-gradient(90deg, transparent, rgba(155,135,245,.65), transparent); opacity: .45; }
 .clock-card-icon { display: grid; place-items: center; width: 57px; height: 57px; border-radius: 18px; color: var(--clock-violet); background: rgba(155,135,245,.1); }
 .clock-card--alarm .clock-card-icon { color: var(--clock-cyan); background: rgba(86,216,228,.09); }
+.clock-card--alarm.is-disabled { border-color: rgba(255,255,255,.065); background: rgba(255,255,255,.025); }
+.clock-card--alarm.is-disabled > :not(.clock-card-actions) { opacity: .42; }
 .clock-card--task { border-color: rgba(155,135,245,.2); background: linear-gradient(105deg, rgba(116,86,230,.09), rgba(255,255,255,.04)); }
 .clock-card--task .clock-card-icon { color: #d4c9fb; background: rgba(155,135,245,.14); }
 .clock-card-icon svg { width: 43px; height: 43px; transform: rotate(-90deg); }
@@ -154,6 +156,12 @@
 .clock-card-time { display: grid; justify-items: end; min-width: 96px; }
 .clock-card-time strong { font-size: 25px; font-weight: 350; letter-spacing: -.04em; font-variant-numeric: tabular-nums; }
 .clock-card-time small { color: var(--clock-muted); font-size: 10px; text-transform: uppercase; }
+.clock-card-actions { position: relative; z-index: 2; display: flex; align-items: center; gap: 3px; }
+.clock-alarm-toggle { position: relative; width: 48px; height: 34px; border: 1px solid rgba(86,216,228,.35); border-radius: 99px; background: rgba(86,216,228,.2); cursor: pointer; transition: border-color .2s, background .2s; }
+.clock-alarm-toggle i { position: absolute; top: 6px; left: 22px; width: 20px; height: 20px; border-radius: 50%; background: #a8f3f8; box-shadow: 0 2px 9px rgba(42,190,204,.35); transition: transform .2s, left .2s, background .2s; }
+.clock-alarm-toggle[aria-checked="false"] { border-color: rgba(255,255,255,.12); background: rgba(255,255,255,.06); }
+.clock-alarm-toggle[aria-checked="false"] i { left: 5px; background: rgba(255,255,255,.45); box-shadow: none; }
+.clock-alarm-toggle:focus-visible { outline: 2px solid var(--clock-cyan); outline-offset: 2px; }
 .clock-remove { width: 30px; height: 30px; border: 0; border-radius: 50%; color: rgba(255,255,255,.35) !important; font-size: 20px !important; background: transparent; cursor: pointer; transition: color .2s, background .2s; }
 .clock-remove:hover { color: #fff !important; background: rgba(255,255,255,.1); }
 .clock-task-history { display: grid; gap: 8px; margin-top: 19px; }
@@ -299,7 +307,7 @@
   .clock-fullscreen-time strong { font-size: clamp(72px, 20vw, 118px); }
   .clock-fullscreen-time.is-long strong { font-size: clamp(54px, 14vw, 86px); }
   .clock-fullscreen-time h2 { max-width: 74%; }
-  .clock-card { grid-template-columns: 50px minmax(0, 1fr) auto 26px; gap: 10px; padding-left: 10px; }
+  .clock-card { grid-template-columns: 50px minmax(0, 1fr) auto auto; gap: 10px; padding-left: 10px; }
   .clock-card-icon { width: 49px; height: 49px; }
   .clock-card-time strong { font-size: 20px; }
   .clock-sheet-backdrop { padding: 10px; }

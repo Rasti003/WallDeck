@@ -26,6 +26,7 @@ WallDeck udostępnia kontrolowany interfejs Model Context Protocol pod adresem `
 | `create_timer` | akcja | minutnik z etykietą i opcjonalnym promptem wykonywanym po wybiciu |
 | `create_alarm` | akcja | budzik jednorazowy albo cykliczny w strefie `Europe/Warsaw` |
 | `create_assistant_task` | akcja | ciche jednorazowe albo cykliczne zadanie z obowiązkową instrukcją dla asystenta |
+| `set_alarm_enabled` | akcja | włączenie lub wyłączenie zapisanego budzika bez usuwania go |
 | `cancel_schedule` | akcja | trwałe usunięcie minutnika, budzika lub zadania |
 | `dismiss_schedule` | akcja | wyłączenie alarmu; cykliczny budzik planuje kolejne wystąpienie |
 | `snooze_schedule` | akcja | odłożenie alarmu o 1–180 minut |

@@ -180,6 +180,10 @@ app.post("/api/assistant-tasks", async (request, reply) => {
 app.delete<{ Params: { id: string } }>("/api/schedules/:id", async (request, reply) => {
   try { return await schedules.remove(request.params.id); } catch (error) { return reply.code(404).send({ error: error instanceof Error ? error.message : String(error) }); }
 });
+app.post<{ Params: { id: string }; Body: { enabled?: unknown } }>("/api/schedules/:id/enabled", async (request, reply) => {
+  if (typeof request.body?.enabled !== "boolean") return reply.code(400).send({ error: "Podaj stan budzika" });
+  try { return await schedules.setAlarmEnabled(request.params.id, request.body.enabled); } catch (error) { return reply.code(400).send({ error: error instanceof Error ? error.message : String(error) }); }
+});
 app.post<{ Params: { id: string } }>("/api/schedules/:id/dismiss", async (request, reply) => {
   try { return await schedules.dismiss(request.params.id); } catch (error) { return reply.code(404).send({ error: error instanceof Error ? error.message : String(error) }); }
 });
@@ -378,6 +382,7 @@ const assistantToolDependencies = {
   createTimer: (input: import("@walldeck/contracts").TimerInput) => schedules.createTimer(input),
   createAlarm: (input: import("@walldeck/contracts").AlarmInput) => schedules.createAlarm(input),
   createAssistantTask: (input: import("@walldeck/contracts").AssistantTaskInput) => schedules.createTask(input),
+  setAlarmEnabled: (id: string, enabled: boolean) => schedules.setAlarmEnabled(id, enabled),
   cancelSchedule: (id: string) => schedules.remove(id),
   dismissSchedule: (id: string) => schedules.dismiss(id),
   snoozeSchedule: (id: string, minutes: number) => schedules.snooze(id, minutes),

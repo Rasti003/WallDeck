@@ -4,7 +4,7 @@ export type { MusicState, AudioOutputState, MusicController, SpotifyItem, Spotif
 export const assistantStates = ["idle", "attention", "listening", "thinking", "speaking", "success", "error", "sleep", "curious", "uncertain", "confirm", "surprised", "wink", "laughing", "dancing"] as const;
 export const assistantStateSchema = z.enum(assistantStates);
 export type AssistantState = z.infer<typeof assistantStateSchema>;
-export const mcpToolIds = ["get_status", "get_current_time", "show_view", "show_assistant_mood", "control_music", "search_spotify", "get_spotify_queue", "list_spotify_playlists", "play_spotify_item", "add_spotify_to_queue", "set_tablet_volume", "adjust_tablet_volume", "send_notification", "set_view_brightness", "search_home_entities", "get_home_entity", "list_schedules", "create_timer", "create_alarm", "create_assistant_task", "cancel_schedule", "dismiss_schedule", "snooze_schedule"] as const;
+export const mcpToolIds = ["get_status", "get_current_time", "show_view", "show_assistant_mood", "control_music", "search_spotify", "get_spotify_queue", "list_spotify_playlists", "play_spotify_item", "add_spotify_to_queue", "set_tablet_volume", "adjust_tablet_volume", "send_notification", "set_view_brightness", "search_home_entities", "get_home_entity", "list_schedules", "create_timer", "create_alarm", "create_assistant_task", "set_alarm_enabled", "cancel_schedule", "dismiss_schedule", "snooze_schedule"] as const;
 export const mcpToolIdSchema = z.enum(mcpToolIds);
 export type McpToolId = z.infer<typeof mcpToolIdSchema>;
 export const assistantToolCatalog = {
@@ -28,6 +28,7 @@ export const assistantToolCatalog = {
   create_timer: { label: "Nowy minutnik", summary: "Minutnik z etykietą i opcjonalną automatyzacją AI.", kind: "akcja" },
   create_alarm: { label: "Nowy budzik", summary: "Jednorazowy lub powtarzalny budzik z etykietą.", kind: "akcja" },
   create_assistant_task: { label: "Zaplanuj zadanie asystenta", summary: "Jednorazowa lub powtarzalna instrukcja wykonywana w wybranym terminie.", kind: "akcja" },
+  set_alarm_enabled: { label: "Włącz lub wyłącz budzik", summary: "Zmiana aktywności zapisanego budzika bez jego usuwania.", kind: "akcja" },
   cancel_schedule: { label: "Usuń wpis harmonogramu", summary: "Usunięcie minutnika, budzika lub zadania po identyfikatorze.", kind: "akcja" },
   dismiss_schedule: { label: "Wyłącz alarm", summary: "Zatrzymanie aktualnie dzwoniącego alarmu.", kind: "akcja" },
   snooze_schedule: { label: "Drzemka", summary: "Odłożenie aktualnego alarmu o podaną liczbę minut.", kind: "akcja" },
@@ -52,12 +53,12 @@ export const mcpSettingsSchema = z.object({
     search_home_entities: z.boolean().default(true),
     get_home_entity: z.boolean().default(true),
     list_schedules: z.boolean().default(true), create_timer: z.boolean().default(true), create_alarm: z.boolean().default(true), create_assistant_task: z.boolean().default(true),
-    cancel_schedule: z.boolean().default(true), dismiss_schedule: z.boolean().default(true), snooze_schedule: z.boolean().default(true),
+    set_alarm_enabled: z.boolean().default(true), cancel_schedule: z.boolean().default(true), dismiss_schedule: z.boolean().default(true), snooze_schedule: z.boolean().default(true),
   }).default({
     get_status: true, get_current_time: true, show_view: true, show_assistant_mood: true, control_music: true, search_spotify: true, get_spotify_queue: true, list_spotify_playlists: true, play_spotify_item: true, add_spotify_to_queue: true,
     set_tablet_volume: true, adjust_tablet_volume: true, send_notification: true, set_view_brightness: true,
     search_home_entities: true, get_home_entity: true,
-    list_schedules: true, create_timer: true, create_alarm: true, create_assistant_task: true, cancel_schedule: true, dismiss_schedule: true, snooze_schedule: true,
+    list_schedules: true, create_timer: true, create_alarm: true, create_assistant_task: true, set_alarm_enabled: true, cancel_schedule: true, dismiss_schedule: true, snooze_schedule: true,
   }),
 }).default({
   enabled: false,
@@ -65,7 +66,7 @@ export const mcpSettingsSchema = z.object({
     get_status: true, get_current_time: true, show_view: true, show_assistant_mood: true, control_music: true, search_spotify: true, get_spotify_queue: true, list_spotify_playlists: true, play_spotify_item: true, add_spotify_to_queue: true,
     set_tablet_volume: true, adjust_tablet_volume: true, send_notification: true, set_view_brightness: true,
     search_home_entities: true, get_home_entity: true,
-    list_schedules: true, create_timer: true, create_alarm: true, create_assistant_task: true, cancel_schedule: true, dismiss_schedule: true, snooze_schedule: true,
+    list_schedules: true, create_timer: true, create_alarm: true, create_assistant_task: true, set_alarm_enabled: true, cancel_schedule: true, dismiss_schedule: true, snooze_schedule: true,
   },
 });
 export const assistantBrightnessSchema = z.object({

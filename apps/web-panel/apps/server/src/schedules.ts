@@ -97,6 +97,20 @@ export class ScheduleStore {
     await this.commit(); return { ok: true as const, id };
   }
 
+  async setAlarmEnabled(id: string, enabled: boolean) {
+    const item = this.require(id);
+    if (item.kind !== "alarm") throw new Error("Ten wpis nie jest budzikiem");
+    if (item.enabled === enabled && item.status === "scheduled") return structuredClone(item);
+    if (enabled) {
+      if (item.time && item.repeatDays.length) item.triggerAt = nextRecurringOccurrence(item.time, item.repeatDays).toISOString();
+      else if (Date.parse(item.triggerAt) <= Date.now()) throw new Error("Termin jednorazowego budzika jest już w przeszłości");
+    }
+    item.enabled = enabled;
+    item.status = "scheduled";
+    item.automationResult = undefined;
+    await this.commit(); return structuredClone(item);
+  }
+
   async dismiss(id: string) {
     const item = this.require(id);
     if (item.kind === "task") throw new Error("Zadania asystenta nie są alarmami");

@@ -55,3 +55,26 @@ test("assistant task runs silently and keeps its result as history", async () =>
     await rm(directory, { recursive: true, force: true });
   }
 });
+
+test("saved alarms can be disabled and enabled without deleting them", async () => {
+  const directory = await mkdtemp(path.join(os.tmpdir(), "walldeck-alarm-toggle-"));
+  const file = path.join(directory, "schedules.json");
+  const store = new ScheduleStore(file, { onChanged() {}, onFired() {} });
+  try {
+    await store.load();
+    const target = new Date(Date.now() + 120_000);
+    const time = new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Warsaw", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(target);
+    const alarm = await store.createAlarm({ label: "Praca", time, repeatDays: [0, 1, 2, 3, 4, 5, 6], automationPrompt: "" });
+    const disabled = await store.setAlarmEnabled(alarm.id, false);
+    assert.equal(disabled.enabled, false);
+    assert.equal(store.list().length, 1);
+    assert.equal(JSON.parse(await readFile(file, "utf8"))[0].enabled, false);
+    const enabled = await store.setAlarmEnabled(alarm.id, true);
+    assert.equal(enabled.enabled, true);
+    assert.equal(enabled.status, "scheduled");
+    assert.ok(Date.parse(enabled.triggerAt) > Date.now());
+  } finally {
+    store.stop();
+    await rm(directory, { recursive: true, force: true });
+  }
+});

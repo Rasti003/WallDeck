@@ -24,6 +24,7 @@ function dependencies(calls) {
     createTimer: async input => ({ ...input, id: "timer", kind: "timer", repeatDays: [], status: "scheduled" }),
     createAlarm: async input => ({ ...input, id: "alarm", kind: "alarm", status: "scheduled" }),
     createAssistantTask: async input => ({ ...input, id: "task", kind: "task", status: "scheduled" }),
+    setAlarmEnabled: async (id, enabled) => ({ id, enabled, kind: "alarm", status: "scheduled" }),
     cancelSchedule: async id => ({ ok: true, id }),
     dismissSchedule: async id => ({ ok: true, id }),
     snoozeSchedule: async (id, minutes) => ({ ok: true, id, minutes }),

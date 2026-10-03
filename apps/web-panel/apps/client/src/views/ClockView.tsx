@@ -63,12 +63,13 @@ export function ClockView() {
   const date = new Date(now); const time = clock.format(date); const seconds = date.getSeconds();
   const clockSchedules = scheduled.filter(item => item.kind !== "task");
   const scheduledTasks = scheduled.filter(item => item.kind === "task");
-  const next = clockSchedules[0];
-  const focusedTimer = clockSchedules.find(item => item.kind === "timer");
+  const next = clockSchedules.find(item => item.enabled);
+  const focusedTimer = clockSchedules.find(item => item.kind === "timer" && item.enabled);
   const fullscreenActive = Boolean(focusedTimer && timerFullscreen && screen === "clock" && !ringing.length);
   const remainingSchedules = focusedTimer ? clockSchedules.filter(item => item.id !== focusedTimer.id) : clockSchedules;
   const timerCount = scheduled.filter(item => item.kind === "timer").length;
   const alarmCount = scheduled.filter(item => item.kind === "alarm").length;
+  const enabledAlarmCount = scheduled.filter(item => item.kind === "alarm" && item.enabled).length;
   const taskCount = scheduledTasks.length;
   const taskHistory = items.filter(item => item.kind === "task" && item.status !== "scheduled").sort((a, b) => Date.parse(b.lastTriggeredAt ?? b.createdAt) - Date.parse(a.lastTriggeredAt ?? a.createdAt)).slice(0, 5);
   const resetComposer = () => { setComposer(null); setLabel(""); setPrompt(""); setError(""); };
@@ -130,7 +131,7 @@ export function ClockView() {
       <motion.aside className="clock-create" initial={reduced ? false : { opacity: 0, x: -24 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: .08 }}>
         <div><span className="clock-kicker">DODAJ</span><h1>Zaplanuj chwilę</h1><p>Minutnik albo budzik, który będzie zawsze pod ręką.</p></div>
         <button className="clock-primary" onClick={() => setComposer("timer")}><span>＋</span><b>Nowy minutnik</b><small>{timerCount} aktywne</small></button>
-        <button className="clock-secondary" onClick={() => setComposer("alarm")}><span>◷</span><b>Nowy budzik</b><small>{alarmCount} zaplanowane</small></button>
+        <button className="clock-secondary" onClick={() => setComposer("alarm")}><span>◷</span><b>Nowy budzik</b><small>{enabledAlarmCount} z {alarmCount} włączone</small></button>
         <button className="clock-task clock-task-summary" onClick={() => setScreen("tasks")}><span>✦</span><b>Zadania asystenta</b><small>{taskCount} zaplanowane <i>→</i></small></button>
         <div className="clock-presets"><small>SZYBKI START</small><div>{[5, 10, 15, 30].map(minutes => <button key={minutes} onClick={() => setQuickTimer(minutes)}>{minutes}<i>min</i></button>)}</div></div>
       </motion.aside>
@@ -141,7 +142,7 @@ export function ClockView() {
           {!clockSchedules.length && <motion.div className="clock-empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }}><div className="clock-empty-orbit"><i /></div><h3>Nic Cię teraz nie pogania</h3><p>Dodaj minutnik albo budzik.</p></motion.div>}
           {focusedTimer && <TimerFocus key={focusedTimer.id} item={focusedTimer} now={now} reduced={Boolean(reduced)} onRemove={() => void api.schedules.remove(focusedTimer.id).then(refresh)} />}
           {remainingSchedules.length > 0 && focusedTimer && <motion.div className="clock-stack-label" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>POZOSTAŁE</motion.div>}
-          {remainingSchedules.map((item, index) => <ScheduleCard key={item.id} item={item} now={now} index={index} reduced={Boolean(reduced)} onRemove={() => void api.schedules.remove(item.id).then(refresh)} />)}
+          {remainingSchedules.map((item, index) => <ScheduleCard key={item.id} item={item} now={now} index={index} reduced={Boolean(reduced)} onToggle={item.kind === "alarm" ? enabled => void api.schedules.setAlarmEnabled(item.id, enabled).then(refresh).catch(error => setError(String(error))) : undefined} onRemove={() => void api.schedules.remove(item.id).then(refresh)} />)}
         </AnimatePresence>
       </section>
     </section></> : <motion.section className="clock-task-page" initial={reduced ? false : { opacity: 0, x: 24 }} animate={{ opacity: 1, x: 0 }}>
@@ -232,15 +233,15 @@ function TimerFocus({ item, now, reduced, onRemove }: { item: ScheduledItem; now
   </motion.article>;
 }
 
-function ScheduleCard({ item, now, index, reduced, onRemove }: { item: ScheduledItem; now: number; index: number; reduced: boolean; onRemove(): void }) {
+function ScheduleCard({ item, now, index, reduced, onToggle, onRemove }: { item: ScheduledItem; now: number; index: number; reduced: boolean; onToggle?(enabled: boolean): void; onRemove(): void }) {
   const remaining = Date.parse(item.triggerAt) - now;
   const progress = item.kind === "timer" && item.durationSeconds ? Math.max(0, Math.min(1, remaining / (item.durationSeconds * 1000))) : 1;
   const repeat = item.repeatDays.length ? days.filter(day => item.repeatDays.includes(day.id)).map(day => day.short).join(" · ") : "Jeden raz";
-  return <motion.article layout className={`clock-card clock-card--${item.kind}`} initial={reduced ? false : { opacity: 0, x: 30, scale: .97 }} animate={{ opacity: 1, x: 0, scale: 1 }} exit={{ opacity: 0, scale: .92 }} transition={{ delay: reduced ? 0 : index * .045 }}>
+  return <motion.article layout className={`clock-card clock-card--${item.kind}${item.enabled ? "" : " is-disabled"}`} initial={reduced ? false : { opacity: 0, x: 30, scale: .97 }} animate={{ opacity: 1, x: 0, scale: 1 }} exit={{ opacity: 0, scale: .92 }} transition={{ delay: reduced ? 0 : index * .045 }}>
     <div className="clock-card-icon">{item.kind === "timer" ? <svg viewBox="0 0 44 44"><circle cx="22" cy="22" r="18" /><motion.circle cx="22" cy="22" r="18" pathLength="1" style={{ pathLength: progress }} /></svg> : <span>{item.kind === "task" ? "✦" : "◷"}</span>}</div>
-    <div className="clock-card-copy"><small>{item.kind === "timer" ? "MINUTNIK" : item.kind === "task" ? `ZADANIE · ${repeat.toUpperCase()}` : repeat.toUpperCase()}</small><h3>{item.label}</h3>{item.automationPrompt && <span>{item.kind === "task" ? item.automationResult ? `Ostatnio: ${item.automationResult}` : item.automationPrompt : "✦ Asystent po alarmie"}</span>}</div>
+    <div className="clock-card-copy"><small>{item.kind === "timer" ? "MINUTNIK" : item.kind === "task" ? `ZADANIE · ${repeat.toUpperCase()}` : `${item.enabled ? "" : "WYŁĄCZONY · "}${repeat.toUpperCase()}`}</small><h3>{item.label}</h3>{item.automationPrompt && <span>{item.kind === "task" ? item.automationResult ? `Ostatnio: ${item.automationResult}` : item.automationPrompt : "✦ Asystent po alarmie"}</span>}</div>
     <div className="clock-card-time">{item.kind === "timer" ? <strong>{remainingText(remaining)}</strong> : <><strong>{item.time ?? new Date(item.triggerAt).toLocaleTimeString("pl-PL", { hour: "2-digit", minute: "2-digit" })}</strong><small>{item.repeatDays.length ? "" : new Date(item.triggerAt).toLocaleDateString("pl-PL", { day: "numeric", month: "short" })}</small></>}</div>
-    <button className="clock-remove" aria-label={`Usuń ${item.label}`} onClick={onRemove}>×</button>
+    <div className="clock-card-actions">{item.kind === "alarm" && <button type="button" className="clock-alarm-toggle" role="switch" aria-checked={item.enabled} aria-label={`${item.enabled ? "Wyłącz" : "Włącz"} ${item.label}`} onClick={() => onToggle?.(!item.enabled)}><i /></button>}<button className="clock-remove" aria-label={`Usuń ${item.label}`} onClick={onRemove}>×</button></div>
   </motion.article>;
 }
 

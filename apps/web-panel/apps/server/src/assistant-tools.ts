@@ -39,6 +39,7 @@ export interface AssistantToolDependencies {
   createTimer(input: TimerInput): Promise<ScheduledItem>;
   createAlarm(input: AlarmInput): Promise<ScheduledItem>;
   createAssistantTask(input: AssistantTaskInput): Promise<ScheduledItem>;
+  setAlarmEnabled(id: string, enabled: boolean): Promise<ScheduledItem>;
   cancelSchedule(id: string): Promise<unknown>;
   dismissSchedule(id: string): Promise<unknown>;
   snoozeSchedule(id: string, minutes: number): Promise<unknown>;
@@ -182,6 +183,11 @@ export const assistantToolDefinitions = {
     description: "Planuje zadanie wykonywane później przez asystenta. Dla jednorazowego podaj triggerAt jako ISO 8601 z offsetem. Dla cyklicznego podaj time HH:mm i repeatDays, gdzie 0=niedziela, 1=poniedziałek, ..., 6=sobota. automationPrompt jest obowiązkową instrukcją, np. wysłaniem przypomnienia przez dostępne narzędzie. Zadanie nie uruchamia głośnego alarmu.",
     input: z.object({ label: z.string().trim().max(100).default(""), time: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/).optional(), repeatDays: z.array(z.number().int().min(0).max(6)).max(7).default([]), triggerAt: z.string().datetime({ offset: true }).optional(), automationPrompt: z.string().trim().min(1).max(1_000) }), annotations: action(),
     run: (args, deps) => deps.createAssistantTask(args as AssistantTaskInput),
+  },
+  set_alarm_enabled: {
+    description: "Włącza albo wyłącza zapisany budzik bez jego usuwania. Przy ponownym włączeniu budzika cyklicznego wyznacza najbliższy termin. Użyj list_schedules, jeśli identyfikator nie jest znany.",
+    input: z.object({ id: z.string().uuid(), enabled: z.boolean() }), annotations: action(),
+    run: ({ id, enabled }, deps) => deps.setAlarmEnabled(id, enabled),
   },
   cancel_schedule: {
     description: "Trwale usuwa wskazany minutnik, budzik lub zadanie asystenta. Użyj list_schedules, jeśli identyfikator nie jest znany.",
