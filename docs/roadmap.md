@@ -3,7 +3,7 @@
 ## Gotowe
 
 - [x] refaktor wyłącznie `/admin`: ciemny zwarty motyw, grupy Panel tabletu / Asystent / System, wyszukiwanie, osobne adresy podstron, responsywne menu i animacje z reduced motion;
-- [x] nowoczesny animowany widok Zegar: wiele minutników, zoptymalizowany pełnoekranowy timer z dużym płynnym kołowym odliczaniem i trybem zarządzania, budziki jednorazowe i tygodniowe, alarm/drzemka, trwały scheduler oraz opcjonalny prompt asystenta;
+- [x] nowoczesny animowany widok Zegar: wiele minutników, zoptymalizowany pełnoekranowy timer z dużym płynnym kołowym odliczaniem i trybem zarządzania, budziki jednorazowe i tygodniowe, alarm/drzemka oraz ciche jednorazowe i cykliczne zadania asystenta z historią wyniku;
 
 - [x] monorepo dla sprzętu, Androida i systemu WWW;
 - [x] prototyp APK na Kotlinie;

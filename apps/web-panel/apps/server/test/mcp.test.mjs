@@ -32,6 +32,7 @@ test("MCP exposes only enabled tools and routes focused WallDeck actions", async
     listSchedules: () => [],
     createTimer: async input => ({ id: "00000000-0000-4000-8000-000000000001", kind: "timer", label: input.label || "Minutnik", automationPrompt: input.automationPrompt, createdAt: new Date().toISOString(), triggerAt: new Date(Date.now() + input.durationSeconds * 1000).toISOString(), durationSeconds: input.durationSeconds, repeatDays: [], enabled: true, status: "scheduled" }),
     createAlarm: async input => ({ id: "00000000-0000-4000-8000-000000000002", kind: "alarm", label: input.label || "Budzik", automationPrompt: input.automationPrompt, createdAt: new Date().toISOString(), triggerAt: input.triggerAt ?? new Date(Date.now() + 60_000).toISOString(), time: input.time, repeatDays: input.repeatDays, enabled: true, status: "scheduled" }),
+    createAssistantTask: async input => ({ id: "00000000-0000-4000-8000-000000000003", kind: "task", label: input.label || "Zadanie asystenta", automationPrompt: input.automationPrompt, createdAt: new Date().toISOString(), triggerAt: input.triggerAt ?? new Date(Date.now() + 60_000).toISOString(), time: input.time, repeatDays: input.repeatDays, enabled: true, status: "scheduled" }),
     cancelSchedule: async id => ({ ok: true, id }),
     dismissSchedule: async id => ({ ok: true, id }),
     snoozeSchedule: async (id, minutes) => ({ ok: true, id, minutes }),
@@ -44,12 +45,13 @@ test("MCP exposes only enabled tools and routes focused WallDeck actions", async
     await server.connect(serverTransport);
     await client.connect(clientTransport);
     const listed = await client.listTools();
-    assert.equal(listed.tools.length, 21);
+    assert.equal(listed.tools.length, 22);
     assert.ok(listed.tools.some(tool => tool.name === "get_status"));
     assert.ok(listed.tools.some(tool => tool.name === "get_current_time"));
     assert.ok(listed.tools.some(tool => tool.name === "adjust_tablet_volume"));
     assert.ok(!listed.tools.some(tool => tool.name === "control_music"));
     assert.ok(listed.tools.some(tool => tool.name === "create_timer"));
+    assert.ok(listed.tools.some(tool => tool.name === "create_assistant_task"));
 
     const status = readText(await client.callTool({ name: "get_status", arguments: {} }));
     const currentTime = readText(await client.callTool({ name: "get_current_time", arguments: {} }));

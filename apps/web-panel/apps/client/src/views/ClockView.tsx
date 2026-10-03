@@ -29,7 +29,7 @@ export function ClockView() {
   const reduced = useReducedMotion();
   const [now, setNow] = useState(Date.now());
   const [items, setItems] = useState<ScheduledItem[]>([]);
-  const [composer, setComposer] = useState<"timer" | "alarm" | null>(null);
+  const [composer, setComposer] = useState<"timer" | "alarm" | "task" | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [timerParts, setTimerParts] = useState({ hours: 0, minutes: 10, seconds: 0 });
@@ -66,6 +66,8 @@ export function ClockView() {
   const remainingSchedules = focusedTimer ? scheduled.filter(item => item.id !== focusedTimer.id) : scheduled;
   const timerCount = scheduled.filter(item => item.kind === "timer").length;
   const alarmCount = scheduled.filter(item => item.kind === "alarm").length;
+  const taskCount = scheduled.filter(item => item.kind === "task").length;
+  const taskHistory = items.filter(item => item.kind === "task" && item.status !== "scheduled").sort((a, b) => Date.parse(b.lastTriggeredAt ?? b.createdAt) - Date.parse(a.lastTriggeredAt ?? a.createdAt)).slice(0, 5);
   const resetComposer = () => { setComposer(null); setLabel(""); setPrompt(""); setError(""); };
   useEffect(() => { if (focusedTimer) setTimerFullscreen(true); }, [focusedTimer?.id]);
   useEffect(() => {
@@ -97,6 +99,16 @@ export function ClockView() {
       await refresh(); resetComposer();
     } catch (error) { setError(error instanceof Error ? error.message : String(error)); } finally { setBusy(false); }
   }
+  async function createTask(event: FormEvent) {
+    event.preventDefault();
+    if (!prompt.trim()) return setError("Wpisz instrukcję dla asystenta.");
+    setBusy(true); setError("");
+    try {
+      if (alarmMode === "repeat") await api.schedules.createAssistantTask({ label, time: alarmTime, repeatDays, automationPrompt: prompt });
+      else await api.schedules.createAssistantTask({ label, repeatDays: [], triggerAt: new Date(`${alarmDate}T${alarmTime}:00`).toISOString(), automationPrompt: prompt });
+      await refresh(); resetComposer();
+    } catch (error) { setError(error instanceof Error ? error.message : String(error)); } finally { setBusy(false); }
+  }
   const setQuickTimer = (minutes: number) => { setTimerParts({ hours: 0, minutes, seconds: 0 }); setComposer("timer"); };
   const minimizeTimer = () => { setFullscreenSettled(false); setTimerFullscreen(false); };
 
@@ -113,26 +125,28 @@ export function ClockView() {
 
     <section className="clock-content">
       <motion.aside className="clock-create" initial={reduced ? false : { opacity: 0, x: -24 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: .08 }}>
-        <div><span className="clock-kicker">DODAJ</span><h1>Zaplanuj chwilę</h1><p>Minutnik na teraz albo budzik na później.</p></div>
+        <div><span className="clock-kicker">DODAJ</span><h1>Zaplanuj chwilę</h1><p>Minutnik, budzik albo zadanie wykonywane później przez asystenta.</p></div>
         <button className="clock-primary" onClick={() => setComposer("timer")}><span>＋</span><b>Nowy minutnik</b><small>{timerCount} aktywne</small></button>
         <button className="clock-secondary" onClick={() => setComposer("alarm")}><span>◷</span><b>Nowy budzik</b><small>{alarmCount} zaplanowane</small></button>
+        <button className="clock-task" onClick={() => setComposer("task")}><span>✦</span><b>Zadanie asystenta</b><small>{taskCount} zaplanowane</small></button>
         <div className="clock-presets"><small>SZYBKI START</small><div>{[5, 10, 15, 30].map(minutes => <button key={minutes} onClick={() => setQuickTimer(minutes)}>{minutes}<i>min</i></button>)}</div></div>
       </motion.aside>
 
       <section className="clock-schedules">
         <header><div><span className="clock-kicker">AKTYWNE</span><h2>Twój rytm</h2></div><strong>{scheduled.length}</strong></header>
         <AnimatePresence mode="popLayout">
-          {!scheduled.length && <motion.div className="clock-empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }}><div className="clock-empty-orbit"><i /></div><h3>Nic Cię teraz nie pogania</h3><p>Dodaj minutnik albo zaplanuj pierwszy budzik.</p></motion.div>}
+          {!scheduled.length && <motion.div className="clock-empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }}><div className="clock-empty-orbit"><i /></div><h3>Nic Cię teraz nie pogania</h3><p>Dodaj minutnik, budzik albo zadanie asystenta.</p></motion.div>}
           {focusedTimer && <TimerFocus key={focusedTimer.id} item={focusedTimer} now={now} reduced={Boolean(reduced)} onRemove={() => void api.schedules.remove(focusedTimer.id).then(refresh)} />}
           {remainingSchedules.length > 0 && focusedTimer && <motion.div className="clock-stack-label" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>POZOSTAŁE</motion.div>}
           {remainingSchedules.map((item, index) => <ScheduleCard key={item.id} item={item} now={now} index={index} reduced={Boolean(reduced)} onRemove={() => void api.schedules.remove(item.id).then(refresh)} />)}
         </AnimatePresence>
+        {taskHistory.length > 0 && <div className="clock-task-history"><span className="clock-stack-label">OSTATNIE ZADANIA</span>{taskHistory.map(item => <TaskHistoryCard key={item.id} item={item} onRemove={() => void api.schedules.remove(item.id).then(refresh)} />)}</div>}
       </section>
     </section>
 
     <AnimatePresence>{composer && <motion.div className="clock-sheet-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={resetComposer}>
-      <motion.form className="clock-sheet" initial={reduced ? false : { y: "100%", scale: .96 }} animate={{ y: 0, scale: 1 }} exit={{ y: "100%", scale: .97 }} transition={{ type: "spring", stiffness: 310, damping: 30 }} onClick={event => event.stopPropagation()} onSubmit={composer === "timer" ? createTimer : createAlarm}>
-        <header><div><span className="clock-kicker">{composer === "timer" ? "MINUTNIK" : "BUDZIK"}</span><h2>{composer === "timer" ? "Odliczaj po swojemu" : "Dzień zaczyna się tutaj"}</h2></div><button type="button" aria-label="Zamknij" onClick={resetComposer}>×</button></header>
+      <motion.form className="clock-sheet" initial={reduced ? false : { y: "100%", scale: .96 }} animate={{ y: 0, scale: 1 }} exit={{ y: "100%", scale: .97 }} transition={{ type: "spring", stiffness: 310, damping: 30 }} onClick={event => event.stopPropagation()} onSubmit={composer === "timer" ? createTimer : composer === "task" ? createTask : createAlarm}>
+        <header><div><span className="clock-kicker">{composer === "timer" ? "MINUTNIK" : composer === "task" ? "ZADANIE ASYSTENTA" : "BUDZIK"}</span><h2>{composer === "timer" ? "Odliczaj po swojemu" : composer === "task" ? "Zleć coś na później" : "Dzień zaczyna się tutaj"}</h2></div><button type="button" aria-label="Zamknij" onClick={resetComposer}>×</button></header>
         {composer === "timer" ? <>
           <div className="clock-duration" aria-label="Czas minutnika">{(["hours", "minutes", "seconds"] as const).map((part, index) => <div key={part}><button type="button" onClick={() => setTimerParts(value => ({ ...value, [part]: Math.min(part === "hours" ? 48 : 59, value[part] + 1) }))}>＋</button><motion.output key={timerParts[part]} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>{pad(timerParts[part])}</motion.output><small>{part === "hours" ? "godz" : part === "minutes" ? "min" : "sek"}</small><button type="button" onClick={() => setTimerParts(value => ({ ...value, [part]: Math.max(0, value[part] - 1) }))}>−</button>{index < 2 && <b>:</b>}</div>)}</div>
           <div className="clock-inline-presets">{[1, 5, 10, 15, 30, 45].map(minutes => <button type="button" className={timerParts.hours === 0 && timerParts.minutes === minutes && timerParts.seconds === 0 ? "selected" : ""} onClick={() => setTimerParts({ hours: 0, minutes, seconds: 0 })} key={minutes}>{minutes} min</button>)}</div>
@@ -141,10 +155,10 @@ export function ClockView() {
           <div className="clock-mode"><button type="button" className={alarmMode === "repeat" ? "selected" : ""} onClick={() => setAlarmMode("repeat")}>Powtarzaj</button><button type="button" className={alarmMode === "once" ? "selected" : ""} onClick={() => setAlarmMode("once")}>Jeden raz</button></div>
           {alarmMode === "repeat" ? <div className="clock-days">{days.map(day => <button type="button" className={repeatDays.includes(day.id) ? "selected" : ""} aria-pressed={repeatDays.includes(day.id)} key={day.id} onClick={() => setRepeatDays(value => value.includes(day.id) ? value.filter(id => id !== day.id) : [...value, day.id])}>{day.short}</button>)}</div> : <label className="clock-date"><span>Data</span><input type="date" required value={alarmDate} min={new Date().toISOString().slice(0, 10)} onChange={event => setAlarmDate(event.target.value)} /></label>}
         </>}
-        <label className="clock-field"><span>Etykieta <small>opcjonalnie</small></span><input maxLength={100} placeholder={composer === "timer" ? "np. Gotowanie makaronu" : "np. Pobudka do pracy"} value={label} onChange={event => setLabel(event.target.value)} /></label>
-        <details className="clock-ai"><summary><i>✦</i><span><strong>Po wybiciu zapytaj asystenta</strong><small>Opcjonalna instrukcja wykonana w chwili alarmu</small></span><b>＋</b></summary><label>Prompt dla asystenta<textarea rows={3} maxLength={1000} placeholder="np. Puść spokojną muzykę i opowiedz krótki kawał" value={prompt} onChange={event => setPrompt(event.target.value)} /></label></details>
+        <label className="clock-field"><span>Etykieta <small>opcjonalnie</small></span><input maxLength={100} placeholder={composer === "timer" ? "np. Gotowanie makaronu" : composer === "task" ? "np. Telefon do banku" : "np. Pobudka do pracy"} value={label} onChange={event => setLabel(event.target.value)} /></label>
+        {composer === "task" ? <label className="clock-field clock-task-prompt"><span>Instrukcja dla asystenta</span><textarea required rows={4} maxLength={1000} placeholder="np. Przypomnij mi przez dostępny komunikator, że mam zadzwonić do banku" value={prompt} onChange={event => setPrompt(event.target.value)} /><small>W terminie asystent użyje narzędzi, które będą wtedy włączone i dostępne.</small></label> : <details className="clock-ai"><summary><i>✦</i><span><strong>Po wybiciu zapytaj asystenta</strong><small>Opcjonalna instrukcja wykonana w chwili alarmu</small></span><b>＋</b></summary><label>Prompt dla asystenta<textarea rows={3} maxLength={1000} placeholder="np. Puść spokojną muzykę i opowiedz krótki kawał" value={prompt} onChange={event => setPrompt(event.target.value)} /></label></details>}
         {error && <p className="clock-error" role="alert">{error}</p>}
-        <footer><button type="button" onClick={resetComposer}>Anuluj</button><button className="clock-save" disabled={busy || (composer === "alarm" && alarmMode === "repeat" && !repeatDays.length)}>{busy ? "Zapisuję…" : composer === "timer" ? "Uruchom minutnik" : "Zapisz budzik"}</button></footer>
+        <footer><button type="button" onClick={resetComposer}>Anuluj</button><button className="clock-save" disabled={busy || (composer !== "timer" && alarmMode === "repeat" && !repeatDays.length) || (composer === "task" && !prompt.trim())}>{busy ? "Zapisuję…" : composer === "timer" ? "Uruchom minutnik" : composer === "task" ? "Zaplanuj zadanie" : "Zapisz budzik"}</button></footer>
       </motion.form>
     </motion.div>}</AnimatePresence>
 
@@ -202,11 +216,20 @@ function ScheduleCard({ item, now, index, reduced, onRemove }: { item: Scheduled
   const progress = item.kind === "timer" && item.durationSeconds ? Math.max(0, Math.min(1, remaining / (item.durationSeconds * 1000))) : 1;
   const repeat = item.repeatDays.length ? days.filter(day => item.repeatDays.includes(day.id)).map(day => day.short).join(" · ") : "Jeden raz";
   return <motion.article layout className={`clock-card clock-card--${item.kind}`} initial={reduced ? false : { opacity: 0, x: 30, scale: .97 }} animate={{ opacity: 1, x: 0, scale: 1 }} exit={{ opacity: 0, scale: .92 }} transition={{ delay: reduced ? 0 : index * .045 }}>
-    <div className="clock-card-icon">{item.kind === "timer" ? <svg viewBox="0 0 44 44"><circle cx="22" cy="22" r="18" /><motion.circle cx="22" cy="22" r="18" pathLength="1" style={{ pathLength: progress }} /></svg> : <span>◷</span>}</div>
-    <div className="clock-card-copy"><small>{item.kind === "timer" ? "MINUTNIK" : repeat.toUpperCase()}</small><h3>{item.label}</h3>{item.automationPrompt && <span>✦ Asystent po alarmie</span>}</div>
+    <div className="clock-card-icon">{item.kind === "timer" ? <svg viewBox="0 0 44 44"><circle cx="22" cy="22" r="18" /><motion.circle cx="22" cy="22" r="18" pathLength="1" style={{ pathLength: progress }} /></svg> : <span>{item.kind === "task" ? "✦" : "◷"}</span>}</div>
+    <div className="clock-card-copy"><small>{item.kind === "timer" ? "MINUTNIK" : item.kind === "task" ? `ZADANIE · ${repeat.toUpperCase()}` : repeat.toUpperCase()}</small><h3>{item.label}</h3>{item.automationPrompt && <span>{item.kind === "task" ? item.automationResult ? `Ostatnio: ${item.automationResult}` : item.automationPrompt : "✦ Asystent po alarmie"}</span>}</div>
     <div className="clock-card-time">{item.kind === "timer" ? <strong>{remainingText(remaining)}</strong> : <><strong>{item.time ?? new Date(item.triggerAt).toLocaleTimeString("pl-PL", { hour: "2-digit", minute: "2-digit" })}</strong><small>{item.repeatDays.length ? "" : new Date(item.triggerAt).toLocaleDateString("pl-PL", { day: "numeric", month: "short" })}</small></>}</div>
     <button className="clock-remove" aria-label={`Usuń ${item.label}`} onClick={onRemove}>×</button>
   </motion.article>;
+}
+
+function TaskHistoryCard({ item, onRemove }: { item: ScheduledItem; onRemove(): void }) {
+  const state = item.status === "automation" ? "Wykonywanie" : item.lastAutomationSucceeded ? "Wykonano" : "Błąd";
+  return <article className={`clock-task-result is-${item.status}`}>
+    <div><span>{state}</span><strong>{item.label}</strong><small>{item.lastTriggeredAt ? new Date(item.lastTriggeredAt).toLocaleString("pl-PL", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : ""}</small></div>
+    <p>{item.status === "automation" ? "Asystent wykonuje zapisaną instrukcję…" : item.automationResult ?? item.automationPrompt}</p>
+    <button aria-label={`Usuń historię ${item.label}`} onClick={onRemove}>×</button>
+  </article>;
 }
 
 function Ringing({ item, onDismiss, onSnooze, reduced }: { item: ScheduledItem; onDismiss(): void; onSnooze(): void; reduced: boolean }) {

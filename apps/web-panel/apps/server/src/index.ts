@@ -12,6 +12,7 @@ import {
   aiAssistantRunInputSchema,
   aiAssistantSpeechInputSchema,
   alarmInputSchema,
+  assistantTaskInputSchema,
   deviceReportSchema,
   homeAssistantConfigInputSchema,
   notificationPreviewSchema,
@@ -133,15 +134,16 @@ await app.register(websocket);
 schedules = new ScheduleStore(path.join(runtimeRoot, "schedules.json"), {
   onChanged: items => broadcast({ type: "schedules.changed", items }),
   onFired: async item => {
-    activateView("timers");
+    if (item.kind !== "task") activateView("timers");
     broadcast({ type: "schedule.fired", item });
     if (!item.automationPrompt) return;
     try {
       const settings = await readSettings();
-      const result = await assistant.execute(`Właśnie wybił ${item.kind === "timer" ? "minutnik" : "budzik"} „${item.label}”. Wykonaj teraz zapisaną automatyzację: ${item.automationPrompt}`, settings.aiAssistant);
+      const context = item.kind === "task" ? `Nadszedł termin zaplanowanego zadania asystenta „${item.label}”.` : `Właśnie wybił ${item.kind === "timer" ? "minutnik" : "budzik"} „${item.label}”.`;
+      const result = await assistant.execute(`${context} Wykonaj teraz zapisaną instrukcję: ${item.automationPrompt}`, settings.aiAssistant);
       await schedules.setAutomationResult(item.id, result.text);
     } catch (error) {
-      await schedules.setAutomationResult(item.id, `Błąd automatyzacji: ${error instanceof Error ? error.message : String(error)}`);
+      await schedules.setAutomationResult(item.id, `Błąd zadania: ${error instanceof Error ? error.message : String(error)}`, true);
     }
   },
 });
@@ -167,6 +169,12 @@ app.post("/api/alarms", async (request, reply) => {
   const parsed = alarmInputSchema.safeParse(request.body);
   if (!parsed.success) return reply.code(400).send({ error: "Nieprawidłowy budzik", details: parsed.error.issues });
   try { return await schedules.createAlarm(parsed.data); }
+  catch (error) { return reply.code(400).send({ error: error instanceof Error ? error.message : String(error) }); }
+});
+app.post("/api/assistant-tasks", async (request, reply) => {
+  const parsed = assistantTaskInputSchema.safeParse(request.body);
+  if (!parsed.success) return reply.code(400).send({ error: "Nieprawidłowe zadanie asystenta", details: parsed.error.issues });
+  try { return await schedules.createTask(parsed.data); }
   catch (error) { return reply.code(400).send({ error: error instanceof Error ? error.message : String(error) }); }
 });
 app.delete<{ Params: { id: string } }>("/api/schedules/:id", async (request, reply) => {
@@ -369,6 +377,7 @@ const assistantToolDependencies = {
   listSchedules: () => schedules.list(),
   createTimer: (input: import("@walldeck/contracts").TimerInput) => schedules.createTimer(input),
   createAlarm: (input: import("@walldeck/contracts").AlarmInput) => schedules.createAlarm(input),
+  createAssistantTask: (input: import("@walldeck/contracts").AssistantTaskInput) => schedules.createTask(input),
   cancelSchedule: (id: string) => schedules.remove(id),
   dismissSchedule: (id: string) => schedules.dismiss(id),
   snoozeSchedule: (id: string, minutes: number) => schedules.snooze(id, minutes),

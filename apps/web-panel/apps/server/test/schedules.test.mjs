@@ -34,3 +34,24 @@ test("schedule store persists timers and fires each due item once", async () => 
     await rm(directory, { recursive: true, force: true });
   }
 });
+
+test("assistant task runs silently and keeps its result as history", async () => {
+  const directory = await mkdtemp(path.join(os.tmpdir(), "walldeck-assistant-tasks-"));
+  const file = path.join(directory, "schedules.json");
+  const fired = [];
+  const store = new ScheduleStore(file, { onChanged() {}, onFired: item => fired.push(item) });
+  try {
+    await store.load();
+    const task = await store.createTask({ label: "Telefon do banku", triggerAt: new Date(Date.now() + 700).toISOString(), repeatDays: [], automationPrompt: "Wyślij przypomnienie" });
+    await new Promise(resolve => setTimeout(resolve, 1_150));
+    assert.equal(fired.length, 1);
+    assert.equal(store.list()[0].status, "automation");
+    await store.setAutomationResult(task.id, "Przypomnienie wysłane");
+    assert.equal(store.list()[0].status, "completed");
+    assert.equal(store.list()[0].enabled, false);
+    assert.equal(store.list()[0].automationResult, "Przypomnienie wysłane");
+  } finally {
+    store.stop();
+    await rm(directory, { recursive: true, force: true });
+  }
+});

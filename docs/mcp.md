@@ -22,10 +22,11 @@ WallDeck udostępnia kontrolowany interfejs Model Context Protocol pod adresem `
 | `set_view_brightness` | akcja | zapisana jasność konkretnego widoku |
 | `search_home_entities` | odczyt | wyszukanie encji Home Assistant |
 | `get_home_entity` | odczyt | stan wskazanej encji Home Assistant |
-| `list_schedules` | odczyt | aktywne minutniki i budziki wraz ze stanem i identyfikatorem |
+| `list_schedules` | odczyt | minutniki, budziki i zadania asystenta wraz ze stanem, identyfikatorem i ostatnim wynikiem |
 | `create_timer` | akcja | minutnik z etykietą i opcjonalnym promptem wykonywanym po wybiciu |
 | `create_alarm` | akcja | budzik jednorazowy albo cykliczny w strefie `Europe/Warsaw` |
-| `cancel_schedule` | akcja | trwałe usunięcie minutnika lub budzika |
+| `create_assistant_task` | akcja | ciche jednorazowe albo cykliczne zadanie z obowiązkową instrukcją dla asystenta |
+| `cancel_schedule` | akcja | trwałe usunięcie minutnika, budzika lub zadania |
 | `dismiss_schedule` | akcja | wyłączenie alarmu; cykliczny budzik planuje kolejne wystąpienie |
 | `snooze_schedule` | akcja | odłożenie alarmu o 1–180 minut |
 
@@ -57,7 +58,7 @@ WallDeck Server /mcp
 
 Serwer kieruje komendę sprzętową do aktywnego panelu i czeka maksymalnie 8 sekund na odpowiedź. Brak połączonego tabletu lub błąd bridge'a wraca do klienta MCP jako błąd narzędzia.
 
-Narzędzia harmonogramu korzystają z trwałego magazynu serwera. `automationPrompt` nie jest mapowany na konkretną integrację: po wybiciu serwer przekazuje jego tekst do istniejącego asystenta, który widzi dokładnie swój aktualnie włączony zestaw narzędzi. Dzięki temu budzik zapisuje intencję, a nie zaszytą akcję Home Assistant czy Spotify.
+Narzędzia harmonogramu korzystają z trwałego magazynu serwera. `automationPrompt` nie jest mapowany na konkretną integrację: po wybiciu serwer przekazuje jego tekst do istniejącego asystenta, który widzi dokładnie swój aktualnie włączony zestaw narzędzi. Zadanie może więc później użyć komunikatora, poczty lub innej integracji, gdy jej ograniczone narzędzie zostanie dodane i włączone. Brak potrzebnego narzędzia kończy wykonanie błędem zapisanym w historii; scheduler nie udaje wysłania wiadomości.
 
 ## Następny etap asystenta
 

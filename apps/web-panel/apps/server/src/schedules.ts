@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { readFile, rename, writeFile } from "node:fs/promises";
-import { alarmInputSchema, timerInputSchema, type AlarmInput, type ScheduledItem, type TimerInput } from "@walldeck/contracts";
+import { alarmInputSchema, assistantTaskInputSchema, timerInputSchema, type AlarmInput, type AssistantTaskInput, type ScheduledItem, type TimerInput } from "@walldeck/contracts";
 
 const zone = "Europe/Warsaw";
 const formatter = new Intl.DateTimeFormat("en-CA", {
@@ -33,7 +33,19 @@ export class ScheduleStore {
   async load() {
     try {
       const raw = JSON.parse(await readFile(this.filePath, "utf8")) as ScheduledItem[];
-      this.items = Array.isArray(raw) ? raw.filter(item => item?.id && ["timer", "alarm"].includes(item.kind)) : [];
+      this.items = Array.isArray(raw) ? raw.filter(item => item?.id && ["timer", "alarm", "task"].includes(item.kind)) : [];
+      for (const item of this.items) {
+        if (item.kind !== "task" || item.status !== "automation") continue;
+        item.automationResult = "Zadanie przerwane przez restart serwera";
+        item.lastAutomationSucceeded = false;
+        if (item.time && item.repeatDays.length) {
+          item.triggerAt = nextRecurringOccurrence(item.time, item.repeatDays).toISOString();
+          item.status = "scheduled";
+        } else {
+          item.status = "error";
+          item.enabled = false;
+        }
+      }
     } catch { this.items = []; }
     this.start();
     return this.list();
@@ -65,15 +77,29 @@ export class ScheduleStore {
     this.items.push(item); await this.commit(); return structuredClone(item);
   }
 
+  async createTask(raw: AssistantTaskInput) {
+    const input = assistantTaskInputSchema.parse(raw);
+    const now = new Date();
+    const trigger = input.triggerAt ? new Date(input.triggerAt) : nextRecurringOccurrence(input.time!, input.repeatDays, now);
+    if (!Number.isFinite(trigger.getTime()) || trigger.getTime() <= now.getTime()) throw new Error("Termin zadania musi być w przyszłości");
+    const item: ScheduledItem = {
+      id: randomUUID(), kind: "task", label: input.label || "Zadanie asystenta", automationPrompt: input.automationPrompt,
+      createdAt: now.toISOString(), triggerAt: trigger.toISOString(), time: input.time, repeatDays: input.repeatDays,
+      enabled: true, status: "scheduled",
+    };
+    this.items.push(item); await this.commit(); return structuredClone(item);
+  }
+
   async remove(id: string) {
     const before = this.items.length;
     this.items = this.items.filter(item => item.id !== id);
-    if (before === this.items.length) throw new Error("Nie znaleziono minutnika ani budzika");
+    if (before === this.items.length) throw new Error("Nie znaleziono wpisu harmonogramu");
     await this.commit(); return { ok: true as const, id };
   }
 
   async dismiss(id: string) {
     const item = this.require(id);
+    if (item.kind === "task") throw new Error("Zadania asystenta nie są alarmami");
     if (item.repeatDays.length && item.time) {
       item.triggerAt = nextRecurringOccurrence(item.time, item.repeatDays, new Date(Date.now() + 30_000)).toISOString();
       item.status = "scheduled"; item.automationResult = undefined;
@@ -88,10 +114,20 @@ export class ScheduleStore {
     await this.commit(); return structuredClone(item);
   }
 
-  async setAutomationResult(id: string, result: string) {
+  async setAutomationResult(id: string, result: string, failed = false) {
     const item = this.items.find(candidate => candidate.id === id);
     if (!item) return;
     item.automationResult = result.slice(0, 500);
+    item.lastAutomationSucceeded = !failed;
+    if (item.kind === "task") {
+      if (item.time && item.repeatDays.length) {
+        item.triggerAt = nextRecurringOccurrence(item.time, item.repeatDays, new Date(Date.now() + 30_000)).toISOString();
+        item.status = "scheduled";
+      } else {
+        item.status = failed ? "error" : "completed";
+        item.enabled = false;
+      }
+    }
     await this.commit();
   }
 
@@ -106,7 +142,7 @@ export class ScheduleStore {
   private async tick() {
     const due = this.items.filter(item => item.enabled && item.status === "scheduled" && Date.parse(item.triggerAt) <= Date.now());
     for (const item of due) {
-      item.status = "ringing"; item.lastTriggeredAt = new Date().toISOString();
+      item.status = item.kind === "task" ? "automation" : "ringing"; item.lastTriggeredAt = new Date().toISOString();
       await this.commit();
       void Promise.resolve(this.callbacks.onFired(structuredClone(item)));
     }
@@ -114,7 +150,7 @@ export class ScheduleStore {
 
   private require(id: string) {
     const item = this.items.find(candidate => candidate.id === id);
-    if (!item) throw new Error("Nie znaleziono minutnika ani budzika");
+    if (!item) throw new Error("Nie znaleziono wpisu harmonogramu");
     return item;
   }
 

@@ -11,6 +11,7 @@ import {
   type SpotifyQueue,
   type SpotifyStatus,
   type AlarmInput,
+  type AssistantTaskInput,
   type ScheduledItem,
   type TimerInput,
   type WallDeckSettings,
@@ -37,6 +38,7 @@ export interface AssistantToolDependencies {
   listSchedules(): ScheduledItem[];
   createTimer(input: TimerInput): Promise<ScheduledItem>;
   createAlarm(input: AlarmInput): Promise<ScheduledItem>;
+  createAssistantTask(input: AssistantTaskInput): Promise<ScheduledItem>;
   cancelSchedule(id: string): Promise<unknown>;
   dismissSchedule(id: string): Promise<unknown>;
   snoozeSchedule(id: string, minutes: number): Promise<unknown>;
@@ -163,7 +165,7 @@ export const assistantToolDefinitions = {
     },
   },
   list_schedules: {
-    description: "Zwraca wszystkie aktywne minutniki i budziki z identyfikatorami, etykietami, terminami, dniami powtarzania i stanem.",
+    description: "Zwraca minutniki, budziki i zadania asystenta z identyfikatorami, terminami, powtarzaniem, stanem oraz ostatnim wynikiem zadania.",
     input: z.object({}), annotations: readOnly(), run: (_args, deps) => ({ items: deps.listSchedules() }),
   },
   create_timer: {
@@ -176,8 +178,13 @@ export const assistantToolDefinitions = {
     input: z.object({ label: z.string().trim().max(100).default(""), time: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/).optional(), repeatDays: z.array(z.number().int().min(0).max(6)).max(7).default([]), triggerAt: z.string().datetime({ offset: true }).optional(), automationPrompt: z.string().trim().max(1_000).default("") }), annotations: action(),
     run: (args, deps) => deps.createAlarm(args as AlarmInput),
   },
+  create_assistant_task: {
+    description: "Planuje zadanie wykonywane później przez asystenta. Dla jednorazowego podaj triggerAt jako ISO 8601 z offsetem. Dla cyklicznego podaj time HH:mm i repeatDays, gdzie 0=niedziela, 1=poniedziałek, ..., 6=sobota. automationPrompt jest obowiązkową instrukcją, np. wysłaniem przypomnienia przez dostępne narzędzie. Zadanie nie uruchamia głośnego alarmu.",
+    input: z.object({ label: z.string().trim().max(100).default(""), time: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/).optional(), repeatDays: z.array(z.number().int().min(0).max(6)).max(7).default([]), triggerAt: z.string().datetime({ offset: true }).optional(), automationPrompt: z.string().trim().min(1).max(1_000) }), annotations: action(),
+    run: (args, deps) => deps.createAssistantTask(args as AssistantTaskInput),
+  },
   cancel_schedule: {
-    description: "Trwale usuwa wskazany minutnik lub budzik. Użyj list_schedules, jeśli identyfikator nie jest znany.",
+    description: "Trwale usuwa wskazany minutnik, budzik lub zadanie asystenta. Użyj list_schedules, jeśli identyfikator nie jest znany.",
     input: z.object({ id: z.string().uuid() }), annotations: action(), run: ({ id }, deps) => deps.cancelSchedule(id),
   },
   dismiss_schedule: {
