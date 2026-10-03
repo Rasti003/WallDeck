@@ -48,8 +48,6 @@ export class VoiceAssistantRuntime {
   private livePrebufferTimer: ReturnType<typeof setTimeout> | null = null;
   private audioWriteChain: Promise<void> = Promise.resolve();
   private pendingUserTurn = false;
-  private activeLunaPipeline = false;
-  private scheduledConversation = false;
 
   constructor(private settings: AiAssistantSettings, private callbacks: Callbacks) {}
 
@@ -182,8 +180,6 @@ export class VoiceAssistantRuntime {
 
   private async openConversation(remainder: string, forcedMode?: "gpt-live") {
     const lunaPipeline = forcedMode ? false : this.settings.voice.conversationMode === "luna-pipeline";
-    this.activeLunaPipeline = lunaPipeline;
-    this.scheduledConversation = forcedMode === "gpt-live";
     this.callbacks.showAssistant();
     this.callbacks.setState("attention");
     this.callbacks.onStatus?.(lunaPipeline ? "Uruchamiam Lunę…" : "Łączenie z GPT-Live…");
@@ -394,8 +390,6 @@ export class VoiceAssistantRuntime {
     this.socket = null;
     this.pendingAudio = [];
     this.sessionReady = false;
-    this.activeLunaPipeline = false;
-    this.scheduledConversation = false;
     if (this.livePrebufferTimer) clearTimeout(this.livePrebufferTimer);
     this.livePrebufferTimer = null;
     this.inputActive = false;

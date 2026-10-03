@@ -303,35 +303,35 @@ export function registerLiveConversation(app: FastifyInstance, deps: Dependencie
             waitForDelegation(delegationId);
             const item = nested.item as { name: string; arguments: string; call_id: string };
             toolQueue.enqueue(delegationId, item.call_id, async () => {
-            const toolStartedAt = new Date().toISOString();
-            let parsedArguments: unknown = item.arguments;
-            try { parsedArguments = JSON.parse(item.arguments); } catch { /* Preserve malformed arguments for diagnostics. */ }
-            let output: unknown;
-            let toolError: string | undefined;
-            try {
-              output = await executeLiveTool(item.name, item.arguments, deps, enabledTools);
-              app.log.info({ delegationId, tool: item.name }, "GPT-Live tool completed");
-            } catch (error) {
-              toolError = error instanceof Error ? error.message : String(error);
-              output = { ok: false, error: toolError };
-              app.log.warn({ delegationId, tool: item.name, err: error }, "GPT-Live tool failed");
-            }
-            toolCalls.push({
-              name: item.name,
-              arguments: parsedArguments,
-              output,
-              callId: item.call_id,
-              delegationId,
-              startedAt: toolStartedAt,
-              completedAt: new Date().toISOString(),
-              ...(toolError ? { error: toolError } : {}),
-            });
-            if (closeRequested) return;
-            live.send({
-              type: "response.item.create",
-              event_id: `tool_result_${Date.now()}`,
-              item: { type: "function_call_output", call_id: item.call_id, output: JSON.stringify(output) },
-            });
+              const toolStartedAt = new Date().toISOString();
+              let parsedArguments: unknown = item.arguments;
+              try { parsedArguments = JSON.parse(item.arguments); } catch { /* Preserve malformed arguments for diagnostics. */ }
+              let output: unknown;
+              let toolError: string | undefined;
+              try {
+                output = await executeLiveTool(item.name, item.arguments, deps, enabledTools);
+                app.log.info({ delegationId, tool: item.name }, "GPT-Live tool completed");
+              } catch (error) {
+                toolError = error instanceof Error ? error.message : String(error);
+                output = { ok: false, error: toolError };
+                app.log.warn({ delegationId, tool: item.name, err: error }, "GPT-Live tool failed");
+              }
+              toolCalls.push({
+                name: item.name,
+                arguments: parsedArguments,
+                output,
+                callId: item.call_id,
+                delegationId,
+                startedAt: toolStartedAt,
+                completedAt: new Date().toISOString(),
+                ...(toolError ? { error: toolError } : {}),
+              });
+              if (closeRequested) return;
+              live.send({
+                type: "response.item.create",
+                event_id: `tool_result_${Date.now()}`,
+                item: { type: "function_call_output", call_id: item.call_id, output: JSON.stringify(output) },
+              });
             });
           } else if (["response.failed", "response.incomplete"].includes(String(nested.type)) && delegationId) {
             const message = "Backend rozmowy nie ukończył odpowiedzi";
