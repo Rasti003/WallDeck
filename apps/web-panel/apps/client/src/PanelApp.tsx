@@ -464,7 +464,7 @@ export function PanelApp({ forcedView }: { forcedView?: ViewId }) {
         }
       }}
     >
-      {!forcedView && settings.tabletMenu.enabled && <TabletMenu open={menuOpen} current={activeView} views={settings.tabletMenu.views} onOpen={activateSwipeDown} onClose={() => setMenuOpen(false)} onSelect={view => { setMenuOpen(false); setDanceTransition(false); setAssistantIdleTransition(false); setRequestedAssistantState(null); activate(view); }} />}
+      {!forcedView && settings.tabletMenu.enabled && <TabletMenu open={menuOpen} showHandle={settings.tabletMenu.showHandle} current={activeView} views={settings.tabletMenu.views} onOpen={activateSwipeDown} onClose={() => setMenuOpen(false)} onSelect={view => { setMenuOpen(false); setDanceTransition(false); setAssistantIdleTransition(false); setRequestedAssistantState(null); activate(view); }} />}
       <PanelContext.Provider value={{ settings, activeView, requestedAssistantState, menuOpen, setInteractionLocked }}>
       <AnimatePresence mode="wait" custom={instantTransition}>
         <motion.div

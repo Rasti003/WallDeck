@@ -159,7 +159,7 @@ Admin: zakładka „Stany i przejścia” opisuje widoki, Music, Spotify, noc, a
 
 Zakładka „Asystent AI i MCP” obsługuje tekstowy przepływ Luna → MCP, próbki głosu oraz rozmowę tabletu. Lokalny wake word „Ej Waldek” uruchamia serwerową sesję GPT-Live; PCM 24 kHz płynie przez bridge v6, a delegacje wykonawcze wracają do istniejącej Luny i MCP. Audio zebrane podczas nawiązywania połączenia jest ograniczenie buforowane i trafia do OpenAI dopiero po `session.started`. GPT-Live ma miesięczny limit kosztu i twardy limit sesji. Admin może osobno wyłączyć rozmowę, wake word oraz eksperymentalną obserwację mówcy. Pola ElevenLabs pozostają przygotowane bez aktywnego providera.
 
-Tablet menu: downward swipe in upper 40% or top handle opens a glass-style view selector. Admin > Views and rules > Menu tabletu controls enabled state, ordered visible views (minimum one). Menu overrides the legacy downward-swipe action and suspends inactivity while open. Xiaomi top-edge toolbar remains an OS limitation: start inside the panel or use the handle.
+Tablet menu: a downward swipe started in the upper 40% opens a glass-style view selector. The top handle is hidden by default so it does not overlap screen content, and Admin > Ekrany i menu > Menu tabletu can restore it. The same section controls the enabled state and ordered visible views (minimum one). Menu overrides the legacy downward-swipe action and suspends inactivity while open.
 
 Menu footer now contains a discreet 17px tablet icon (40px touch area) for exitToTablet, shown only when native capabilities advertise it. Desktop preview and older APKs omit it.
 

@@ -142,7 +142,7 @@ PowerService handles onTaskRemoved for WallDeck only, checks physical power, Dev
 
 OEM hidden-task recovery uses MainActivity.onStop and appTasks visibility on API 32+, plus REORDER_TASKS to move its own task forward. It avoids destroyed/finishing Activities, deliberate exits, disconnected power, keyguard/screen-off and Spotify connecting state. It does not hide the OEM toolbar.
 
-tabletMenu settings migrate with defaults, reject empty/duplicate entries. Web selector uses native swipeDown across embedded HA and web pointer gestures elsewhere, with a shared top handle. Native userInteraction now follows gesture classification on release. No new bridge capability; inactivity uses menu-open guard.
+tabletMenu settings migrate with defaults and reject empty/duplicate entries. Web selector uses native swipeDown across embedded HA and web pointer gestures elsewhere. The shared top handle is hidden by default and can be restored independently in admin through `tabletMenu.showHandle`; the gesture remains active whenever the menu itself is enabled. Native userInteraction follows gesture classification on release. No new bridge capability; inactivity uses menu-open guard.
 
 Bridge v4 adds exitToTablet with empty args and {ok:true} acknowledgement, followed by native exit. TabletMenu discovers the capability before showing the footer icon. Existing trusted-origin/main-frame validation still gates the command.
 

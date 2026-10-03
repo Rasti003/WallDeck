@@ -30,6 +30,9 @@ describe("music integration boundaries", () => {
 it("migrates menu settings and rejects empty or duplicate menu entries", () => {
  const { tabletMenu, ...legacy } = defaultSettings;
  expect(settingsSchema.parse(legacy).tabletMenu.views).toEqual(tabletMenu.views);
+ const { showHandle: _showHandle, ...legacyMenu } = tabletMenu;
+ expect(settingsSchema.parse({...defaultSettings,tabletMenu:legacyMenu}).tabletMenu.showHandle).toBe(false);
+ expect(settingsSchema.parse({...defaultSettings,tabletMenu:{...tabletMenu,showHandle:true}}).tabletMenu.showHandle).toBe(true);
  expect(settingsSchema.safeParse({...defaultSettings,tabletMenu:{enabled:true,views:[]}}).success).toBe(false);
  expect(settingsSchema.safeParse({...defaultSettings,tabletMenu:{enabled:true,views:["music","music"]}}).success).toBe(false);
 });

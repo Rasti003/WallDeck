@@ -280,8 +280,9 @@ export function AdminApp() {
         </section>}
 
         {section === "views" && <>
-      <form className="admin-card admin-form" onSubmit={save}><h2>Menu tabletu</h2><p>Pasek widoków otwierany gestem w dół lub uchwytem u góry ekranu. Zastępuje regułę gestu w dół, gdy jest włączony.</p>
+      <form className="admin-card admin-form" onSubmit={save}><h2>Menu tabletu</h2><p>Pasek widoków otwierany gestem w dół. Opcjonalny uchwyt u góry ekranu można pokazać, jeśli będzie potrzebny. Menu zastępuje regułę gestu w dół, gdy jest włączone.</p>
       <label><input type="checkbox" checked={settings.tabletMenu.enabled} onChange={e=>setSettings({...settings,tabletMenu:{...settings.tabletMenu,enabled:e.target.checked}})} /> Włącz menu na wszystkich widokach</label>
+      <label><input type="checkbox" checked={settings.tabletMenu.showHandle} disabled={!settings.tabletMenu.enabled} onChange={e=>setSettings({...settings,tabletMenu:{...settings.tabletMenu,showHandle:e.target.checked}})} /> Pokaż uchwyt menu u góry ekranu</label>
       {([...settings.tabletMenu.views,...(Object.keys(menuLabels) as ViewId[]).filter(v=>!settings.tabletMenu.views.includes(v))]).map(v=><div key={v} className="rule-flow"><label><input type="checkbox" checked={settings.tabletMenu.views.includes(v)} disabled={settings.tabletMenu.views.length===1&&settings.tabletMenu.views.includes(v)} onChange={e=>setSettings({...settings,tabletMenu:{...settings.tabletMenu,views:e.target.checked?[...settings.tabletMenu.views,v]:settings.tabletMenu.views.filter(x=>x!==v)}})} />{menuLabels[v]}</label><button type="button" disabled={settings.tabletMenu.views.indexOf(v)<=0} onClick={()=>{const next=[...settings.tabletMenu.views];const i=next.indexOf(v);[next[i-1],next[i]]=[next[i],next[i-1]];setSettings({...settings,tabletMenu:{...settings.tabletMenu,views:next}})}} aria-label={`Przesuń ${menuLabels[v]} wyżej`}>↑</button></div>)}
       <button type="submit">Zapisz menu</button></form>
 

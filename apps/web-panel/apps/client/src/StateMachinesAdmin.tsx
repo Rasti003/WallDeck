@@ -16,7 +16,7 @@ export function StateMachinesAdmin({ settings, currentView }: { settings: WallDe
   return <div className="state-machines">
     <section className="admin-card"><span className="admin-kicker">Mapa zachowania</span><h2>Co uruchamia kolejny ekran?</h2><p>Widok zgłoszony przez serwer: <strong>{names[currentView]}</strong>. To opis reguł, a nie podgląd bieżącego stanu odtwarzania czy animacji.</p><p>Czasy poniżej pochodzą z ustawień formularzy. Zmiany obowiązują na tablecie po zapisaniu w odpowiedniej zakładce. Stały czas powrotu z Music wynosi 30 sekund.</p></section>
     <Machine title="Widoki i gesty" rows={[
-      ["Dowolny widok", `Gest w dół lub uchwyt · menu ${settings.tabletMenu.enabled ? "włączone" : "wyłączone"}`, "Menu widoków; wstrzymuje bezczynność i ma pierwszeństwo przed regułą gestu"],
+      ["Dowolny widok", `Gest w dół${settings.tabletMenu.showHandle ? " lub uchwyt" : ""} · menu ${settings.tabletMenu.enabled ? "włączone" : "wyłączone"}`, "Menu widoków; wstrzymuje bezczynność i ma pierwszeństwo przed regułą gestu"],
       [names[tap.sourceView], `Dotknięcie · ${tap.enabled ? "włączone" : "wyłączone"}`, names[tap.targetView]],
       [names[swipe.sourceView], `Gest w dół od górnych 40% ekranu · ${swipe.enabled ? "włączony" : "wyłączony"}`, names[swipe.targetView]],
       [names[idle.sourceView], `${idle.seconds} s bezczynności · ${idle.enabled ? "włączone" : "wyłączone"}`, idle.sourceView === "ha" && idle.targetView === "photos" && idle.showAssistantIdleBeforePhotos ? `Idle (${idle.assistantIdleSeconds} s) → Zdjęcia` : names[idle.targetView]],
