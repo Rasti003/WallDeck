@@ -16,6 +16,7 @@ import { VoiceAssistantRuntime } from "./voice-assistant";
 
 export function PanelApp({ forcedView }: { forcedView?: ViewId }) {
   const [interactionLocked, setInteractionLocked] = useState(false);
+  const [stayOnThisView, setStayOnThisView] = useState(false);
   const lockedRef = useRef(false);
   lockedRef.current = interactionLocked;
   const [menuOpen, setMenuOpen] = useState(false);
@@ -32,6 +33,7 @@ export function PanelApp({ forcedView }: { forcedView?: ViewId }) {
   const musicPlaying = useRef(false);
   const [musicInactive, setMusicInactive] = useState(false);
   const idleFromMusic = useRef(false);
+  const assistantIdleSource = useRef<ViewId>("ha");
   const cameFromMusic = useRef(false);
   const previousView = useRef<ViewId>(forcedView ?? "photos");
   const activeViewRef = useRef<ViewId>(forcedView ?? "photos");
@@ -167,6 +169,7 @@ export function PanelApp({ forcedView }: { forcedView?: ViewId }) {
       previousView.current = activeView;
     }
     if (activeView !== "assistant-expressive") setDanceTransition(false);
+    setStayOnThisView(false);
   }, [activeView]);
 
   const activate = useCallback((nextView: ViewId, instant = false) => {
@@ -385,7 +388,7 @@ export function PanelApp({ forcedView }: { forcedView?: ViewId }) {
         ? musicInactive ? { target: "assistant-expressive" as const, seconds: 30, startsAssistantIdle: true, completesAssistantIdle: false } : null
         : assistantIdleTransition && idleFromMusic.current && activeView === "assistant-expressive"
           ? { target: "photos" as const, seconds: settings.viewRouter.inactivityAction.assistantIdleSeconds, startsAssistantIdle: false, completesAssistantIdle: true }
-          : inactivityTransition(activeView, settings.viewRouter, assistantIdleTransition);
+          : inactivityTransition(activeView, settings.viewRouter, assistantIdleTransition, stayOnThisView);
     if (forcedView || menuOpen || interactionLocked || !transition) return;
     idleTimer.current = setTimeout(() => {
       if (activeView === "ha" && cameFromMusic.current && musicPlaying.current) {
@@ -405,7 +408,9 @@ export function PanelApp({ forcedView }: { forcedView?: ViewId }) {
       if (activeView === "music" && musicPlaying.current) return;
       if (transition.startsAssistantIdle) {
         idleFromMusic.current = activeView === "music";
+        assistantIdleSource.current = activeView;
         interruptionPending.current = false;
+        if (activeView === "timers") window.dispatchEvent(new Event("walldeck:inactiveViewLeaving"));
         setRequestedAssistantState("idle");
         setAssistantIdleTransition(true);
       }
@@ -417,11 +422,11 @@ export function PanelApp({ forcedView }: { forcedView?: ViewId }) {
       }
       activate(transition.target);
     }, transition.seconds * 1_000);
-  }, [activeView, activate, assistantIdleTransition, danceTransition, forcedView, menuOpen, interactionLocked, musicInactive, scheduleReturnTransition, settings.viewRouter]);
+  }, [activeView, activate, assistantIdleTransition, danceTransition, forcedView, menuOpen, interactionLocked, musicInactive, scheduleReturnTransition, settings.viewRouter, stayOnThisView]);
 
   const registerActivity = useCallback(() => {
     if (menuOpenRef.current || lockedRef.current) return;
-    const target = scheduleReturnTransition && activeView === "assistant-expressive" ? "photos" : danceTransition && activeView === "assistant-expressive" ? "music" : assistantIdleTransition && idleFromMusic.current && activeView === "assistant-expressive" ? "music" : viewAfterActivity(activeView, settings.viewRouter, assistantIdleTransition);
+    const target = scheduleReturnTransition && activeView === "assistant-expressive" ? "photos" : danceTransition && activeView === "assistant-expressive" ? "music" : assistantIdleTransition && idleFromMusic.current && activeView === "assistant-expressive" ? "music" : assistantIdleTransition && activeView === "assistant-expressive" ? assistantIdleSource.current : viewAfterActivity(activeView, settings.viewRouter, assistantIdleTransition);
     if (target) {
       if (interruptionPending.current) return;
       interruptionPending.current = true;
@@ -529,7 +534,7 @@ export function PanelApp({ forcedView }: { forcedView?: ViewId }) {
       }}
     >
       {!forcedView && settings.tabletMenu.enabled && <TabletMenu open={menuOpen} showHandle={settings.tabletMenu.showHandle} current={activeView} views={settings.tabletMenu.views} onOpen={activateSwipeDown} onClose={() => setMenuOpen(false)} onSelect={view => { setMenuOpen(false); setDanceTransition(false); setAssistantIdleTransition(false); setRequestedAssistantState(null); activate(view); }} />}
-      <PanelContext.Provider value={{ settings, activeView, requestedAssistantState, schedulePresentation, menuOpen, setInteractionLocked }}>
+      <PanelContext.Provider value={{ settings, activeView, requestedAssistantState, schedulePresentation, menuOpen, stayOnThisView, setStayOnThisView, setInteractionLocked }}>
       <AnimatePresence mode="wait" custom={instantTransition}>
         <motion.div
           key={activeView}

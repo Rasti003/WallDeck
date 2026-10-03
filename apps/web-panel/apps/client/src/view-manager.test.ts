@@ -30,6 +30,12 @@ describe("view manager", () => {
     expect(viewAfterActivity("assistant-expressive", router, false)).toBeNull();
   });
 
+  it("returns an unpinned clock through assistant idle and keeps an active timer visible", () => {
+    const router = defaultSettings.viewRouter;
+    expect(inactivityTransition("timers", router, false, false)).toEqual({ target: "assistant-expressive", seconds: 30, startsAssistantIdle: true, completesAssistantIdle: false });
+    expect(inactivityTransition("timers", router, false, true)).toBeNull();
+  });
+
   it("can bypass the assistant idle transition", () => {
     const router = { ...defaultSettings.viewRouter, inactivityAction: { ...defaultSettings.viewRouter.inactivityAction, showAssistantIdleBeforePhotos: false } };
     expect(inactivityTransition("ha", router)).toEqual({ target: "photos", seconds: 30, startsAssistantIdle: false, completesAssistantIdle: false });

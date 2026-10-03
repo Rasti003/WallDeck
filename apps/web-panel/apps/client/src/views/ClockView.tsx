@@ -26,7 +26,7 @@ function tomorrowDate() { const value = new Date(Date.now() + 86_400_000); retur
 function dateInputValue(value: string) { const date = new Date(value); return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`; }
 
 export function ClockView() {
-  const { settings, schedulePresentation, setInteractionLocked } = useContext(PanelContext);
+  const { settings, schedulePresentation, setInteractionLocked, setStayOnThisView } = useContext(PanelContext);
   const reduced = useReducedMotion();
   const [now, setNow] = useState(Date.now());
   const [items, setItems] = useState<ScheduledItem[]>([]);
@@ -45,8 +45,6 @@ export function ClockView() {
   const [timerFullscreen, setTimerFullscreen] = useState(true);
   const [fullscreenSettled, setFullscreenSettled] = useState(false);
   const [compactActivity, setCompactActivity] = useState(0);
-  const [timerPhotoReturnArmed, setTimerPhotoReturnArmed] = useState(false);
-  const [timerPhotoReturnActivity, setTimerPhotoReturnActivity] = useState(0);
   const ringing = items.filter(item => item.status === "ringing");
   const scheduled = items.filter(item => item.status === "scheduled");
 
@@ -60,9 +58,9 @@ export function ClockView() {
     return () => clearInterval(timer);
   }, [ringing.map(item => item.id).join("|"), settings.notifications.volume]);
   useEffect(() => {
-    setInteractionLocked(Boolean(composer || ringing.length));
+    setInteractionLocked(Boolean(composer || ringing.some(item => item.kind === "alarm")));
     return () => setInteractionLocked(false);
-  }, [composer, ringing.length, setInteractionLocked]);
+  }, [composer, ringing.map(item => `${item.id}:${item.kind}`).join("|"), setInteractionLocked]);
 
   const date = new Date(now); const time = clock.format(date); const seconds = date.getSeconds();
   const clockSchedules = scheduled.filter(item => item.kind !== "task");
@@ -79,26 +77,14 @@ export function ClockView() {
   const taskHistory = items.filter(item => item.kind === "task" && item.status !== "scheduled").sort((a, b) => Date.parse(b.lastTriggeredAt ?? b.createdAt) - Date.parse(a.lastTriggeredAt ?? a.createdAt)).slice(0, 5);
   const resetComposer = () => { setComposer(null); setEditingTaskId(null); setLabel(""); setPrompt(""); setError(""); };
   useEffect(() => {
-    if (ringingTimer) setTimerPhotoReturnArmed(true);
+    setStayOnThisView(Boolean(focusedTimer));
+    return () => setStayOnThisView(false);
+  }, [focusedTimer?.id, setStayOnThisView]);
+  useEffect(() => {
+    const leave = () => { if (ringingTimer) void api.schedules.dismiss(ringingTimer.id); };
+    window.addEventListener("walldeck:inactiveViewLeaving", leave);
+    return () => window.removeEventListener("walldeck:inactiveViewLeaving", leave);
   }, [ringingTimer?.id]);
-  useEffect(() => {
-    if (focusedTimer) setTimerPhotoReturnArmed(false);
-  }, [focusedTimer?.id]);
-  useEffect(() => {
-    if (!timerPhotoReturnArmed || composer || focusedTimer || ringing.some(item => item.kind === "alarm")) return;
-    const timer = setTimeout(() => {
-      const finish = ringingTimer ? api.schedules.dismiss(ringingTimer.id) : Promise.resolve();
-      void finish.then(() => api.activateView("photos")).catch(error => setError(error instanceof Error ? error.message : String(error)));
-    }, 30_000);
-    const activity = () => setTimerPhotoReturnActivity(value => value + 1);
-    window.addEventListener("keydown", activity);
-    window.addEventListener("wallpanel:userInteraction", activity);
-    return () => {
-      clearTimeout(timer);
-      window.removeEventListener("keydown", activity);
-      window.removeEventListener("wallpanel:userInteraction", activity);
-    };
-  }, [composer, focusedTimer, ringingTimer?.id, timerPhotoReturnActivity, timerPhotoReturnArmed, ringing.map(item => `${item.id}:${item.kind}`).join("|")]);
   useEffect(() => { if (focusedTimer) setTimerFullscreen(true); }, [focusedTimer?.id]);
   useEffect(() => {
     if (!schedulePresentation) {
@@ -165,7 +151,7 @@ export function ClockView() {
   const setQuickTimer = (minutes: number) => { setTimerParts({ hours: 0, minutes, seconds: 0 }); setComposer("timer"); };
   const minimizeTimer = () => { setFullscreenSettled(false); setTimerFullscreen(false); };
 
-  return <main className={`clock-view${focusedTimer ? " clock-view--timer" : ""}${screen === "tasks" ? " clock-view--tasks" : ""}${fullscreenActive && fullscreenSettled ? " clock-view--fullscreen" : ""}`} onPointerDown={event => event.stopPropagation()} onPointerUp={event => { event.stopPropagation(); if (focusedTimer && !timerFullscreen && screen === "clock") setCompactActivity(value => value + 1); window.dispatchEvent(new Event("wallpanel:userInteraction")); }}>
+  return <main data-stay-on-this-view={Boolean(focusedTimer)} className={`clock-view${focusedTimer ? " clock-view--timer" : ""}${screen === "tasks" ? " clock-view--tasks" : ""}${fullscreenActive && fullscreenSettled ? " clock-view--fullscreen" : ""}`} onPointerDown={event => event.stopPropagation()} onPointerUp={event => { event.stopPropagation(); if (focusedTimer && !timerFullscreen && screen === "clock") setCompactActivity(value => value + 1); window.dispatchEvent(new Event("wallpanel:userInteraction")); }}>
     <div className="clock-aurora" aria-hidden="true"><i /><i /><i /></div>
     {screen === "clock" ? <><motion.header className="clock-hero" initial={reduced ? false : { opacity: 0, y: -18 }} animate={{ opacity: 1, y: 0 }}>
       <div className="clock-brand"><span>WALLDECK</span><strong>Zegar</strong></div>
@@ -234,7 +220,7 @@ export function ClockView() {
     </motion.div>}</AnimatePresence>
 
     {focusedTimer && !ringing.length && <FullscreenTimer item={focusedTimer} now={now} active={fullscreenActive} reduced={Boolean(reduced)} onMinimize={minimizeTimer} onRemove={() => void api.schedules.remove(focusedTimer.id).then(refresh)} />}
-    <AnimatePresence>{ringing[0] && <Ringing item={ringing[0]} onDismiss={() => void api.schedules.dismiss(ringing[0].id).then(() => { if (ringing[0].kind === "timer") { setTimerPhotoReturnArmed(true); setTimerPhotoReturnActivity(value => value + 1); } return refresh(); })} onSnooze={() => { setTimerPhotoReturnArmed(false); void api.schedules.snooze(ringing[0].id, 10).then(refresh); }} reduced={Boolean(reduced)} />}</AnimatePresence>
+    <AnimatePresence>{ringing[0] && <Ringing item={ringing[0]} onDismiss={() => void api.schedules.dismiss(ringing[0].id).then(refresh)} onSnooze={() => void api.schedules.snooze(ringing[0].id, 10).then(refresh)} reduced={Boolean(reduced)} />}</AnimatePresence>
   </main>;
 }
 

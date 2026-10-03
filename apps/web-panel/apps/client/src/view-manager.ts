@@ -46,7 +46,7 @@ export interface ScheduledViewTransition {
   completesAssistantIdle: boolean;
 }
 
-export function inactivityTransition(current: ViewId, router: RouterSettings, assistantIdleTransition = false): ScheduledViewTransition | null {
+export function inactivityTransition(current: ViewId, router: RouterSettings, assistantIdleTransition = false, stayOnThisView = false): ScheduledViewTransition | null {
   const rule = router.inactivityAction;
   if (!rule.enabled) return null;
   if (assistantIdleTransition) {
@@ -56,6 +56,16 @@ export function inactivityTransition(current: ViewId, router: RouterSettings, as
       startsAssistantIdle: false,
       completesAssistantIdle: true,
     } : null;
+  }
+  if (current === "timers") {
+    if (stayOnThisView) return null;
+    const showAssistant = rule.targetView === "photos" && rule.showAssistantIdleBeforePhotos;
+    return {
+      target: showAssistant ? "assistant-expressive" : rule.targetView,
+      seconds: rule.seconds,
+      startsAssistantIdle: showAssistant,
+      completesAssistantIdle: false,
+    };
   }
   if (current !== rule.sourceView || rule.targetView === current) return null;
   const showAssistant = current === "ha" && rule.targetView === "photos" && rule.showAssistantIdleBeforePhotos;

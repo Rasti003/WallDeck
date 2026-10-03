@@ -3,4 +3,4 @@ import { defaultSettings, type AssistantState, type ScheduledItem, type ViewId, 
 
 export type SchedulePresentation = Pick<ScheduledItem, "id" | "kind"> & { revision: number };
 
-export const PanelContext = createContext<{ settings: WallDeckSettings; activeView: ViewId; requestedAssistantState: AssistantState | null; schedulePresentation: SchedulePresentation | null; menuOpen: boolean; setInteractionLocked: (locked: boolean) => void }>({ settings: defaultSettings, activeView: "photos", requestedAssistantState: null, schedulePresentation: null, menuOpen: false, setInteractionLocked: () => undefined });
+export const PanelContext = createContext<{ settings: WallDeckSettings; activeView: ViewId; requestedAssistantState: AssistantState | null; schedulePresentation: SchedulePresentation | null; menuOpen: boolean; stayOnThisView: boolean; setStayOnThisView: (stay: boolean) => void; setInteractionLocked: (locked: boolean) => void }>({ settings: defaultSettings, activeView: "photos", requestedAssistantState: null, schedulePresentation: null, menuOpen: false, stayOnThisView: false, setStayOnThisView: () => undefined, setInteractionLocked: () => undefined });
