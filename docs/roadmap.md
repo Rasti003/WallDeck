@@ -152,7 +152,7 @@
 - [x] Wyszukiwanie internetowe przez Responses API `web_search` z cytowaniami i wynikami obrazowymi.
 - [x] Prezentacja wielu bieżących temperatur, CO₂ i innych encji HA jako dużych wartości oraz wykresu pomieszczeń.
 - [ ] Historia encji HA w czasie i wykresy liniowe z wyborem zakresu.
-- [ ] Kontrolowane proxy obrazów z limitami pobierania i ochroną SSRF.
+- [x] Kontrolowany lokalny cache/proxy obrazów z walidacją HTTPS, ochroną zakresów prywatnych, limitami przekierowań, czasu, rozmiaru i typu MIME.
 - [ ] Interaktywne akcje Canvas: minutnik, przypomnienie, odtworzenie i potwierdzenie działania.
 - [x] Jawne wyszukiwanie obrazów dla próśb o zdjęcie (`search_content_types: image,text`), z podpisem, stroną źródłową i przekazaniem prawdziwych wyników do Canvas.
 - [x] Proaktywny tryb prezentacyjny: opowieści o wizualnych tematach automatycznie łączą tekst, ciekawostki, zdjęcia i źródła w Canvas bez wymagania słowa „pokaż”.

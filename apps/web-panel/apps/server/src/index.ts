@@ -47,6 +47,7 @@ import { AssistantHistoryStore } from "./assistant-history.js";
 import { ScheduleStore } from "./schedules.js";
 import { DiagnosticStore } from "./diagnostics.js";
 import { searchWeb } from "./web-search.js";
+import { AssistantImageCache } from "./assistant-image-cache.js";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const webRoot = path.resolve(here, "../../client/dist");
@@ -57,6 +58,7 @@ const port = Number(process.env.PORT ?? 8080);
 
 await mkdir(runtimeRoot, { recursive: true });
 const diagnostics = new DiagnosticStore(path.join(runtimeRoot, "diagnostics.json"));
+const assistantImageCache = new AssistantImageCache();
 const recordDiagnostic = (entry: DiagnosticEntryInput) => diagnostics.add(entry).catch(() => undefined);
 
 async function readSettings(): Promise<WallDeckSettings> {
@@ -453,11 +455,17 @@ const assistantToolDependencies = {
     const settings = (await readSettings()).aiAssistant;
     return searchWeb(apiKey, settings.primaryModel, query, includeImages);
   },
-  showAssistantCanvas: (canvas: AssistantCanvasInput) => {
-    assistantCanvas = { ...canvas, id: randomUUID(), updatedAt: new Date().toISOString() };
+  showAssistantCanvas: async (canvas: AssistantCanvasInput) => {
+    const cached = await assistantImageCache.cache(canvas.images);
+    assistantCanvas = { ...canvas, images: cached.images, id: randomUUID(), updatedAt: new Date().toISOString() };
     broadcast({ type: "assistant.canvas", canvas: assistantCanvas });
     activateView("assistant-canvas");
-    return { ok: true, canvasId: assistantCanvas.id };
+    if (cached.rejected.length) void recordDiagnostic({
+      level: "warning", category: "assistant", title: "Pominięto niedostępne obrazy Canvas",
+      message: `${cached.rejected.length} z ${canvas.images.length} obrazów nie przeszło bezpiecznego pobierania`,
+      details: cached.rejected.map(item => `${new URL(item.url).hostname}: ${item.reason}`).join("\n"),
+    });
+    return { ok: true, canvasId: assistantCanvas.id, imagesCached: cached.images.length, imagesRejected: cached.rejected.length };
   },
   spotifyStatus: () => spotify.status(),
   searchSpotify: (query: string, types?: import("@walldeck/contracts").SpotifyItem["type"][]) => spotify.search(query, types),
@@ -575,6 +583,12 @@ app.get("/api/views", async () => ({ current: currentView, available: [
   { id: "timers", name: "Czas · minutniki i budziki" },
 ] }));
 app.get("/api/assistant/canvas", async (_request, reply) => assistantCanvas ?? reply.code(204).send());
+app.get<{ Params: { id: string } }>("/api/assistant/images/:id", async (request, reply) => {
+  if (!/^[0-9a-f-]{36}$/i.test(request.params.id)) return reply.code(404).send({ error: "Nie znaleziono obrazu" });
+  const image = assistantImageCache.get(request.params.id);
+  if (!image) return reply.code(404).send({ error: "Nie znaleziono obrazu" });
+  return reply.header("content-type", image.contentType).header("cache-control", "private, max-age=3600").send(image.body);
+});
 app.post("/api/views/activate", async (request, reply) => {
   const parsed = viewIdSchema.safeParse((request.body as { viewId?: unknown } | null)?.viewId);
   if (!parsed.success) return reply.code(400).send({ error: "Nieznany widok" });
