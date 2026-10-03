@@ -258,3 +258,9 @@ Xiaomi 2603ARP14G, Android 16, bridge v5. Android `assembleDebug`, testy jednost
 - Kontener WebPanelu zatrzymano, a główną stronę WebView przeładowano przez debugger. Zamiast systemowej białej strony błędu pojawił się natywny ekran `Brak połączenia` z informacją o ponawianiu co 5 sekund i przyciskiem `Spróbuj teraz`. PASS.
 - Po ponownym uruchomieniu kontenera aplikacja bez dotykania ekranu połączyła się z `http://192.168.31.153:8080/panel`. Ekran offline zniknął, zawartość panelu wróciła, a urządzenie ponownie zgłosiło się online w `/api/devices`. PASS.
 - Zrzut ekranu przez ADB był czarny z powodu aktywnego `FLAG_SECURE`; treść i geometrię natywnego ekranu potwierdzono przez hierarchię UI urządzenia (pełny ekran 2048×1280, centralna karta 945×564 px).
+## 2026-10-03 — próg confidence i diagnostyka wake wordu
+
+- Urządzenie: Xiaomi 2603ARP14G, Android 16. Aktualizacja debug APK przez ADB zakończyła się wynikiem `Success`; aplikacja zachowała konfigurację i ponownie połączyła się z produkcyjnym panelem. PASS.
+- Odczyt `capabilities` z działającego WebView potwierdził Android Bridge v8. PASS.
+- Odczyt `wakeWord.status` potwierdził: `enabled=true`, `listening=true`, `localAvailable=true`, `modelReady=true`, uprawnienie mikrofonu, frazę `ej waldek`, silnik `vosk-pl` i próg `confidenceThreshold=0.78`. PASS.
+- Akustyczne zaakceptowanie i odrzucenie kandydatów oraz ich wpisy w dzienniku wymagają zebrania rzeczywistych prób głosowych; nie były symulowane w tym teście.
