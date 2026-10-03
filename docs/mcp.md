@@ -19,6 +19,8 @@ WallDeck udostępnia kontrolowany interfejs Model Context Protocol pod adresem `
 | `set_tablet_volume` | akcja | głośność multimediów 0–100% |
 | `adjust_tablet_volume` | akcja | względna zmiana głośności multimediów |
 | `send_notification` | akcja | komunikat zwykły lub alarm z opcjonalnym dźwiękiem |
+| `speak_on_tablet` | akcja | jednorazowy komunikat TTS bez otwierania rozmowy |
+| `start_live_conversation` | akcja | rozpoczęcie GPT‑Live z wiadomością otwierającą i kontekstem |
 | `set_view_brightness` | akcja | zapisana jasność konkretnego widoku |
 | `search_home_entities` | odczyt | wyszukanie encji Home Assistant |
 | `get_home_entity` | odczyt | stan wskazanej encji Home Assistant |
@@ -31,7 +33,7 @@ WallDeck udostępnia kontrolowany interfejs Model Context Protocol pod adresem `
 | `dismiss_schedule` | akcja | wyłączenie alarmu; cykliczny budzik planuje kolejne wystąpienie |
 | `snooze_schedule` | akcja | odłożenie alarmu o 1–180 minut |
 
-W `/admin` sekcja **Asystent AI i MCP** pokazuje jeden katalog narzędzi używany przez GPT‑Live, Lunę i endpoint MCP. Definicja zawiera jeden identyfikator, opis, schemat parametrów i handler wykonawczy; dodanie nowego narzędzia nie wymaga osobnej implementacji dla każdego toru. Wyłączenie funkcji usuwa ją ze wszystkich list przekazywanych modelom. Osobny przełącznik steruje wyłącznie dostępnością zewnętrznego endpointu `/mcp`.
+W `/admin` sekcja **Narzędzia i MCP** pokazuje jeden katalog narzędzi używany przez GPT‑Live, Lunę, scheduler i endpoint MCP. Definicja zawiera jeden identyfikator, opis, schemat parametrów i handler wykonawczy; dodanie nowego narzędzia nie wymaga osobnej implementacji dla każdego toru. Wyłączenie funkcji usuwa ją ze wszystkich list przekazywanych modelom. Luna otrzymuje funkcje bezpośrednio przez Agents SDK, więc osobny przełącznik steruje wyłącznie dostępnością zewnętrznego endpointu `/mcp`.
 
 ## Bezpieczeństwo
 
@@ -57,9 +59,9 @@ WallDeck Server /mcp
         └────────► WebSocket command bus ─────► aktywny tablet/WebView ─────► Android Bridge / Spotify
 ```
 
-Serwer kieruje komendę sprzętową do aktywnego panelu i czeka maksymalnie 8 sekund na odpowiedź. Brak połączonego tabletu lub błąd bridge'a wraca do klienta MCP jako błąd narzędzia.
+Serwer kieruje komendę sprzętową do aktywnego panelu i czeka maksymalnie 15 sekund na odpowiedź. Brak połączonego tabletu lub błąd bridge'a wraca do modelu jako błąd narzędzia. Powiadomienie zwraca czas potwierdzonego wyświetlenia, komunikat głosowy wynik odtworzenia, a rozpoczęcie rozmowy czas otwarcia sesji.
 
-Narzędzia harmonogramu korzystają z trwałego magazynu serwera. `automationPrompt` nie jest mapowany na konkretną integrację: po wybiciu serwer przekazuje jego tekst do istniejącego asystenta, który widzi dokładnie swój aktualnie włączony zestaw narzędzi. Zadanie może więc później użyć komunikatora, poczty lub innej integracji, gdy jej ograniczone narzędzie zostanie dodane i włączone. Brak potrzebnego narzędzia kończy wykonanie błędem zapisanym w historii; scheduler nie udaje wysłania wiadomości.
+Narzędzia harmonogramu korzystają z trwałego magazynu serwera. `automationPrompt` nie jest mapowany na konkretną integrację: po wybiciu serwer przekazuje jego tekst do Luny, która widzi dokładnie swój aktualnie włączony zestaw narzędzi. Instrukcja wykonawcza preferuje działanie ciche; model może wyświetlić powiadomienie, wypowiedzieć komunikat albo otworzyć GPT‑Live, gdy potrzebuje odpowiedzi użytkownika. Zadanie może też później użyć komunikatora, poczty lub innej integracji, gdy jej ograniczone narzędzie zostanie dodane i włączone. Brak potrzebnego narzędzia kończy wykonanie błędem zapisanym w historii; scheduler nie udaje wysłania wiadomości.
 
 ## Następny etap asystenta
 

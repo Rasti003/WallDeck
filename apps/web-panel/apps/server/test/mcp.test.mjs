@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { Client, InMemoryTransport } from "@modelcontextprotocol/client";
-import { defaultSettings } from "@walldeck/contracts";
+import { defaultSettings, mcpToolIds } from "@walldeck/contracts";
 import { createWallDeckMcpServer } from "../dist/mcp.js";
 import { currentTimeSnapshot } from "../dist/current-time.js";
 
@@ -46,7 +46,7 @@ test("MCP exposes only enabled tools and routes focused WallDeck actions", async
     await server.connect(serverTransport);
     await client.connect(clientTransport);
     const listed = await client.listTools();
-    assert.equal(listed.tools.length, 23);
+    assert.equal(listed.tools.length, mcpToolIds.length - 1);
     assert.ok(listed.tools.some(tool => tool.name === "get_status"));
     assert.ok(listed.tools.some(tool => tool.name === "get_current_time"));
     assert.ok(listed.tools.some(tool => tool.name === "adjust_tablet_volume"));
@@ -67,6 +67,8 @@ test("MCP exposes only enabled tools and routes focused WallDeck actions", async
     await client.callTool({ name: "set_tablet_volume", arguments: { percent: 35 } });
     await client.callTool({ name: "adjust_tablet_volume", arguments: { deltaPercent: 10 } });
     await client.callTool({ name: "send_notification", arguments: { message: "Nowe zdjęcia", durationSeconds: 7 } });
+    await client.callTool({ name: "speak_on_tablet", arguments: { text: "Przypominam o ziemniakach" } });
+    await client.callTool({ name: "start_live_conversation", arguments: { openingMessage: "Czy ustawić minutnik?", context: "Gotowanie ziemniaków" } });
     await client.callTool({ name: "set_view_brightness", arguments: { view: "photos", percent: 40 } });
     const entities = readText(await client.callTool({ name: "search_home_entities", arguments: { query: "salon" } }));
     const entity = readText(await client.callTool({ name: "get_home_entity", arguments: { entityId: "sensor.salon_temperature" } }));
@@ -77,7 +79,9 @@ test("MCP exposes only enabled tools and routes focused WallDeck actions", async
     assert.deepEqual(calls[1], ["assistant.mood", { mood: "curious" }]);
     assert.deepEqual(calls[2], ["tablet.volume", { value: 0.35 }]);
     assert.deepEqual(calls[3], ["tablet.volume.adjust", { delta: 0.1 }]);
-    assert.equal(calls[4][0], "notification");
+    assert.equal(calls[4][0], "notification.show");
+    assert.deepEqual(calls[5], ["assistant.speak", { text: "Przypominam o ziemniakach" }]);
+    assert.deepEqual(calls[6], ["assistant.startConversation", { openingMessage: "Czy ustawić minutnik?", context: "Gotowanie ziemniaków" }]);
     assert.equal(settings.viewBrightness.photos, 0.4);
     assert.equal(entities.entities.length, 1);
     assert.equal(entity.state, "22.5");

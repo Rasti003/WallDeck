@@ -81,8 +81,9 @@ function containsAudiblePcm(pcm: Buffer): boolean {
 export function registerLiveConversation(app: FastifyInstance, deps: Dependencies) {
   let active = false;
   app.get("/api/assistant/live", { websocket: true }, async (socket, request) => {
-    const query = request.query as { initial?: unknown };
-    const initialCommand = typeof query.initial === "string" ? query.initial.trim().slice(0, 500) : "";
+    const query = request.query as { initial?: unknown; scheduled?: unknown };
+    const initialCommand = typeof query.initial === "string" ? query.initial.trim().slice(0, 1_800) : "";
+    const scheduledStart = query.scheduled === "1";
     const origin = request.headers.origin;
     if (!origin || !request.headers.host || new URL(origin).host !== request.headers.host) {
       socket.send(JSON.stringify({ type: "error", error: "Nieprawidłowy origin rozmowy" }));
@@ -98,7 +99,7 @@ export function registerLiveConversation(app: FastifyInstance, deps: Dependencie
     const enabledTools = await deps.getEnabledTools();
     const key = await deps.getApiKey();
     const usage = await deps.usage.status(settings);
-    if (!settings.enabled || !settings.voice.enabled || settings.voice.conversationMode !== "gpt-live" || !settings.voice.live.conversationEnabled) {
+    if (!settings.enabled || !settings.voice.enabled || (!scheduledStart && settings.voice.conversationMode !== "gpt-live") || !settings.voice.live.conversationEnabled) {
       socket.send(JSON.stringify({ type: "error", error: "Rozmowy GPT-Live są wyłączone" }));
       socket.close();
       return;

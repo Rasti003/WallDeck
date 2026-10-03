@@ -77,6 +77,7 @@
 - [x] prototyp „Ej Waldek” → mikrofon tabletu → GPT-Live → głośnik, z delegacją do Luny/MCP;
 - [x] przełączany tryb „Ej Waldek” → lokalne śledzenie mówcy → transkrypcja → Luna/MCP → OpenAI TTS, obok zachowanego GPT-Live;
 - [x] trwała historia GPT-Live: pełna tekstowa oś rozmowy, przerwania, delegacje, narzędzia, wyniki, zużycie i dane obserwacji mówcy;
+- [x] niezależne od publicznego MCP wykonanie zadań przez Lunę oraz hybrydowa dostawa: ciche powiadomienie, TTS albo rozmowa GPT‑Live wybrana przez model;
 - [ ] fizyczny test obu trybów w hałasie tła i dostrojenie progu ECAPA/czasu końca tury;
 - [ ] dopracować barge-in, echo cancellation oraz ewaluację jakości wake wordu; ciągła fraza bez wymaganej pauzy ma już bufor przed otwarciem GPT-Live;
 - [ ] zastąpić diagnostyczny klaster głosu zweryfikowanym lokalnym modelem speaker verification i rejestracją profili;

@@ -12,6 +12,7 @@ export function AiAssistantAdmin({ page, settings, setSettings }: Props) {
     configured: false,
     elevenLabsConfigured: false,
     enabled: false,
+    toolsReady: false,
     mcpReady: false,
     busy: false,
     voiceUsage: { month: "", liveSeconds: 0, estimatedUsd: 0, budgetUsd: 15, remainingUsd: 15, exhausted: false, fallbackActive: false },
@@ -124,10 +125,10 @@ export function AiAssistantAdmin({ page, settings, setSettings }: Props) {
 
   return <section className="ai-admin">
     <article hidden={page !== "ai"} className="admin-card ai-status-card">
-      <div><span className="admin-kicker">OPENAI + WALLDECK MCP</span><h2>Asystent tekstowy</h2><p>Polecenie trafia do wybranego modelu, a działania są wykonywane przez narzędzia MCP dostępne w sekcji „Narzędzia i MCP”.</p></div>
+      <div><span className="admin-kicker">OPENAI + WALLDECK</span><h2>Asystent tekstowy</h2><p>Polecenie trafia do wybranego modelu, a działania są wykonywane przez wspólny katalog narzędzi. Publiczny endpoint MCP można włączać niezależnie.</p></div>
       <div className="ai-status-grid">
         <span className={connection.configured ? "is-ready" : ""}><i />Klucz API<strong>{connection.configured ? "zapisany" : "brak"}</strong></span>
-        <span className={connection.mcpReady ? "is-ready" : ""}><i />MCP<strong>{connection.mcpReady ? "gotowe" : "wyłączone"}</strong></span>
+        <span className={connection.toolsReady ? "is-ready" : ""}><i />Narzędzia<strong>{connection.toolsReady ? "gotowe" : "wyłączone"}</strong></span>
         <span className={config.enabled ? "is-ready" : ""}><i />Asystent<strong>{config.enabled ? "aktywny" : "wyłączony"}</strong></span>
       </div>
     </article>
@@ -227,8 +228,8 @@ export function AiAssistantAdmin({ page, settings, setSettings }: Props) {
     <form hidden={page !== "console"} className="admin-card ai-console" onSubmit={submit}>
       <div><span className="admin-kicker">KONSOLA</span><h2>Wpisz polecenie</h2></div>
       <textarea aria-label="Polecenie dla asystenta" rows={4} placeholder="Np. pokaż stan WallDeck albo wyszukaj playlistę reggae" value={message} onChange={(e) => setMessage(e.target.value)} />
-      <div className="ai-console-actions"><label className="switch-row"><input type="checkbox" checked={forceFallback} onChange={(e) => setForceFallback(e.target.checked)} /><span><strong>Od razu użyj mocniejszego modelu</strong></span></label><button disabled={running || !config.enabled || !connection.configured || !connection.mcpReady}>{running ? "Pracuję…" : "Wykonaj"}</button></div>
-      {result && <div className="ai-result"><header><strong>{result.model}</strong><span>{result.escalated ? "eskalacja" : "model podstawowy"}</span></header><p>{result.text}</p>{result.toolCalls.length > 0 && <details><summary>Wywołania MCP ({result.toolCalls.length})</summary>{result.toolCalls.map((tool, index) => <article key={`${tool.name}-${index}`}><strong>{tool.name}</strong><code>{JSON.stringify(tool.arguments, null, 2)}</code>{tool.output !== undefined && <code>{JSON.stringify(tool.output, null, 2)}</code>}</article>)}</details>}</div>}
+      <div className="ai-console-actions"><label className="switch-row"><input type="checkbox" checked={forceFallback} onChange={(e) => setForceFallback(e.target.checked)} /><span><strong>Od razu użyj mocniejszego modelu</strong></span></label><button disabled={running || !config.enabled || !connection.configured || !connection.toolsReady}>{running ? "Pracuję…" : "Wykonaj"}</button></div>
+      {result && <div className="ai-result"><header><strong>{result.model}</strong><span>{result.escalated ? "eskalacja" : "model podstawowy"}</span></header><p>{result.text}</p>{result.toolCalls.length > 0 && <details><summary>Wywołania narzędzi ({result.toolCalls.length})</summary>{result.toolCalls.map((tool, index) => <article key={`${tool.name}-${index}`}><strong>{tool.name}</strong><code>{JSON.stringify(tool.arguments, null, 2)}</code>{tool.output !== undefined && <code>{JSON.stringify(tool.output, null, 2)}</code>}</article>)}</details>}</div>}
     </form>
 
     <section hidden={page !== "history"} className="admin-card ai-history">

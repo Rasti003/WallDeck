@@ -131,16 +131,25 @@ export const assistantToolDefinitions = {
     run: ({ deltaPercent }, deps) => deps.panelCommand("tablet.volume.adjust", { delta: deltaPercent / 100 }),
   },
   send_notification: {
-    description: "Pokazuje krótki komunikat lub alarm na panelu. Alarm może pozostać do ręcznego zamknięcia.",
+    description: "Pokazuje krótki komunikat lub alarm na panelu i czeka na potwierdzenie odbioru przez tablet. To działanie jest ciche, chyba że jawnie ustawisz dźwięk albo priorytet alarmowy.",
     input: z.object({
       message: z.string().trim().min(1).max(240), priority: z.enum(["normal", "alarm"]).default("normal"),
       persistent: z.boolean().optional(), durationSeconds: z.number().int().min(2).max(600).optional(), sound: notificationSoundSchema.optional(),
     }), annotations: action(),
     run: ({ message, priority, persistent, durationSeconds, sound }, deps) => {
       const alarm = priority === "alarm";
-      deps.notify({ id: `assistant:${Date.now()}:${Math.random().toString(36).slice(2, 8)}`, message, kind: alarm ? "error" : "info", priority, ...(persistent === undefined ? {} : { persistent }), ...(durationSeconds === undefined ? {} : { durationMs: durationSeconds * 1000 }), ...(sound === undefined ? {} : { sound }) });
-      return { ok: true, priority };
+      return deps.panelCommand("notification.show", { id: `assistant:${Date.now()}:${Math.random().toString(36).slice(2, 8)}`, message, kind: alarm ? "error" : "info", priority, ...(persistent === undefined ? {} : { persistent }), ...(durationSeconds === undefined ? {} : { durationMs: durationSeconds * 1000 }), ...(sound === undefined ? {} : { sound }) });
     },
+  },
+  speak_on_tablet: {
+    description: "Wypowiada jednorazowy krótki komunikat przez głośnik tabletu bez rozpoczynania rozmowy. Użyj tylko wtedy, gdy informacja powinna zwrócić uwagę głosem; większość automatyzacji wykonuj cicho.",
+    input: z.object({ text: z.string().trim().min(1).max(500) }), annotations: action(),
+    run: ({ text }, deps) => deps.panelCommand("assistant.speak", { text }),
+  },
+  start_live_conversation: {
+    description: "Rozpoczyna interaktywną rozmowę GPT-Live na tablecie z wiadomością otwierającą i kontekstem. Użyj tylko wtedy, gdy potrzebna jest odpowiedź użytkownika; do jednostronnego komunikatu użyj speak_on_tablet.",
+    input: z.object({ openingMessage: z.string().trim().min(1).max(500), context: z.string().trim().max(1_000).default("") }), annotations: action(),
+    run: ({ openingMessage, context }, deps) => deps.panelCommand("assistant.startConversation", { openingMessage, context }),
   },
   set_view_brightness: {
     description: "Zmienia zapisaną jasność konkretnego widoku WallDeck. Zmiana jest stosowana przez tablet przy aktywacji tego widoku.",

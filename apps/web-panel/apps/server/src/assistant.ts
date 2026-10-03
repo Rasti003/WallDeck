@@ -1,4 +1,4 @@
-import { Agent, MCPServerStreamableHttp, OpenAIProvider, Runner, type RunItem } from "@openai/agents";
+import { Agent, OpenAIProvider, Runner, type RunItem, type Tool } from "@openai/agents";
 import type { AiAssistantModelTurn, AiAssistantRunResult, AiAssistantSettings, AiAssistantToolTrace } from "@walldeck/contracts";
 
 const escalationMarker = /^\s*ESCALATE\s*:\s*/i;
@@ -21,9 +21,8 @@ export function collectToolTrace(items: RunItem[]): AiAssistantToolTrace[] {
 }
 
 export interface AssistantServiceOptions {
-  mcpUrl: string;
-  mcpToken: string;
   getApiKey(): Promise<string | null>;
+  getTools(): Promise<Tool[]>;
 }
 
 export class AssistantService {
@@ -38,7 +37,6 @@ export class AssistantService {
     const apiKey = await this.options.getApiKey();
     if (!apiKey) throw new Error("Najpierw zapisz klucz OpenAI API");
     if (!settings.enabled) throw new Error("Asystent AI jest wyłączony");
-    if (!this.options.mcpToken) throw new Error("Brakuje WALLDECK_MCP_TOKEN");
 
     this.running = true;
     const started = Date.now();
@@ -66,23 +64,15 @@ export class AssistantService {
   }
 
   private async runOnce(message: string, settings: AiAssistantSettings, apiKey: string, model: string, reasoning: AiAssistantSettings["primaryReasoning"]): Promise<AiAssistantRunResult> {
-    const mcp = new MCPServerStreamableHttp({
-      url: this.options.mcpUrl,
-      name: "WallDeck",
-      cacheToolsList: false,
-      timeout: 15_000,
-      requestInit: { headers: { authorization: `Bearer ${this.options.mcpToken}` } },
-    });
     const provider = new OpenAIProvider({ apiKey });
     try {
-      await mcp.connect();
+      const tools = await this.options.getTools();
       const agent = new Agent({
         name: "WallDeck Assistant",
         instructions: settings.systemPrompt,
         model,
         modelSettings: { reasoning: { effort: reasoning }, store: false },
-        mcpServers: [mcp],
-        mcpConfig: { convertSchemasToStrict: true, errorFunction: null },
+        tools,
       });
       const runner = new Runner({ modelProvider: provider, tracingDisabled: true, traceIncludeSensitiveData: false });
       const result = await runner.run(agent, message, {
@@ -93,7 +83,6 @@ export class AssistantService {
       const toolCalls = collectToolTrace(result.newItems);
       return { text, model, escalated: false, toolCalls, modelTurns: [{ model, input: message, instructions: settings.systemPrompt, output: text, toolCalls }], durationMs: 0 };
     } finally {
-      await mcp.close().catch(() => undefined);
       await provider.close().catch(() => undefined);
     }
   }

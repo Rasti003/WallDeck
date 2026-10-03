@@ -48,6 +48,8 @@ export class VoiceAssistantRuntime {
   private livePrebufferTimer: ReturnType<typeof setTimeout> | null = null;
   private audioWriteChain: Promise<void> = Promise.resolve();
   private pendingUserTurn = false;
+  private activeLunaPipeline = false;
+  private scheduledConversation = false;
 
   constructor(private settings: AiAssistantSettings, private callbacks: Callbacks) {}
 
@@ -70,6 +72,45 @@ export class VoiceAssistantRuntime {
       return;
     }
     await this.configureWake();
+  }
+
+  async speakOnTablet(text: string) {
+    const spoken = text.trim();
+    if (!nativeBridge.available) throw new Error("Głos jest dostępny tylko na tablecie WallDeck");
+    if (!this.settings.enabled || !this.settings.voice.enabled) throw new Error("Głos asystenta jest wyłączony");
+    if (this.socket) throw new Error("Rozmowa głosowa jest już aktywna");
+    this.callbacks.showAssistant();
+    this.callbacks.setState("speaking");
+    this.callbacks.onStatus?.("Generuję komunikat głosowy…");
+    await nativeBridge.call("wakeWord.pause").catch(() => undefined);
+    try {
+      const pcm = await api.assistant.speechPcm(spoken);
+      this.outputStarted = true;
+      this.nativeOutputReady = false;
+      await this.ensureOutputReady();
+      for (const audio of this.pcmBase64Chunks(pcm)) await nativeBridge.call("assistantAudio.appendOutput", { audio });
+      await this.finishOutput();
+      this.callbacks.setState("success");
+      this.callbacks.onStatus?.("Komunikat wypowiedziany");
+      return { ok: true, spokenAt: new Date().toISOString() };
+    } catch (error) {
+      this.callbacks.setState("error");
+      throw error;
+    } finally {
+      this.outputStarted = false;
+      this.nativeOutputReady = false;
+      await this.configureWake();
+      this.callbacks.hideAssistant();
+    }
+  }
+
+  async startLiveConversation(openingMessage: string, context = "") {
+    if (!nativeBridge.available) throw new Error("Rozmowa jest dostępna tylko na tablecie WallDeck");
+    if (!this.settings.enabled || !this.settings.voice.enabled || !this.settings.voice.live.conversationEnabled) throw new Error("Rozmowy GPT-Live są wyłączone");
+    if (this.socket) throw new Error("Rozmowa głosowa jest już aktywna");
+    const initial = `To zaplanowana rozmowa zainicjowana przez system. Rozpocznij naturalnie od wiadomości: „${openingMessage.trim()}”.${context.trim() ? ` Kontekst zadania: ${context.trim()}.` : ""} Po wiadomości otwierającej zaczekaj na odpowiedź użytkownika.`;
+    await this.openConversation(initial, "gpt-live");
+    return { ok: true, startedAt: new Date().toISOString() };
   }
 
   async dispose() {
@@ -133,8 +174,10 @@ export class VoiceAssistantRuntime {
     void api.assistant.speakerObservation({ label, confidence, experimental: true }).catch(() => undefined);
   };
 
-  private async openConversation(remainder: string) {
-    const lunaPipeline = this.settings.voice.conversationMode === "luna-pipeline";
+  private async openConversation(remainder: string, forcedMode?: "gpt-live") {
+    const lunaPipeline = forcedMode ? false : this.settings.voice.conversationMode === "luna-pipeline";
+    this.activeLunaPipeline = lunaPipeline;
+    this.scheduledConversation = forcedMode === "gpt-live";
     this.callbacks.showAssistant();
     this.callbacks.setState("attention");
     this.callbacks.onStatus?.(lunaPipeline ? "Uruchamiam Lunę…" : "Łączenie z GPT-Live…");
@@ -158,7 +201,10 @@ export class VoiceAssistantRuntime {
     void nativeBridge.call("haptics").catch(() => undefined);
     await nativeBridge.call("wakeWord.pause").catch(() => undefined);
     const protocol = location.protocol === "https:" ? "wss:" : "ws:";
-    const initial = !lunaPipeline && remainder.length >= 2 ? `?initial=${encodeURIComponent(remainder.slice(0, 500))}` : "";
+    const query = new URLSearchParams();
+    if (!lunaPipeline && remainder.length >= 2) query.set("initial", remainder.slice(0, 1_800));
+    if (forcedMode === "gpt-live") query.set("scheduled", "1");
+    const initial = query.size ? `?${query.toString()}` : "";
     const route = lunaPipeline ? "/api/assistant/luna" : "/api/assistant/live";
     const socket = new WebSocket(`${protocol}//${location.host}${route}${initial}`);
     this.socket = socket;
@@ -178,7 +224,8 @@ export class VoiceAssistantRuntime {
         if (this.socket?.readyState !== WebSocket.OPEN) break;
         this.socket.send(JSON.stringify({ type: "audio", audio }));
       }
-      if (this.settings.voice.conversationMode === "gpt-live") {
+      if (!this.activeLunaPipeline) {
+        if (this.scheduledConversation) return;
         if (remainder.length >= 2) void this.executePreservedCommand(remainder);
         else this.scheduleDelegationFallback(8_000);
       }
@@ -353,6 +400,16 @@ export class VoiceAssistantRuntime {
     return chunks;
   }
 
+  private pcmBase64Chunks(pcm: Uint8Array) {
+    const chunks: string[] = [];
+    for (let offset = 0; offset < pcm.length; offset += 8_192) {
+      let binary = "";
+      for (const byte of pcm.subarray(offset, offset + 8_192)) binary += String.fromCharCode(byte);
+      chunks.push(btoa(binary));
+    }
+    return chunks;
+  }
+
   private async ensureOutputReady() {
     if (this.nativeOutputReady) return;
     await nativeBridge.call("assistantAudio.startOutput");
@@ -364,6 +421,8 @@ export class VoiceAssistantRuntime {
     this.socket = null;
     this.pendingAudio = [];
     this.sessionReady = false;
+    this.activeLunaPipeline = false;
+    this.scheduledConversation = false;
     if (this.livePrebufferTimer) clearTimeout(this.livePrebufferTimer);
     this.livePrebufferTimer = null;
     if (this.delegationFallbackTimer) clearTimeout(this.delegationFallbackTimer);

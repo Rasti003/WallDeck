@@ -31,6 +31,8 @@ import {
 } from "@walldeck/contracts";
 import { HomeAssistantClient, HomeAssistantConfigStore } from "./home-assistant.js";
 import { registerMcpEndpoint } from "./mcp.js";
+import { createAssistantAgentTools } from "./agent-tools.js";
+import { scheduledTaskPrompt } from "./scheduled-task-prompt.js";
 import { SpotifyConnector } from "./spotify.js";
 import { AssistantService } from "./assistant.js";
 import { EncryptedSecretStore } from "./secret-store.js";
@@ -133,9 +135,11 @@ const liveVoiceUsage = new LiveVoiceUsageStore(runtimeRoot);
 const speakerObserver = new SpeakerObserverClient();
 const mcpToken = process.env.WALLDECK_MCP_TOKEN ?? "";
 const assistant = new AssistantService({
-  mcpUrl: `http://127.0.0.1:${port}/mcp`,
-  mcpToken,
   getApiKey: () => openAiKeyStore.load(),
+  getTools: async () => {
+    const settings = await readSettings();
+    return createAssistantAgentTools(assistantToolDependencies, settings.mcp.tools);
+  },
 });
 const assistantHistory = new AssistantHistoryStore(path.join(runtimeRoot, "assistant-history.json"));
 let schedules: ScheduleStore;
@@ -153,8 +157,7 @@ schedules = new ScheduleStore(path.join(runtimeRoot, "schedules.json"), {
     if (!item.automationPrompt) return;
     try {
       const settings = await readSettings();
-      const context = item.kind === "task" ? `Nadszedł termin zaplanowanego zadania asystenta „${item.label}”.` : `Właśnie wybił ${item.kind === "timer" ? "minutnik" : "budzik"} „${item.label}”.`;
-      const result = await assistant.execute(`${context} Wykonaj teraz zapisaną instrukcję: ${item.automationPrompt}`, settings.aiAssistant);
+      const result = await assistant.execute(scheduledTaskPrompt(item.label, item.automationPrompt, item.kind), settings.aiAssistant);
       await schedules.setAutomationResult(item.id, result.text);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -243,6 +246,7 @@ async function assistantStatus() {
     configured: Boolean(await openAiKeyStore.load()),
     elevenLabsConfigured: Boolean(await elevenLabsKeyStore.load()),
     enabled: settings.aiAssistant.enabled,
+    toolsReady: Object.values(settings.mcp.tools).some(Boolean),
     mcpReady: settings.mcp.enabled && Boolean(mcpToken),
     busy: assistant.busy,
     voiceUsage: await liveVoiceUsage.status(settings.aiAssistant),
@@ -281,7 +285,6 @@ app.post("/api/assistant/run", async (request, reply) => {
   const parsed = aiAssistantRunInputSchema.safeParse(request.body);
   if (!parsed.success) return reply.code(400).send({ error: "Wpisz poprawne polecenie", details: parsed.error.issues });
   const settings = await readSettings();
-  if (!settings.mcp.enabled) return reply.code(409).send({ error: "Najpierw włącz MCP w sekcji MCP · AI" });
   const startedAt = new Date().toISOString();
   try {
     const result = await assistant.execute(parsed.data.message, settings.aiAssistant, parsed.data.forceFallback);

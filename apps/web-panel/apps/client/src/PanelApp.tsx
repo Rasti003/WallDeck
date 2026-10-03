@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { defaultSettings, type AssistantState, type DeviceReport, type ScheduledItem, type ViewId, type WallDeckSettings } from "@walldeck/contracts";
+import { defaultSettings, type AppNotification, type AssistantState, type DeviceReport, type ScheduledItem, type ViewId, type WallDeckSettings } from "@walldeck/contracts";
 import { TabletMenu } from "./TabletMenu";
 import { api } from "./api";
 import { connectEvents } from "./events";
@@ -105,6 +105,21 @@ export function PanelApp({ forcedView }: { forcedView?: ViewId }) {
             setViewId("assistant-expressive");
             await api.activateView("assistant-expressive");
             return { ok: true, mood };
+          }
+          if (message.command === "notification.show") {
+            const notification = args as unknown as AppNotification;
+            if (!notification.id || !notification.message) throw new Error("Nieprawidłowe powiadomienie");
+            window.dispatchEvent(new CustomEvent("walldeck:notification", { detail: notification }));
+            await new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
+            return { ok: true, displayedAt: new Date().toISOString() };
+          }
+          if (message.command === "assistant.speak") {
+            if (!voiceRuntime.current) throw new Error("Asystent głosowy tabletu nie jest gotowy");
+            return await voiceRuntime.current.speakOnTablet(String(args.text ?? ""));
+          }
+          if (message.command === "assistant.startConversation") {
+            if (!voiceRuntime.current) throw new Error("Asystent głosowy tabletu nie jest gotowy");
+            return await voiceRuntime.current.startLiveConversation(String(args.openingMessage ?? ""), String(args.context ?? ""));
           }
           if (message.command === "music.control") {
             await ensureMusicConnected(musicController, settingsRef.current.music.clientId);

@@ -4,7 +4,7 @@ export type { MusicState, AudioOutputState, MusicController, SpotifyItem, Spotif
 export const assistantStates = ["idle", "attention", "listening", "thinking", "speaking", "success", "error", "sleep", "curious", "uncertain", "confirm", "surprised", "wink", "laughing", "dancing"] as const;
 export const assistantStateSchema = z.enum(assistantStates);
 export type AssistantState = z.infer<typeof assistantStateSchema>;
-export const mcpToolIds = ["get_status", "get_current_time", "show_view", "show_assistant_mood", "control_music", "search_spotify", "get_spotify_queue", "list_spotify_playlists", "play_spotify_item", "add_spotify_to_queue", "set_tablet_volume", "adjust_tablet_volume", "send_notification", "set_view_brightness", "search_home_entities", "get_home_entity", "list_schedules", "create_timer", "create_alarm", "create_assistant_task", "set_alarm_enabled", "cancel_schedule", "dismiss_schedule", "snooze_schedule"] as const;
+export const mcpToolIds = ["get_status", "get_current_time", "show_view", "show_assistant_mood", "control_music", "search_spotify", "get_spotify_queue", "list_spotify_playlists", "play_spotify_item", "add_spotify_to_queue", "set_tablet_volume", "adjust_tablet_volume", "send_notification", "speak_on_tablet", "start_live_conversation", "set_view_brightness", "search_home_entities", "get_home_entity", "list_schedules", "create_timer", "create_alarm", "create_assistant_task", "set_alarm_enabled", "cancel_schedule", "dismiss_schedule", "snooze_schedule"] as const;
 export const mcpToolIdSchema = z.enum(mcpToolIds);
 export type McpToolId = z.infer<typeof mcpToolIdSchema>;
 export const assistantToolCatalog = {
@@ -21,6 +21,8 @@ export const assistantToolCatalog = {
   set_tablet_volume: { label: "Głośność tabletu", summary: "Zmiana poziomu multimediów aktywnego wyjścia audio.", kind: "akcja" },
   adjust_tablet_volume: { label: "Względna głośność", summary: "Podgłaśnianie i ściszanie względem obecnego poziomu.", kind: "akcja" },
   send_notification: { label: "Powiadomienia i alarmy", summary: "Komunikaty globalne z czasem, priorytetem i dźwiękiem.", kind: "akcja" },
+  speak_on_tablet: { label: "Wypowiedź na tablecie", summary: "Jednorazowa wiadomość głosowa bez rozpoczynania rozmowy.", kind: "akcja" },
+  start_live_conversation: { label: "Rozmowa GPT-Live", summary: "Rozpoczęcie rozmowy głosowej na tablecie z przekazanym kontekstem.", kind: "akcja" },
   set_view_brightness: { label: "Jasność widoku", summary: "Trwała zmiana jasności wybranego widoku.", kind: "akcja" },
   search_home_entities: { label: "Wyszukiwanie encji HA", summary: "Odnajdywanie entity_id po nazwie lub domenie.", kind: "odczyt" },
   get_home_entity: { label: "Stan encji HA", summary: "Odczyt aktualnego stanu jednej wskazanej encji.", kind: "odczyt" },
@@ -49,6 +51,8 @@ export const mcpSettingsSchema = z.object({
     set_tablet_volume: z.boolean().default(true),
     adjust_tablet_volume: z.boolean().default(true),
     send_notification: z.boolean().default(true),
+    speak_on_tablet: z.boolean().default(true),
+    start_live_conversation: z.boolean().default(true),
     set_view_brightness: z.boolean().default(true),
     search_home_entities: z.boolean().default(true),
     get_home_entity: z.boolean().default(true),
@@ -56,7 +60,7 @@ export const mcpSettingsSchema = z.object({
     set_alarm_enabled: z.boolean().default(true), cancel_schedule: z.boolean().default(true), dismiss_schedule: z.boolean().default(true), snooze_schedule: z.boolean().default(true),
   }).default({
     get_status: true, get_current_time: true, show_view: true, show_assistant_mood: true, control_music: true, search_spotify: true, get_spotify_queue: true, list_spotify_playlists: true, play_spotify_item: true, add_spotify_to_queue: true,
-    set_tablet_volume: true, adjust_tablet_volume: true, send_notification: true, set_view_brightness: true,
+    set_tablet_volume: true, adjust_tablet_volume: true, send_notification: true, speak_on_tablet: true, start_live_conversation: true, set_view_brightness: true,
     search_home_entities: true, get_home_entity: true,
     list_schedules: true, create_timer: true, create_alarm: true, create_assistant_task: true, set_alarm_enabled: true, cancel_schedule: true, dismiss_schedule: true, snooze_schedule: true,
   }),
@@ -64,7 +68,7 @@ export const mcpSettingsSchema = z.object({
   enabled: false,
   tools: {
     get_status: true, get_current_time: true, show_view: true, show_assistant_mood: true, control_music: true, search_spotify: true, get_spotify_queue: true, list_spotify_playlists: true, play_spotify_item: true, add_spotify_to_queue: true,
-    set_tablet_volume: true, adjust_tablet_volume: true, send_notification: true, set_view_brightness: true,
+    set_tablet_volume: true, adjust_tablet_volume: true, send_notification: true, speak_on_tablet: true, start_live_conversation: true, set_view_brightness: true,
     search_home_entities: true, get_home_entity: true,
     list_schedules: true, create_timer: true, create_alarm: true, create_assistant_task: true, set_alarm_enabled: true, cancel_schedule: true, dismiss_schedule: true, snooze_schedule: true,
   },
@@ -185,7 +189,7 @@ export interface SpeakerObservation {
 }
 export interface SpeakerObserverStatus { available: boolean; engine: "silero-ecapa"; modelReady: boolean; detail?: string; }
 export interface ElevenLabsVoice { voiceId: string; name: string; category?: string; labels: Record<string, string>; verifiedLanguages: string[]; }
-export interface AiAssistantStatus { configured: boolean; elevenLabsConfigured: boolean; enabled: boolean; mcpReady: boolean; busy: boolean; voiceUsage: AiVoiceUsageStatus; speakerObservation: SpeakerObservation | null; speakerObserver: SpeakerObserverStatus; }
+export interface AiAssistantStatus { configured: boolean; elevenLabsConfigured: boolean; enabled: boolean; toolsReady: boolean; mcpReady: boolean; busy: boolean; voiceUsage: AiVoiceUsageStatus; speakerObservation: SpeakerObservation | null; speakerObserver: SpeakerObserverStatus; }
 export interface AiAssistantToolTrace { name: string; arguments: unknown; output?: unknown; }
 export interface AiAssistantModelTurn { model: string; input: string; instructions: string; output?: string; error?: string; toolCalls: AiAssistantToolTrace[]; }
 export interface AiAssistantRunResult { text: string; model: string; escalated: boolean; toolCalls: AiAssistantToolTrace[]; modelTurns: AiAssistantModelTurn[]; durationMs: number; }
