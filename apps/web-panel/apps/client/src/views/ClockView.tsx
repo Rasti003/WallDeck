@@ -29,6 +29,7 @@ export function ClockView() {
   const reduced = useReducedMotion();
   const [now, setNow] = useState(Date.now());
   const [items, setItems] = useState<ScheduledItem[]>([]);
+  const [screen, setScreen] = useState<"clock" | "tasks">("clock");
   const [composer, setComposer] = useState<"timer" | "alarm" | "task" | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -60,13 +61,15 @@ export function ClockView() {
   }, [composer, ringing.length, setInteractionLocked]);
 
   const date = new Date(now); const time = clock.format(date); const seconds = date.getSeconds();
-  const next = scheduled[0];
-  const focusedTimer = scheduled.find(item => item.kind === "timer");
-  const fullscreenActive = Boolean(focusedTimer && timerFullscreen && !ringing.length);
-  const remainingSchedules = focusedTimer ? scheduled.filter(item => item.id !== focusedTimer.id) : scheduled;
+  const clockSchedules = scheduled.filter(item => item.kind !== "task");
+  const scheduledTasks = scheduled.filter(item => item.kind === "task");
+  const next = clockSchedules[0];
+  const focusedTimer = clockSchedules.find(item => item.kind === "timer");
+  const fullscreenActive = Boolean(focusedTimer && timerFullscreen && screen === "clock" && !ringing.length);
+  const remainingSchedules = focusedTimer ? clockSchedules.filter(item => item.id !== focusedTimer.id) : clockSchedules;
   const timerCount = scheduled.filter(item => item.kind === "timer").length;
   const alarmCount = scheduled.filter(item => item.kind === "alarm").length;
-  const taskCount = scheduled.filter(item => item.kind === "task").length;
+  const taskCount = scheduledTasks.length;
   const taskHistory = items.filter(item => item.kind === "task" && item.status !== "scheduled").sort((a, b) => Date.parse(b.lastTriggeredAt ?? b.createdAt) - Date.parse(a.lastTriggeredAt ?? a.createdAt)).slice(0, 5);
   const resetComposer = () => { setComposer(null); setLabel(""); setPrompt(""); setError(""); };
   useEffect(() => { if (focusedTimer) setTimerFullscreen(true); }, [focusedTimer?.id]);
@@ -77,12 +80,12 @@ export function ClockView() {
     return () => clearTimeout(timer);
   }, [fullscreenActive, reduced]);
   useEffect(() => {
-    if (!focusedTimer || timerFullscreen || composer || ringing.length) return;
+    if (!focusedTimer || timerFullscreen || screen !== "clock" || composer || ringing.length) return;
     const timer = setTimeout(() => setTimerFullscreen(true), 12_000);
     const activity = () => setCompactActivity(value => value + 1);
     window.addEventListener("keydown", activity);
     return () => { clearTimeout(timer); window.removeEventListener("keydown", activity); };
-  }, [compactActivity, composer, focusedTimer, ringing.length, timerFullscreen]);
+  }, [compactActivity, composer, focusedTimer, ringing.length, screen, timerFullscreen]);
 
   async function createTimer(event: FormEvent) {
     event.preventDefault(); const durationSeconds = timerParts.hours * 3600 + timerParts.minutes * 60 + timerParts.seconds;
@@ -112,9 +115,9 @@ export function ClockView() {
   const setQuickTimer = (minutes: number) => { setTimerParts({ hours: 0, minutes, seconds: 0 }); setComposer("timer"); };
   const minimizeTimer = () => { setFullscreenSettled(false); setTimerFullscreen(false); };
 
-  return <main className={`clock-view${focusedTimer ? " clock-view--timer" : ""}${fullscreenActive && fullscreenSettled ? " clock-view--fullscreen" : ""}`} onPointerDown={event => event.stopPropagation()} onPointerUp={event => { event.stopPropagation(); if (focusedTimer && !timerFullscreen) setCompactActivity(value => value + 1); window.dispatchEvent(new Event("wallpanel:userInteraction")); }}>
+  return <main className={`clock-view${focusedTimer ? " clock-view--timer" : ""}${screen === "tasks" ? " clock-view--tasks" : ""}${fullscreenActive && fullscreenSettled ? " clock-view--fullscreen" : ""}`} onPointerDown={event => event.stopPropagation()} onPointerUp={event => { event.stopPropagation(); if (focusedTimer && !timerFullscreen && screen === "clock") setCompactActivity(value => value + 1); window.dispatchEvent(new Event("wallpanel:userInteraction")); }}>
     <div className="clock-aurora" aria-hidden="true"><i /><i /><i /></div>
-    <motion.header className="clock-hero" initial={reduced ? false : { opacity: 0, y: -18 }} animate={{ opacity: 1, y: 0 }}>
+    {screen === "clock" ? <><motion.header className="clock-hero" initial={reduced ? false : { opacity: 0, y: -18 }} animate={{ opacity: 1, y: 0 }}>
       <div className="clock-brand"><span>WALLDECK</span><strong>Zegar</strong></div>
       <div className="clock-now">
         <motion.div className="clock-orbit" animate={reduced ? undefined : { rotate: 360 }} transition={{ duration: 60, repeat: Infinity, ease: "linear" }}><i style={{ transform: `rotate(${seconds * 6}deg)` }} /></motion.div>
@@ -125,24 +128,42 @@ export function ClockView() {
 
     <section className="clock-content">
       <motion.aside className="clock-create" initial={reduced ? false : { opacity: 0, x: -24 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: .08 }}>
-        <div><span className="clock-kicker">DODAJ</span><h1>Zaplanuj chwilę</h1><p>Minutnik, budzik albo zadanie wykonywane później przez asystenta.</p></div>
+        <div><span className="clock-kicker">DODAJ</span><h1>Zaplanuj chwilę</h1><p>Minutnik albo budzik, który będzie zawsze pod ręką.</p></div>
         <button className="clock-primary" onClick={() => setComposer("timer")}><span>＋</span><b>Nowy minutnik</b><small>{timerCount} aktywne</small></button>
         <button className="clock-secondary" onClick={() => setComposer("alarm")}><span>◷</span><b>Nowy budzik</b><small>{alarmCount} zaplanowane</small></button>
-        <button className="clock-task" onClick={() => setComposer("task")}><span>✦</span><b>Zadanie asystenta</b><small>{taskCount} zaplanowane</small></button>
+        <button className="clock-task clock-task-summary" onClick={() => setScreen("tasks")}><span>✦</span><b>Zadania asystenta</b><small>{taskCount} zaplanowane <i>→</i></small></button>
         <div className="clock-presets"><small>SZYBKI START</small><div>{[5, 10, 15, 30].map(minutes => <button key={minutes} onClick={() => setQuickTimer(minutes)}>{minutes}<i>min</i></button>)}</div></div>
       </motion.aside>
 
       <section className="clock-schedules">
-        <header><div><span className="clock-kicker">AKTYWNE</span><h2>Twój rytm</h2></div><strong>{scheduled.length}</strong></header>
+        <header><div><span className="clock-kicker">AKTYWNE</span><h2>Twój rytm</h2></div><strong>{clockSchedules.length}</strong></header>
         <AnimatePresence mode="popLayout">
-          {!scheduled.length && <motion.div className="clock-empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }}><div className="clock-empty-orbit"><i /></div><h3>Nic Cię teraz nie pogania</h3><p>Dodaj minutnik, budzik albo zadanie asystenta.</p></motion.div>}
+          {!clockSchedules.length && <motion.div className="clock-empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }}><div className="clock-empty-orbit"><i /></div><h3>Nic Cię teraz nie pogania</h3><p>Dodaj minutnik albo budzik.</p></motion.div>}
           {focusedTimer && <TimerFocus key={focusedTimer.id} item={focusedTimer} now={now} reduced={Boolean(reduced)} onRemove={() => void api.schedules.remove(focusedTimer.id).then(refresh)} />}
           {remainingSchedules.length > 0 && focusedTimer && <motion.div className="clock-stack-label" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>POZOSTAŁE</motion.div>}
           {remainingSchedules.map((item, index) => <ScheduleCard key={item.id} item={item} now={now} index={index} reduced={Boolean(reduced)} onRemove={() => void api.schedules.remove(item.id).then(refresh)} />)}
         </AnimatePresence>
-        {taskHistory.length > 0 && <div className="clock-task-history"><span className="clock-stack-label">OSTATNIE ZADANIA</span>{taskHistory.map(item => <TaskHistoryCard key={item.id} item={item} onRemove={() => void api.schedules.remove(item.id).then(refresh)} />)}</div>}
       </section>
-    </section>
+    </section></> : <motion.section className="clock-task-page" initial={reduced ? false : { opacity: 0, x: 24 }} animate={{ opacity: 1, x: 0 }}>
+      <header className="clock-task-page-header">
+        <button type="button" className="clock-task-back" onClick={() => setScreen("clock")} aria-label="Wróć do zegara">←</button>
+        <div><span className="clock-kicker">ZEGAR · ZADANIA</span><h1>Zadania asystenta</h1><p>Rzeczy, które Waldek ma wykonać o określonej porze.</p></div>
+        <button type="button" className="clock-task-add" onClick={() => setComposer("task")}><span>＋</span> Nowe zadanie</button>
+      </header>
+      <div className="clock-task-page-body">
+        <section className="clock-task-list">
+          <header><div><span className="clock-kicker">ZAPLANOWANE</span><h2>Nadchodzące</h2></div><strong>{scheduledTasks.length}</strong></header>
+          <AnimatePresence mode="popLayout">
+            {!scheduledTasks.length && <motion.div className="clock-empty clock-task-empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }}><div className="clock-empty-orbit"><i /></div><h3>Brak zaplanowanych zadań</h3><p>Dodaj przypomnienie albo czynność, którą asystent wykona później.</p></motion.div>}
+            {scheduledTasks.map((item, index) => <ScheduleCard key={item.id} item={item} now={now} index={index} reduced={Boolean(reduced)} onRemove={() => void api.schedules.remove(item.id).then(refresh)} />)}
+          </AnimatePresence>
+        </section>
+        <section className="clock-task-history clock-task-page-history">
+          <header><div><span className="clock-kicker">HISTORIA</span><h2>Ostatnie wykonania</h2></div><strong>{taskHistory.length}</strong></header>
+          {!taskHistory.length ? <div className="clock-task-history-empty">Wyniki wykonanych zadań pojawią się tutaj.</div> : taskHistory.map(item => <TaskHistoryCard key={item.id} item={item} onRemove={() => void api.schedules.remove(item.id).then(refresh)} />)}
+        </section>
+      </div>
+    </motion.section>}
 
     <AnimatePresence>{composer && <motion.div className="clock-sheet-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={resetComposer}>
       <motion.form className="clock-sheet" initial={reduced ? false : { y: "100%", scale: .96 }} animate={{ y: 0, scale: 1 }} exit={{ y: "100%", scale: .97 }} transition={{ type: "spring", stiffness: 310, damping: 30 }} onClick={event => event.stopPropagation()} onSubmit={composer === "timer" ? createTimer : composer === "task" ? createTask : createAlarm}>
