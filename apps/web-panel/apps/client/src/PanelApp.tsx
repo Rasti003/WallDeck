@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { defaultSettings, type AssistantState, type DeviceReport, type ViewId, type WallDeckSettings } from "@walldeck/contracts";
+import { defaultSettings, type AssistantState, type DeviceReport, type ScheduledItem, type ViewId, type WallDeckSettings } from "@walldeck/contracts";
 import { TabletMenu } from "./TabletMenu";
 import { api } from "./api";
 import { connectEvents } from "./events";
 import { nativeBridge } from "./native";
 import { ambientSleepAction, cameraSleepAction, homeAssistantSleepAction, inactivityTransition, viewAfterActivity, viewAfterSwipeDown, viewAfterTap } from "./view-manager";
 import { viewRegistry } from "./views/registry";
-import { PanelContext } from "./panel-context";
+import { PanelContext, type SchedulePresentation } from "./panel-context";
 import { createPlaybackStartDetector } from "./music/playback-start";
 import { musicController } from "./music/controller";
 import { ensureMusicConnected } from "./music/connection";
@@ -44,6 +44,11 @@ export function PanelApp({ forcedView }: { forcedView?: ViewId }) {
   const idleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const interruptionPending = useRef(false);
   const darkEpisodeActive = useRef(false);
+  const pinnedTimerId = useRef<string | null>(null);
+  const [schedulePresentation, setSchedulePresentation] = useState<SchedulePresentation | null>(null);
+  const schedulePresentationRef = useRef<SchedulePresentation | null>(null);
+  const [scheduleReturnTransition, setScheduleReturnTransition] = useState(false);
+  const scheduleReturnTransitionRef = useRef(false);
 
   useEffect(() => {
     if (nativeBridge.available) {
@@ -72,11 +77,19 @@ export function PanelApp({ forcedView }: { forcedView?: ViewId }) {
       } catch { /* A regular browser preview has no native device bridge. */ }
     };
     socket = connectEvents((event) => {
-      const message = JSON.parse(event.data) as { type: string; viewId?: ViewId; settings?: WallDeckSettings; id?: string; command?: string; args?: Record<string, unknown> };
+      const message = JSON.parse(event.data) as { type: string; viewId?: ViewId; settings?: WallDeckSettings; items?: ScheduledItem[]; item?: ScheduledItem; id?: string; command?: string; args?: Record<string, unknown> };
       if (!forcedView && (message.type === "snapshot" || message.type === "view.activated") && message.viewId) {
-        setViewId(message.viewId);
-        if (message.viewId !== "assistant-expressive") setAssistantIdleTransition(false);
+        const nextView = pinnedTimerId.current && message.viewId !== "timers" ? "timers" : message.viewId;
+        setViewId(nextView);
+        if (nextView !== message.viewId) void api.activateView(nextView);
+        if (nextView !== "assistant-expressive") setAssistantIdleTransition(false);
       }
+      if (message.type === "schedules.changed" && message.items && pinnedTimerId.current && !message.items.some(item => item.id === pinnedTimerId.current && item.kind === "timer" && item.status === "scheduled")) {
+        pinnedTimerId.current = null;
+        schedulePresentationRef.current = null;
+        setSchedulePresentation(null);
+      }
+      if (message.type === "schedule.createdByAssistant" && message.item) window.dispatchEvent(new CustomEvent("walldeck:scheduleCreatedByAssistant", { detail: { item: message.item } }));
       if (message.type === "panel.activity") window.dispatchEvent(new Event("walldeck:remoteActivity"));
       if (message.type === "settings.changed" && message.settings) setSettings(message.settings);
       if (message.type === "mcp.command" && message.id && message.command) {
@@ -158,10 +171,51 @@ export function PanelApp({ forcedView }: { forcedView?: ViewId }) {
 
   const activate = useCallback((nextView: ViewId, instant = false) => {
     if (forcedView) return;
+    if (pinnedTimerId.current && nextView !== "timers") return;
     setInstantTransition(instant);
     setViewId(nextView);
     api.activateView(nextView).catch(() => undefined);
   }, [forcedView]);
+
+  const presentAssistantSchedule = useCallback((item: ScheduledItem) => {
+    if (idleTimer.current) clearTimeout(idleTimer.current);
+    interruptionPending.current = false;
+    setAssistantIdleTransition(false);
+    setDanceTransition(false);
+    setScheduleReturnTransition(false);
+    scheduleReturnTransitionRef.current = false;
+    setRequestedAssistantState(null);
+    const presentation = { id: item.id, kind: item.kind, revision: Date.now() } satisfies SchedulePresentation;
+    schedulePresentationRef.current = presentation;
+    setSchedulePresentation(presentation);
+    if (item.kind === "timer") pinnedTimerId.current = item.id;
+    activate("timers", true);
+  }, [activate]);
+
+  useEffect(() => {
+    const created = (event: Event) => presentAssistantSchedule((event as CustomEvent<{ item: ScheduledItem }>).detail.item);
+    window.addEventListener("walldeck:scheduleCreatedByAssistant", created);
+    return () => window.removeEventListener("walldeck:scheduleCreatedByAssistant", created);
+  }, [presentAssistantSchedule]);
+
+  useEffect(() => {
+    if (!schedulePresentation || schedulePresentation.kind === "timer") return;
+    const timer = setTimeout(() => {
+      schedulePresentationRef.current = null;
+      setSchedulePresentation(null);
+      if (pinnedTimerId.current) {
+        setScheduleReturnTransition(false);
+        scheduleReturnTransitionRef.current = false;
+        activate("timers", true);
+        return;
+      }
+      setRequestedAssistantState("idle");
+      setScheduleReturnTransition(true);
+      scheduleReturnTransitionRef.current = true;
+      activate("assistant-expressive");
+    }, 4_500);
+    return () => clearTimeout(timer);
+  }, [activate, schedulePresentation]);
 
   useEffect(() => {
     if (!nativeBridge.available || forcedView) return;
@@ -178,6 +232,7 @@ export function PanelApp({ forcedView }: { forcedView?: ViewId }) {
         activate("assistant-expressive", true);
       },
       hideAssistant: () => {
+        if (pinnedTimerId.current || schedulePresentationRef.current || scheduleReturnTransitionRef.current) return;
         const target = musicPlaying.current ? "music" : voiceReturnView.current;
         activate(target === "assistant-expressive" ? "photos" : target, true);
       },
@@ -324,6 +379,8 @@ export function PanelApp({ forcedView }: { forcedView?: ViewId }) {
     if (idleTimer.current) clearTimeout(idleTimer.current);
     const transition = danceTransition && activeView === "assistant-expressive"
       ? { target: "music" as const, seconds: settings.viewRouter.inactivityAction.assistantIdleSeconds, startsAssistantIdle: false, completesAssistantIdle: true }
+      : scheduleReturnTransition && activeView === "assistant-expressive"
+        ? { target: "photos" as const, seconds: settings.viewRouter.inactivityAction.assistantIdleSeconds, startsAssistantIdle: false, completesAssistantIdle: true }
       : activeView === "music"
         ? musicInactive ? { target: "assistant-expressive" as const, seconds: 30, startsAssistantIdle: true, completesAssistantIdle: false } : null
         : assistantIdleTransition && idleFromMusic.current && activeView === "assistant-expressive"
@@ -353,13 +410,18 @@ export function PanelApp({ forcedView }: { forcedView?: ViewId }) {
         setAssistantIdleTransition(true);
       }
       if (transition.completesAssistantIdle) setAssistantIdleTransition(false);
+      if (scheduleReturnTransition) {
+        setScheduleReturnTransition(false);
+        scheduleReturnTransitionRef.current = false;
+        setRequestedAssistantState(null);
+      }
       activate(transition.target);
     }, transition.seconds * 1_000);
-  }, [activeView, activate, assistantIdleTransition, danceTransition, forcedView, menuOpen, interactionLocked, musicInactive, settings.viewRouter]);
+  }, [activeView, activate, assistantIdleTransition, danceTransition, forcedView, menuOpen, interactionLocked, musicInactive, scheduleReturnTransition, settings.viewRouter]);
 
   const registerActivity = useCallback(() => {
     if (menuOpenRef.current || lockedRef.current) return;
-    const target = danceTransition && activeView === "assistant-expressive" ? "music" : assistantIdleTransition && idleFromMusic.current && activeView === "assistant-expressive" ? "music" : viewAfterActivity(activeView, settings.viewRouter, assistantIdleTransition);
+    const target = scheduleReturnTransition && activeView === "assistant-expressive" ? "photos" : danceTransition && activeView === "assistant-expressive" ? "music" : assistantIdleTransition && idleFromMusic.current && activeView === "assistant-expressive" ? "music" : viewAfterActivity(activeView, settings.viewRouter, assistantIdleTransition);
     if (target) {
       if (interruptionPending.current) return;
       interruptionPending.current = true;
@@ -367,11 +429,13 @@ export function PanelApp({ forcedView }: { forcedView?: ViewId }) {
       setAssistantIdleTransition(false);
       setDanceTransition(false);
       setRequestedAssistantState(null);
+      setScheduleReturnTransition(false);
+      scheduleReturnTransitionRef.current = false;
       activate(target, danceTransition);
       return;
     }
     resetInactivity();
-  }, [activeView, activate, assistantIdleTransition, danceTransition, resetInactivity, settings.viewRouter]);
+  }, [activeView, activate, assistantIdleTransition, danceTransition, resetInactivity, scheduleReturnTransition, settings.viewRouter]);
 
   useEffect(() => {
     resetInactivity();
@@ -465,7 +529,7 @@ export function PanelApp({ forcedView }: { forcedView?: ViewId }) {
       }}
     >
       {!forcedView && settings.tabletMenu.enabled && <TabletMenu open={menuOpen} showHandle={settings.tabletMenu.showHandle} current={activeView} views={settings.tabletMenu.views} onOpen={activateSwipeDown} onClose={() => setMenuOpen(false)} onSelect={view => { setMenuOpen(false); setDanceTransition(false); setAssistantIdleTransition(false); setRequestedAssistantState(null); activate(view); }} />}
-      <PanelContext.Provider value={{ settings, activeView, requestedAssistantState, menuOpen, setInteractionLocked }}>
+      <PanelContext.Provider value={{ settings, activeView, requestedAssistantState, schedulePresentation, menuOpen, setInteractionLocked }}>
       <AnimatePresence mode="wait" custom={instantTransition}>
         <motion.div
           key={activeView}

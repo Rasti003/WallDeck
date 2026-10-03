@@ -1,4 +1,6 @@
 import { createContext } from "react";
-import { defaultSettings, type AssistantState, type ViewId, type WallDeckSettings } from "@walldeck/contracts";
+import { defaultSettings, type AssistantState, type ScheduledItem, type ViewId, type WallDeckSettings } from "@walldeck/contracts";
 
-export const PanelContext = createContext<{ settings: WallDeckSettings; activeView: ViewId; requestedAssistantState: AssistantState | null; menuOpen: boolean; setInteractionLocked: (locked: boolean) => void }>({ settings: defaultSettings, activeView: "photos", requestedAssistantState: null, menuOpen: false, setInteractionLocked: () => undefined });
+export type SchedulePresentation = Pick<ScheduledItem, "id" | "kind"> & { revision: number };
+
+export const PanelContext = createContext<{ settings: WallDeckSettings; activeView: ViewId; requestedAssistantState: AssistantState | null; schedulePresentation: SchedulePresentation | null; menuOpen: boolean; setInteractionLocked: (locked: boolean) => void }>({ settings: defaultSettings, activeView: "photos", requestedAssistantState: null, schedulePresentation: null, menuOpen: false, setInteractionLocked: () => undefined });

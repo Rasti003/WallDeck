@@ -420,9 +420,21 @@ const assistantToolDependencies = {
   notify: (notification: Record<string, unknown>) => broadcast({ type: "notification", notification }),
   panelCommand,
   listSchedules: () => schedules.list(),
-  createTimer: (input: import("@walldeck/contracts").TimerInput) => schedules.createTimer(input),
-  createAlarm: (input: import("@walldeck/contracts").AlarmInput) => schedules.createAlarm(input),
-  createAssistantTask: (input: import("@walldeck/contracts").AssistantTaskInput) => schedules.createTask(input),
+  createTimer: async (input: import("@walldeck/contracts").TimerInput) => {
+    const item = await schedules.createTimer(input);
+    broadcast({ type: "schedule.createdByAssistant", item });
+    return item;
+  },
+  createAlarm: async (input: import("@walldeck/contracts").AlarmInput) => {
+    const item = await schedules.createAlarm(input);
+    broadcast({ type: "schedule.createdByAssistant", item });
+    return item;
+  },
+  createAssistantTask: async (input: import("@walldeck/contracts").AssistantTaskInput) => {
+    const item = await schedules.createTask(input);
+    broadcast({ type: "schedule.createdByAssistant", item });
+    return item;
+  },
   setAlarmEnabled: (id: string, enabled: boolean) => schedules.setAlarmEnabled(id, enabled),
   cancelSchedule: (id: string) => schedules.remove(id),
   dismissSchedule: (id: string) => schedules.dismiss(id),
