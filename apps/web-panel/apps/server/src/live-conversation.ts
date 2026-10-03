@@ -12,7 +12,7 @@ import type {
 } from "@walldeck/contracts";
 import type { LiveVoiceUsageStore } from "./live-voice.js";
 import { executeLiveTool, liveTools, type LiveToolDependencies } from "./live-tools.js";
-import { liveBackendInstructions, liveConversationInstructions, needsVisualDelegation, visualDelegationInstruction } from "./live-prompts.js";
+import { LIVE_DELEGATION_MAX_OUTPUT_TOKENS, liveBackendInstructions, liveConversationInstructions, needsVisualDelegation, visualDelegationInstruction } from "./live-prompts.js";
 import type { SpeakerObserverClient, SpeakerObservationSession } from "./speaker-observer.js";
 
 type Dependencies = LiveToolDependencies & {
@@ -265,7 +265,7 @@ export function registerLiveConversation(app: FastifyInstance, deps: Dependencie
                   parallel_tool_calls: false,
                   reasoning: { effort: settings.primaryReasoning },
                   text: { verbosity: "low" },
-                  max_output_tokens: 500,
+                  max_output_tokens: LIVE_DELEGATION_MAX_OUTPUT_TOKENS,
                 },
               },
             },

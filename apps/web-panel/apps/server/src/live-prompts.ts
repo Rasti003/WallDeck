@@ -1,5 +1,9 @@
 const visualDisplayPattern = /(?:poka(?:ż|z|zać|zac)|wyświetl|wyswietl|zaprezentuj|zobaczy(?:ć|c)|ekran|tablet|canvas|wykres|zdjęci|zdjeci|obraz|temperatur|co2)/iu;
 
+// Tool arguments count against the delegated response output budget. A complete
+// Canvas document with citations is routinely larger than the old 500-token cap.
+export const LIVE_DELEGATION_MAX_OUTPUT_TOKENS = 3_000;
+
 export const visualDelegationInstruction = "Użytkownik poprosił o pokazanie informacji na fizycznym ekranie tabletu WallDeck. Obowiązkowo deleguj tę prośbę do backendu. Nie odpowiadaj, że nie możesz nic wyświetlić ani że możesz tylko opisać. Backend ma narzędzie show_assistant_canvas i przygotuje ekran.";
 
 export function needsVisualDelegation(text: string) {
