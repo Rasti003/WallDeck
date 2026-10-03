@@ -76,6 +76,7 @@
 - [x] tekstowy Luna/MCP → GPT-Live z budżetem, twardym limitem sesji i fallbackiem OpenAI TTS;
 - [x] prototyp „Ej Waldek” → mikrofon tabletu → GPT-Live → głośnik, z delegacją do Luny/MCP;
 - [x] przełączany tryb „Ej Waldek” → lokalne śledzenie mówcy → transkrypcja → Luna/MCP → OpenAI TTS, obok zachowanego GPT-Live;
+- [x] trwała historia GPT-Live: pełna tekstowa oś rozmowy, przerwania, delegacje, narzędzia, wyniki, zużycie i dane obserwacji mówcy;
 - [ ] fizyczny test obu trybów w hałasie tła i dostrojenie progu ECAPA/czasu końca tury;
 - [ ] dopracować barge-in, echo cancellation oraz ewaluację jakości wake wordu; ciągła fraza bez wymaganej pauzy ma już bufor przed otwarciem GPT-Live;
 - [ ] zastąpić diagnostyczny klaster głosu zweryfikowanym lokalnym modelem speaker verification i rejestracją profili;
@@ -137,6 +138,7 @@
 
 - [x] Lokalny, obserwacyjny tor Silero VAD + ECAPA-TDNN z limitami 2 vCPU/2 GB RAM.
 - [x] Równoległa analiza istniejącego PCM bez blokowania rozmowy GPT-Live; status i ostatnia obserwacja w adminie.
+- [x] Anonimowy fingerprint próbki ECAPA w historii rozmowy bez zapisywania audio ani surowego embeddingu.
 - [ ] Bufor wake wordu jako dokładniejsza kotwica głosu zamiast pierwszego okna polecenia.
 - [ ] Rejestracja nazwanych profili domowników i test progów na rzeczywistych głosach.
 - [ ] Dopiero po walidacji: bramka profilu dla kalendarza, pamięci i innych prywatnych narzędzi.

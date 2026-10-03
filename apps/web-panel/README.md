@@ -4,6 +4,8 @@ Aplikacja WWW panelu ściennego. Pierwszy widok prezentuje lokalną kopię album
 
 Rozmowa głosowa ma dwa zachowywane niezależnie tryby wybierane w adminie: bezpośredni **GPT-Live** oraz **Luna** (`transkrypcja → model tekstowy/MCP → TTS`). Oba zaczynają się lokalnym wake wordem. Luna używa `speaker-service` do wyznaczania końca wypowiedzi aktywnego mówcy; GPT-Live używa go równolegle do diagnostyki. Silero VAD odrzuca ciszę, a ECAPA-TDNN porównuje kolejne fragmenty z pierwszym głosem sesji. Audio nie jest zapisywane, `pyannote.audio` nie należy do domyślnego obrazu. Szczegóły: [apps/speaker-service/README.md](apps/speaker-service/README.md).
 
+Historia administratora zapisuje pełny tekstowy przebieg sesji GPT-Live: wypowiedzi obu stron z czasem, przerwania, delegacje Responses, argumenty i wyniki narzędzi, model, zużycie oraz przyczynę zamknięcia. Obserwacje ECAPA otrzymują anonimowy fingerprint próbki, relację do kotwicy i wynik podobieństwa. Surowe audio ani embeddingi nie są zapisywane; fingerprint pozostaje diagnostyczny i przygotowuje model danych pod przyszłe, osobno rejestrowane profile użytkowników.
+
 Odpowiedzi trybu Luna mogą być syntezowane przez OpenAI TTS albo ElevenLabs. Klucz ElevenLabs jest wpisywany w adminie, szyfrowany w runtime i nigdy nie wraca do klienta. Admin pobiera bezpieczną listę nazw/ID głosów dostępnych dla konta. ElevenLabs zwraca do tabletu surowy PCM 24 kHz, więc korzysta z tej samej natywnej ścieżki głośnika co pozostałe odpowiedzi asystenta.
 
 ## Dostępne ekrany

@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import type { SpeakerObservation } from "@walldeck/contracts";
 
 const DEFAULT_WINDOW_BYTES = 24_000 * 2 * 3;
@@ -32,6 +33,13 @@ export function cosineSimilarity(left: number[], right: number[]): number {
   }
   const denominator = Math.sqrt(leftNorm) * Math.sqrt(rightNorm);
   return denominator > 0 ? dot / denominator : 0;
+}
+
+export function speakerFingerprintId(embedding: number[]): string {
+  const norm = Math.sqrt(embedding.reduce((sum, value) => sum + value ** 2, 0));
+  if (!embedding.length || !Number.isFinite(norm) || norm <= 0) return "spk_unavailable";
+  const quantized = Buffer.from(embedding.map(value => Math.max(0, Math.min(255, Math.round(value / norm * 64) + 128))));
+  return `spk_${createHash("sha256").update(quantized).digest("hex").slice(0, 16)}`;
 }
 
 export class SpeakerObserverClient {
@@ -85,6 +93,7 @@ export class SpeakerObservationSession {
   private chunks: Buffer[] = [];
   private bufferedBytes = 0;
   private anchor: number[] | null = null;
+  private anchorFingerprintId: string | null = null;
   private chain = Promise.resolve();
   private closed = false;
 
@@ -117,6 +126,7 @@ export class SpeakerObservationSession {
         if (!result.speech || !result.embedding?.length) return;
         if (!this.anchor) {
           this.anchor = result.embedding;
+          this.anchorFingerprintId = speakerFingerprintId(result.embedding);
           this.onObservation({
             label: "Aktywny mówca",
             confidence: 1,
@@ -126,11 +136,14 @@ export class SpeakerObservationSession {
             relation: "anchor",
             speechSeconds: result.speechSeconds,
             processingMs: result.processingMs,
+            fingerprintId: this.anchorFingerprintId,
+            anchorFingerprintId: this.anchorFingerprintId,
           });
           return;
         }
         const similarity = cosineSimilarity(this.anchor, result.embedding);
         const same = similarity >= SAME_SPEAKER_THRESHOLD;
+        const candidateFingerprintId = speakerFingerprintId(result.embedding);
         this.onObservation({
           label: same ? "Aktywny mówca" : "Inny głos",
           confidence: same ? similarity : 1 - similarity,
@@ -141,6 +154,8 @@ export class SpeakerObservationSession {
           similarity,
           speechSeconds: result.speechSeconds,
           processingMs: result.processingMs,
+          fingerprintId: same ? this.anchorFingerprintId ?? candidateFingerprintId : candidateFingerprintId,
+          anchorFingerprintId: this.anchorFingerprintId ?? undefined,
         });
       } catch (error) {
         this.onError(error instanceof Error ? error : new Error(String(error)));

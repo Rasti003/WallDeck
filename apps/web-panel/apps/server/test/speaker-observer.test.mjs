@@ -1,11 +1,17 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { cosineSimilarity, SpeakerObservationSession } from "../dist/speaker-observer.js";
+import { cosineSimilarity, speakerFingerprintId, SpeakerObservationSession } from "../dist/speaker-observer.js";
 
 test("cosineSimilarity handles normalized and incompatible vectors", () => {
   assert.equal(cosineSimilarity([1, 0], [1, 0]), 1);
   assert.equal(cosineSimilarity([1, 0], [0, 1]), 0);
   assert.equal(cosineSimilarity([1], [1, 0]), 0);
+});
+
+test("speakerFingerprintId is anonymous, normalized and deterministic", () => {
+  assert.match(speakerFingerprintId([1, 0]), /^spk_[a-f0-9]{16}$/);
+  assert.equal(speakerFingerprintId([1, 0]), speakerFingerprintId([2, 0]));
+  assert.notEqual(speakerFingerprintId([1, 0]), speakerFingerprintId([0, 1]));
 });
 
 test("speaker session anchors the first voice and classifies later windows", async () => {
@@ -26,6 +32,9 @@ test("speaker session anchors the first voice and classifies later windows", asy
   assert.deepEqual(observations.map(item => item.relation), ["anchor", "same", "different"]);
   assert.deepEqual(observations.map(item => item.label), ["Aktywny mówca", "Aktywny mówca", "Inny głos"]);
   assert.equal(observations.every(item => item.engine === "silero-ecapa"), true);
+  assert.equal(observations[0].fingerprintId, observations[1].fingerprintId);
+  assert.notEqual(observations[0].fingerprintId, observations[2].fingerprintId);
+  assert.equal(observations.every(item => item.anchorFingerprintId === observations[0].fingerprintId), true);
 });
 
 test("speaker session ignores windows without enough speech", async () => {

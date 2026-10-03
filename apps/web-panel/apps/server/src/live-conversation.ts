@@ -1,10 +1,17 @@
 import OpenAI from "openai";
 import { LiveWS } from "openai/resources/live/ws";
 import type { FastifyInstance } from "fastify";
-import type { AiAssistantSettings, McpToolId } from "@walldeck/contracts";
+import type {
+  AiAssistantLiveDelegationTrace,
+  AiAssistantLiveSessionTrace,
+  AiAssistantLiveToolTrace,
+  AiAssistantSettings,
+  AiAssistantToolTrace,
+  McpToolId,
+  SpeakerObservation,
+} from "@walldeck/contracts";
 import type { LiveVoiceUsageStore } from "./live-voice.js";
 import { executeLiveTool, liveTools, type LiveToolDependencies } from "./live-tools.js";
-import type { SpeakerObservation } from "@walldeck/contracts";
 import type { SpeakerObserverClient, SpeakerObservationSession } from "./speaker-observer.js";
 
 type Dependencies = LiveToolDependencies & {
@@ -14,12 +21,15 @@ type Dependencies = LiveToolDependencies & {
   usage: LiveVoiceUsageStore;
   speakerObserver: SpeakerObserverClient;
   onSpeakerObservation(observation: SpeakerObservation): void;
+  recordConversation(value: { source: "tablet-live"; startedAt: string; transcript: string; liveSession: AiAssistantLiveSessionTrace; error?: string }): Promise<void>;
   recordError(message: string): void;
 };
 
+type DelegationResultTrace = { model?: string; durationMs?: number; error?: string; toolCalls?: AiAssistantToolTrace[] };
+
 type ClientMessage =
   | { type: "audio"; audio: string }
-  | { type: "delegation.result"; delegationId: string | null; content: string }
+  | { type: "delegation.result"; delegationId: string | null; content: string; trace?: DelegationResultTrace }
   | { type: "context"; content: string }
   | { type: "close" };
 
@@ -30,6 +40,32 @@ const FOLLOW_UP_WINDOW_MS = 12_000;
 const HARD_LIMIT_FINISH_GRACE_MS = 30_000;
 const ACTIVE_TURN_GRACE_MS = 3_000;
 const DELEGATION_GRACE_MS = 35_000;
+
+export function appendLiveTranscript(
+  transcript: AiAssistantLiveSessionTrace["transcript"],
+  role: "user" | "assistant",
+  delta: string,
+  startMs: number,
+  endMs: number,
+) {
+  if (!delta) return;
+  const previous = transcript.at(-1);
+  if (previous?.role === role && startMs - previous.endMs <= 1_500) {
+    previous.text += delta;
+    previous.endMs = Math.max(previous.endMs, endMs);
+    return;
+  }
+  transcript.push({ role, text: delta, startMs, endMs });
+}
+
+function safeToolTraces(value: unknown): AiAssistantToolTrace[] {
+  if (!Array.isArray(value)) return [];
+  return value.slice(0, 30).flatMap(item => {
+    if (!item || typeof item !== "object" || typeof (item as { name?: unknown }).name !== "string") return [];
+    const trace = item as { name: string; arguments?: unknown; output?: unknown };
+    return [{ name: trace.name.slice(0, 120), arguments: trace.arguments, ...(trace.output !== undefined ? { output: trace.output } : {}) }];
+  });
+}
 
 function containsAudiblePcm(pcm: Buffer): boolean {
   if (pcm.length < 2) return false;
@@ -81,8 +117,17 @@ export function registerLiveConversation(app: FastifyInstance, deps: Dependencie
     let closeRequested = false;
     let closeReason = "transport-ended";
     let finalUsage = 0;
-    let inputTranscript = "";
+    let inputTranscript = initialCommand;
     let outputTranscript = "";
+    let sessionId: string | undefined;
+    let conversationError: string | undefined;
+    const transcript: AiAssistantLiveSessionTrace["transcript"] = initialCommand
+      ? [{ role: "user", text: initialCommand, startMs: 0, endMs: 0 }]
+      : [];
+    const toolCalls: AiAssistantLiveToolTrace[] = [];
+    const delegations: AiAssistantLiveDelegationTrace[] = [];
+    const delegationStartedAt = new Map<string, string>();
+    const speakerObservations: SpeakerObservation[] = [];
     let outputAudioBytes = 0;
     let audibleAudioBytes = 0;
     let droppedSilenceBytes = 0;
@@ -99,7 +144,10 @@ export function registerLiveConversation(app: FastifyInstance, deps: Dependencie
     const delegationsNeedingContinuation = new Set<string>();
     let speakerSession: SpeakerObservationSession | null = settings.voice.live.speakerObservationEnabled
       ? deps.speakerObserver.session(
-        observation => deps.onSpeakerObservation(observation),
+        observation => {
+          speakerObservations.push(observation);
+          deps.onSpeakerObservation(observation);
+        },
         error => app.log.warn({ err: error }, "Local speaker observation failed"),
       )
       : null;
@@ -168,6 +216,16 @@ export function registerLiveConversation(app: FastifyInstance, deps: Dependencie
           lastTurnActivityAt = Date.now();
           waitForDelegation();
           app.log.info({ delegationId: message.delegationId, resultLength: message.content.length }, "GPT-Live delegation result received");
+          delegations.push({
+            delegationId: message.delegationId,
+            startedAt: message.delegationId ? delegationStartedAt.get(message.delegationId) ?? new Date().toISOString() : new Date().toISOString(),
+            completedAt: new Date().toISOString(),
+            result: message.content,
+            ...(typeof message.trace?.model === "string" ? { model: message.trace.model.slice(0, 120) } : {}),
+            ...(typeof message.trace?.durationMs === "number" && Number.isFinite(message.trace.durationMs) ? { durationMs: message.trace.durationMs } : {}),
+            ...(typeof message.trace?.error === "string" ? { error: message.trace.error.slice(0, 2_000) } : {}),
+            toolCalls: safeToolTraces(message.trace?.toolCalls),
+          });
           live.send({ type: "session.commentary.append", event_id: `result_${Date.now()}`, delegation_id: message.delegationId, content: message.content });
         } else if (message.type === "context" && typeof message.content === "string" && message.content.length <= 2_000 && !closeRequested) {
           live.send({ type: "session.instructions.append", event_id: `context_${Date.now()}`, delegation_id: null, content: message.content });
@@ -223,14 +281,29 @@ Music policy: Prośba typu „wybierz mi muzykę do nauki i puść” jest kompl
           if (nested.type === "response.output_item.done" && nested.item?.type === "function_call" && delegationId
             && typeof nested.item.call_id === "string" && typeof nested.item.name === "string" && typeof nested.item.arguments === "string") {
             waitForDelegation(delegationId);
+            const toolStartedAt = new Date().toISOString();
+            let parsedArguments: unknown = nested.item.arguments;
+            try { parsedArguments = JSON.parse(nested.item.arguments); } catch { /* Preserve malformed arguments for diagnostics. */ }
             let output: unknown;
+            let toolError: string | undefined;
             try {
               output = await executeLiveTool(nested.item.name, nested.item.arguments, deps, enabledTools);
               app.log.info({ delegationId, tool: nested.item.name }, "GPT-Live tool completed");
             } catch (error) {
-              output = { ok: false, error: error instanceof Error ? error.message : String(error) };
+              toolError = error instanceof Error ? error.message : String(error);
+              output = { ok: false, error: toolError };
               app.log.warn({ delegationId, tool: nested.item.name, err: error }, "GPT-Live tool failed");
             }
+            toolCalls.push({
+              name: nested.item.name,
+              arguments: parsedArguments,
+              output,
+              callId: nested.item.call_id,
+              delegationId,
+              startedAt: toolStartedAt,
+              completedAt: new Date().toISOString(),
+              ...(toolError ? { error: toolError } : {}),
+            });
             live.send({
               type: "response.item.create",
               event_id: `tool_result_${Date.now()}`,
@@ -248,6 +321,7 @@ Music policy: Prośba typu „wybierz mi muzykę do nauki i puść” jest kompl
         }
         if (event.type === "session.started") {
           sessionStarted = true;
+          sessionId = event.session.id;
           pendingAudio.splice(0).forEach((audio, index) => {
             live.send({ type: "session.input_audio.append", event_id: `buffered_${Date.now()}_${index}`, audio });
           });
@@ -256,11 +330,15 @@ Music policy: Prośba typu „wybierz mi muzykę do nauki i puść” jest kompl
           if (idleTimer) clearTimeout(idleTimer);
           lastTurnActivityAt = Date.now();
           inputTranscript += event.delta;
+          const lastAssistant = [...transcript].reverse().find(segment => segment.role === "assistant");
+          if (lastAssistant && outputPlaybackUntil > Date.now()) lastAssistant.interrupted = true;
+          appendLiveTranscript(transcript, "user", event.delta, event.start_ms, event.end_ms);
           send({ type: "inputTranscript", delta: event.delta, startMs: event.start_ms, endMs: event.end_ms });
         } else if (event.type === "session.output_transcript.delta") {
           delegationAnswered();
           lastTurnActivityAt = Date.now();
           outputTranscript += event.delta;
+          appendLiveTranscript(transcript, "assistant", event.delta, event.start_ms, event.end_ms);
           send({ type: "outputTranscript", delta: event.delta, startMs: event.start_ms, endMs: event.end_ms });
         } else if (event.type === "session.output_audio.delta") {
           delegationAnswered();
@@ -280,6 +358,7 @@ Music policy: Prośba typu „wybierz mi muzykę do nauki i puść” jest kompl
           }
         } else if (event.type === "session.delegation.created") {
           waitForDelegation(event.delegation.id);
+          delegationStartedAt.set(event.delegation.id, new Date().toISOString());
           app.log.info({ delegationId: event.delegation.id, target: event.delegation.target, offsetMs: event.offset_ms }, "GPT-Live delegation created");
           if (event.delegation.target === "client") send({ type: "delegation", delegationId: event.delegation.id, offsetMs: event.offset_ms });
         } else if (event.type === "session.usage.updated") {
@@ -296,6 +375,7 @@ Music policy: Prośba typu „wybierz mi muzykę do nauki i puść” jest kompl
     } catch (error) {
       app.log.error({ err: error }, "GPT-Live conversation failed");
       const message = error instanceof Error ? error.message : String(error);
+      conversationError = message;
       deps.recordError(message);
       send({ type: "error", error: message });
     } finally {
@@ -310,9 +390,29 @@ Music policy: Prośba typu „wybierz mi muzykę do nauki i puść” jest kompl
         finalUsage = finalUsage || Math.max(0, (Date.now() - startedAt) / 1_000);
         await deps.usage.add(finalUsage);
       }
+      const durationMs = Date.now() - startedAt;
+      if (sessionStarted && (inputTranscript.trim() || outputTranscript.trim() || toolCalls.length || delegations.length || conversationError)) {
+        await deps.recordConversation({
+          source: "tablet-live",
+          startedAt: new Date(startedAt).toISOString(),
+          transcript: inputTranscript.trim(),
+          liveSession: {
+            sessionId,
+            model: settings.voice.live.model,
+            durationMs,
+            usageSeconds: finalUsage,
+            closeReason,
+            transcript,
+            toolCalls,
+            delegations,
+            speakerObservations,
+          },
+          ...(conversationError ? { error: conversationError } : {}),
+        }).catch(error => app.log.error({ err: error }, "Could not persist GPT-Live conversation history"));
+      }
       app.log.info({
         closeReason,
-        durationMs: Date.now() - startedAt,
+        durationMs,
         inputTranscript,
         outputTranscript,
         outputAudioBytes,

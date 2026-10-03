@@ -78,7 +78,7 @@ export function AiAssistantAdmin({ page, settings, setSettings }: Props) {
     if (!message.trim()) return;
     setRunning(true); setResult(null); setState("Asystent pracuje…");
     try {
-      const next = await api.assistant.run({ message: message.trim(), forceFallback });
+      const next = await api.assistant.run({ message: message.trim(), forceFallback, recordHistory: true });
       setResult(next); setState(`Gotowe · ${next.durationMs} ms`); setHistory(await api.assistant.history());
     } catch (error) { setState(`Błąd: ${error instanceof Error ? error.message : String(error)}`); }
     finally { setRunning(false); }
@@ -232,7 +232,7 @@ export function AiAssistantAdmin({ page, settings, setSettings }: Props) {
     </form>
 
     <section hidden={page !== "history"} className="admin-card ai-history">
-      <header><div><span className="admin-kicker">HISTORIA</span><h2>Rozmowy i działania</h2><p>Ostatnie 100 tur z tabletu i konsoli. Audio i klucze API nie są zapisywane.</p></div><button type="button" className="secondary" disabled={!history.length} onClick={() => void clearHistory()}>Wyczyść historię</button></header>
+      <header><div><span className="admin-kicker">HISTORIA</span><h2>Rozmowy i działania</h2><p>Ostatnie 100 sesji GPT‑Live, Luny i konsoli wraz z narzędziami oraz fingerprintem mówcy. Audio i klucze API nie są zapisywane.</p></div><button type="button" className="secondary" disabled={!history.length} onClick={() => void clearHistory()}>Wyczyść historię</button></header>
       {!history.length && <p className="admin-note">Brak zapisanych rozmów. Następne polecenie „Ej Waldek…” pojawi się tutaj automatycznie.</p>}
       <div className="ai-history-list">{history.map((entry) => <ConversationEntry key={entry.id} entry={entry} />)}</div>
     </section>
@@ -240,9 +240,40 @@ export function AiAssistantAdmin({ page, settings, setSettings }: Props) {
 }
 
 function ConversationEntry({ entry }: { entry: AiAssistantConversationEntry }) {
+  const live = entry.liveSession;
+  const sourceLabel = entry.source === "tablet-live" ? "Tablet · GPT‑Live" : entry.source === "tablet-voice" ? "Tablet · Luna" : "Admin · tekst";
+  const durationMs = live?.durationMs ?? entry.result?.durationMs ?? 0;
+  const fingerprints = live ? [...new Map(live.speakerObservations.filter(item => item.fingerprintId).map(item => [item.fingerprintId, item])).values()] : [];
   return <article className="ai-history-entry">
-    <header><div><strong>{entry.source === "tablet-voice" ? "Tablet · głos" : "Admin · tekst"}</strong><time>{new Date(entry.startedAt).toLocaleString("pl-PL")}</time></div><span className={entry.error ? "is-error" : "is-ok"}>{entry.error ? "błąd" : `${entry.result?.durationMs ?? 0} ms`}</span></header>
-    <div className="ai-history-message"><small>Rozpoznano / wpisano</small><p>{entry.transcript || "Nie uzyskano transkrypcji"}</p></div>
+    <header><div><strong>{sourceLabel}</strong><time>{new Date(entry.startedAt).toLocaleString("pl-PL")}</time></div><span className={entry.error ? "is-error" : "is-ok"}>{entry.error ? "błąd" : durationMs >= 1_000 ? `${(durationMs / 1_000).toFixed(1)} s` : `${durationMs} ms`}</span></header>
+    {!live && <div className="ai-history-message"><small>Rozpoznano / wpisano</small><p>{entry.transcript || "Nie uzyskano transkrypcji"}</p></div>}
+    {live && <>
+      <div className="ai-live-history-meta"><span><small>MODEL</small>{live.model}</span><span><small>ZUŻYCIE</small>{live.usageSeconds.toFixed(1)} s</span><span><small>ZAKOŃCZENIE</small>{live.closeReason}</span><span><small>SESJA</small>{live.sessionId?.slice(-12) ?? "—"}</span></div>
+      <section className="ai-live-timeline" aria-label="Pełna transkrypcja GPT-Live">
+        <h3>Przebieg rozmowy</h3>
+        {!live.transcript.length && <p className="admin-note">Brak czytelnej transkrypcji.</p>}
+        {live.transcript.map((segment, index) => <article className={segment.role === "user" ? "is-user" : "is-assistant"} key={`${entry.id}-segment-${index}`}>
+          <small>{segment.role === "user" ? "Użytkownik" : "GPT‑Live"} · {(segment.startMs / 1_000).toFixed(1)}–{(segment.endMs / 1_000).toFixed(1)} s{segment.interrupted ? " · przerwana odpowiedź" : ""}</small>
+          <p>{segment.text}</p>
+        </article>)}
+      </section>
+      <details className="ai-live-trace">
+        <summary>Działania i narzędzia ({live.toolCalls.length + live.delegations.length + live.delegations.reduce((sum, item) => sum + item.toolCalls.length, 0)})</summary>
+        <div className="ai-history-turn">
+          {live.toolCalls.map((tool, index) => <section className="ai-history-tool" key={`${tool.callId}-${index}`}><small>Narzędzie Live · {tool.name}</small><label>Argumenty</label><pre>{JSON.stringify(tool.arguments, null, 2)}</pre><label>Wynik</label><pre>{JSON.stringify(tool.output, null, 2)}</pre>{tool.error && <><label>Błąd</label><pre>{tool.error}</pre></>}</section>)}
+          {live.delegations.map((delegation, index) => <section className="ai-history-tool" key={`${delegation.delegationId ?? "fallback"}-${index}`}><small>Delegacja do Responses{delegation.model ? ` · ${delegation.model}` : ""}</small><label>Wynik przekazany do GPT‑Live</label><pre>{delegation.result}</pre>{delegation.error && <><label>Błąd</label><pre>{delegation.error}</pre></>}{delegation.toolCalls.map((tool, toolIndex) => <div className="ai-live-nested-tool" key={`${tool.name}-${toolIndex}`}><strong>{tool.name}</strong><label>Argumenty</label><pre>{JSON.stringify(tool.arguments, null, 2)}</pre>{tool.output !== undefined && <><label>Wynik</label><pre>{JSON.stringify(tool.output, null, 2)}</pre></>}</div>)}</section>)}
+          {!live.toolCalls.length && !live.delegations.length && <p className="admin-note">Ta rozmowa nie wywołała narzędzi.</p>}
+        </div>
+      </details>
+      <details className="ai-live-trace">
+        <summary>Fingerprint mówcy ({fingerprints.length})</summary>
+        <div className="ai-speaker-history">
+          {!live.speakerObservations.length && <p className="admin-note">Obserwacja mówcy była wyłączona albo próbka była zbyt krótka.</p>}
+          {live.speakerObservations.map((observation, index) => <article key={`${observation.observedAt}-${index}`}><strong>{observation.label}</strong><code>{observation.fingerprintId ?? "brak fingerprintu"}</code><span>{(observation.confidence * 100).toFixed(0)}% pewności{typeof observation.similarity === "number" ? ` · ${(observation.similarity * 100).toFixed(0)}% podobieństwa` : ""}</span><time>{new Date(observation.observedAt).toLocaleTimeString("pl-PL")}</time></article>)}
+          <p className="admin-note">Identyfikator jest anonimowym podpisem próbki ECAPA. Nie nadaje uprawnień ani nie oznacza jeszcze rozpoznanej osoby.</p>
+        </div>
+      </details>
+    </>}
     {entry.result?.modelTurns.map((turn, turnIndex) => <details key={`${entry.id}-${turnIndex}`} >
       <summary>{turn.model} · wejście, odpowiedź i narzędzia ({turn.toolCalls.length})</summary>
       <div className="ai-history-turn">

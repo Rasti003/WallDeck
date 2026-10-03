@@ -120,6 +120,23 @@
 .admin-shell .ai-history-entry > details > summary, .admin-shell .ai-result summary { color: #adbcf2; }
 .admin-shell .ai-history-entry > header .is-ok { background: #263d33; color: #b8e1c9; }
 .admin-shell .ai-history-entry > header .is-error, .admin-shell .ai-history-error { background: #432a2f; color: #f3bac3; }
+.admin-shell .ai-live-history-meta { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px; border-bottom: 1px solid #343b46; background: #343b46; }
+.admin-shell .ai-live-history-meta span { display: grid; gap: 5px; min-width: 0; padding: 11px 14px; color: #dfe6f3; background: #1b2028; font-size: .72rem; overflow-wrap: anywhere; }
+.admin-shell .ai-live-history-meta small { color: #7f8ba0; font-size: .58rem; font-weight: 800; letter-spacing: .09em; }
+.admin-shell .ai-live-timeline { display: grid; gap: 9px; padding: 15px 16px 17px; background: #171b22; }
+.admin-shell .ai-live-timeline h3 { margin: 0 0 3px; color: #eef2fa; font-size: .76rem; letter-spacing: .04em; text-transform: uppercase; }
+.admin-shell .ai-live-timeline article { max-width: 88%; padding: 10px 12px; border: 1px solid #343d4b; border-radius: 11px 11px 11px 4px; background: #222935; }
+.admin-shell .ai-live-timeline article.is-assistant { justify-self: end; border-color: #46416a; border-radius: 11px 11px 4px; background: #29283b; }
+.admin-shell .ai-live-timeline small { color: #8290a5; font-size: .61rem; font-weight: 750; letter-spacing: .04em; text-transform: uppercase; }
+.admin-shell .ai-live-timeline p { margin: 5px 0 0; color: #e2e8f2; font-size: .78rem; line-height: 1.5; white-space: pre-wrap; }
+.admin-shell .ai-live-trace { border-top: 1px solid #343b46; }
+.admin-shell .ai-live-nested-tool { margin-top: 11px; padding: 11px; border: 1px solid #394958; border-radius: 7px; background: #111820; }
+.admin-shell .ai-live-nested-tool strong { color: #c7d4fa; font-size: .72rem; }
+.admin-shell .ai-speaker-history { display: grid; gap: 8px; padding: 0 16px 16px; }
+.admin-shell .ai-speaker-history article { display: grid; grid-template-columns: minmax(110px, .7fr) minmax(150px, 1fr) minmax(170px, 1fr) auto; align-items: center; gap: 12px; padding: 10px 12px; border: 1px solid #343d4b; border-radius: 9px; background: #1b212a; }
+.admin-shell .ai-speaker-history strong { color: #e2e8f2; font-size: .73rem; }
+.admin-shell .ai-speaker-history code { color: #b9c6f4; font-size: .68rem; }
+.admin-shell .ai-speaker-history span, .admin-shell .ai-speaker-history time { color: #8e9bad; font-size: .68rem; }
 .admin-shell .ai-result > header { color: #c2d0ff; }
 .admin-shell .ai-result > header span { background: #303951; }
 .admin-shell .state-machine :is(td, th) { padding: 10px 12px; border-color: #343b46; font-size: 12px; }
@@ -204,6 +221,9 @@
   .admin-shell .admin-sidebar nav { grid-template-columns: 1fr; }
   .admin-shell :is(.ai-model-grid, .ai-voice-settings .ai-model-grid, .ai-status-grid, .entity-add-grid, .entity-overlay-list > article) { grid-template-columns: 1fr; }
   .admin-shell :is(.ai-history > header, .assistant-settings-save, .ai-console-actions) { flex-direction: column; align-items: stretch; }
+  .admin-shell .ai-live-history-meta { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .admin-shell .ai-live-timeline article { max-width: 96%; }
+  .admin-shell .ai-speaker-history article { grid-template-columns: 1fr; gap: 5px; }
   .admin-shell .rule-flow { grid-template-columns: 1fr; }
   .admin-shell .diagnostic-summary { grid-template-columns: 1fr; }
   .admin-shell .diagnostic-card > header { flex-direction: column; }

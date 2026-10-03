@@ -15,6 +15,13 @@ test("assistant history persists newest-first, applies its limit and can be clea
     }
     const restored = new AssistantHistoryStore(file, 2);
     assert.deepEqual((await restored.list()).map(entry => entry.transcript), ["trzecia", "druga"]);
+    await restored.add({
+      source: "tablet-live",
+      startedAt: "2026-10-02T10:01:00.000Z",
+      transcript: "włącz światło",
+      liveSession: { model: "gpt-live-1", durationMs: 1200, usageSeconds: 1.2, closeReason: "done", transcript: [], toolCalls: [], delegations: [], speakerObservations: [] },
+    });
+    assert.equal((await new AssistantHistoryStore(file, 2).list())[0].liveSession.model, "gpt-live-1");
     await restored.clear();
     assert.deepEqual(await new AssistantHistoryStore(file, 2).list(), []);
   } finally {

@@ -17,6 +17,16 @@ type SpeakerEvent = { label?: string; confidence?: number; experimental?: boolea
 const LIVE_PREBUFFER_BYTES = 24_000;
 const LIVE_PREBUFFER_MS = 350;
 
+function compactTraceValue(value: unknown, maxCharacters: number): unknown {
+  try {
+    const serialized = JSON.stringify(value);
+    if (serialized.length <= maxCharacters) return value;
+    return { truncated: true, preview: serialized.slice(0, maxCharacters) };
+  } catch {
+    return { unavailable: true };
+  }
+}
+
 export class VoiceAssistantRuntime {
   private socket: WebSocket | null = null;
   private inputTranscript = "";
@@ -255,16 +265,28 @@ export class VoiceAssistantRuntime {
       return;
     }
     let speechText: string;
+    let trace: { model?: string; durationMs?: number; error?: string; toolCalls?: import("@walldeck/contracts").AiAssistantToolTrace[] } | undefined;
     try {
-      const result = await api.assistant.run({ message: command, forceFallback: false });
+      const result = await api.assistant.run({ message: command, forceFallback: false, recordHistory: false });
       speechText = result.text;
+      trace = {
+        model: result.model,
+        durationMs: result.durationMs,
+        toolCalls: result.toolCalls.slice(0, 12).map(tool => ({
+          name: tool.name,
+          arguments: compactTraceValue(tool.arguments, 4_000),
+          ...(tool.output !== undefined ? { output: compactTraceValue(tool.output, 8_000) } : {}),
+        })),
+      };
     } catch (error) {
-      speechText = `Zadanie nie zostało wykonane: ${error instanceof Error ? error.message : String(error)}`;
+      const message = error instanceof Error ? error.message : String(error);
+      speechText = `Zadanie nie zostało wykonane: ${message}`;
+      trace = { error: message };
     }
     this.handledTranscriptLength = this.inputTranscript.length;
     this.pendingUserTurn = false;
     if (socket.readyState === WebSocket.OPEN) {
-      socket.send(JSON.stringify({ type: "delegation.result", delegationId, content: speechText }));
+      socket.send(JSON.stringify({ type: "delegation.result", delegationId, content: speechText, trace }));
       this.callbacks.onStatus?.("Backend odpowiedział");
     }
     this.pendingDelegations.delete(delegationKey);

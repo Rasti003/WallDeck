@@ -154,7 +154,11 @@ export const aiAssistantConfigInputSchema = z.object({
   elevenLabsApiKey: z.string().trim().min(10).max(300).optional(),
 });
 export type AiAssistantConfigInput = z.infer<typeof aiAssistantConfigInputSchema>;
-export const aiAssistantRunInputSchema = z.object({ message: z.string().trim().min(1).max(2_000), forceFallback: z.boolean().default(false) });
+export const aiAssistantRunInputSchema = z.object({
+  message: z.string().trim().min(1).max(2_000),
+  forceFallback: z.boolean().default(false),
+  recordHistory: z.boolean().default(true),
+});
 export type AiAssistantRunInput = z.infer<typeof aiAssistantRunInputSchema>;
 export const aiAssistantSpeechInputSchema = z.object({ text: z.string().trim().min(1).max(500) });
 export interface AiVoiceUsageStatus {
@@ -176,6 +180,8 @@ export interface SpeakerObservation {
   similarity?: number;
   speechSeconds?: number;
   processingMs?: number;
+  fingerprintId?: string;
+  anchorFingerprintId?: string;
 }
 export interface SpeakerObserverStatus { available: boolean; engine: "silero-ecapa"; modelReady: boolean; detail?: string; }
 export interface ElevenLabsVoice { voiceId: string; name: string; category?: string; labels: Record<string, string>; verifiedLanguages: string[]; }
@@ -183,13 +189,49 @@ export interface AiAssistantStatus { configured: boolean; elevenLabsConfigured: 
 export interface AiAssistantToolTrace { name: string; arguments: unknown; output?: unknown; }
 export interface AiAssistantModelTurn { model: string; input: string; instructions: string; output?: string; error?: string; toolCalls: AiAssistantToolTrace[]; }
 export interface AiAssistantRunResult { text: string; model: string; escalated: boolean; toolCalls: AiAssistantToolTrace[]; modelTurns: AiAssistantModelTurn[]; durationMs: number; }
+export interface AiAssistantLiveTranscriptSegment {
+  role: "user" | "assistant";
+  text: string;
+  startMs: number;
+  endMs: number;
+  interrupted?: boolean;
+}
+export interface AiAssistantLiveToolTrace extends AiAssistantToolTrace {
+  callId: string;
+  delegationId: string;
+  startedAt: string;
+  completedAt: string;
+  error?: string;
+}
+export interface AiAssistantLiveDelegationTrace {
+  delegationId: string | null;
+  startedAt: string;
+  completedAt: string;
+  result: string;
+  model?: string;
+  durationMs?: number;
+  error?: string;
+  toolCalls: AiAssistantToolTrace[];
+}
+export interface AiAssistantLiveSessionTrace {
+  sessionId?: string;
+  model: string;
+  durationMs: number;
+  usageSeconds: number;
+  closeReason: string;
+  transcript: AiAssistantLiveTranscriptSegment[];
+  toolCalls: AiAssistantLiveToolTrace[];
+  delegations: AiAssistantLiveDelegationTrace[];
+  speakerObservations: SpeakerObservation[];
+}
 export interface AiAssistantConversationEntry {
   id: string;
-  source: "tablet-voice" | "admin-text";
+  source: "tablet-voice" | "tablet-live" | "admin-text";
   startedAt: string;
   completedAt: string;
   transcript: string;
   result?: AiAssistantRunResult;
+  liveSession?: AiAssistantLiveSessionTrace;
   error?: string;
 }
 

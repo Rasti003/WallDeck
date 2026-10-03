@@ -285,11 +285,11 @@ app.post("/api/assistant/run", async (request, reply) => {
   const startedAt = new Date().toISOString();
   try {
     const result = await assistant.execute(parsed.data.message, settings.aiAssistant, parsed.data.forceFallback);
-    await assistantHistory.add({ source: "admin-text", startedAt, transcript: parsed.data.message, result });
+    if (parsed.data.recordHistory) await assistantHistory.add({ source: "admin-text", startedAt, transcript: parsed.data.message, result });
     return result;
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    await assistantHistory.add({ source: "admin-text", startedAt, transcript: parsed.data.message, error: message }).catch(() => undefined);
+    if (parsed.data.recordHistory) await assistantHistory.add({ source: "admin-text", startedAt, transcript: parsed.data.message, error: message }).catch(() => undefined);
     void recordDiagnostic({ level: "error", category: "assistant", title: "Błąd polecenia asystenta", message, details: `Źródło: konsola administratora` });
     return reply.code(502).send({ error: message });
   }
@@ -440,6 +440,7 @@ registerLiveConversation(app, {
     lastSpeakerObservation = observation;
     broadcast({ type: "assistant.speakerObserved", observation });
   },
+  recordConversation: value => assistantHistory.add(value).then(() => undefined),
   recordError: message => { void recordDiagnostic({ level: "error", category: "assistant", title: "Błąd rozmowy GPT-Live", message }); },
 });
 

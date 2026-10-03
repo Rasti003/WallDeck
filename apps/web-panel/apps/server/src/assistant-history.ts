@@ -1,12 +1,13 @@
 import { randomUUID } from "node:crypto";
 import { readFile, rename, writeFile } from "node:fs/promises";
-import type { AiAssistantConversationEntry, AiAssistantRunResult } from "@walldeck/contracts";
+import type { AiAssistantConversationEntry, AiAssistantLiveSessionTrace, AiAssistantRunResult } from "@walldeck/contracts";
 
 type NewEntry = {
   source: AiAssistantConversationEntry["source"];
   startedAt: string;
   transcript: string;
   result?: AiAssistantRunResult;
+  liveSession?: AiAssistantLiveSessionTrace;
   error?: string;
 };
 
@@ -38,6 +39,7 @@ export class AssistantHistoryStore {
       completedAt: new Date().toISOString(),
       transcript: value.transcript,
       ...(value.result ? { result: value.result } : {}),
+      ...(value.liveSession ? { liveSession: value.liveSession } : {}),
       ...(value.error ? { error: value.error } : {}),
     };
     entries.push(entry);
