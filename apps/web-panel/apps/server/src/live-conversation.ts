@@ -36,7 +36,10 @@ type ClientMessage =
 
 const PCM_RATE = 24_000;
 const OUTPUT_GENERATION_GRACE_MS = 2_500;
-const NATURAL_PAUSE_MS = 500;
+// Live may emit seconds of silent PCM almost instantly while a delegation starts.
+// Cap by audio duration instead of wall-clock arrival time, otherwise that silence
+// is queued on the tablet and can split a short progress phrase in half.
+export const LIVE_NATURAL_PAUSE_BYTES = Math.round(PCM_RATE * 2 * 0.18);
 const FOLLOW_UP_WINDOW_MS = 12_000;
 const HARD_LIMIT_FINISH_GRACE_MS = 30_000;
 const ACTIVE_TURN_GRACE_MS = 3_000;
@@ -77,6 +80,20 @@ function containsAudiblePcm(pcm: Buffer): boolean {
     samples += 1;
   }
   return samples > 0 && total / samples >= 90;
+}
+
+export function filterLivePcm(pcm: Buffer, trailingSilenceBytes: number) {
+  if (containsAudiblePcm(pcm)) {
+    return { audio: pcm, audible: true, trailingSilenceBytes: 0, droppedBytes: 0 };
+  }
+  const remaining = Math.max(0, LIVE_NATURAL_PAUSE_BYTES - trailingSilenceBytes);
+  const keptBytes = Math.min(pcm.length, remaining) & ~1;
+  return {
+    audio: keptBytes ? pcm.subarray(0, keptBytes) : Buffer.alloc(0),
+    audible: false,
+    trailingSilenceBytes: trailingSilenceBytes + keptBytes,
+    droppedBytes: pcm.length - keptBytes,
+  };
 }
 
 export function registerLiveConversation(app: FastifyInstance, deps: Dependencies) {
@@ -133,7 +150,7 @@ export function registerLiveConversation(app: FastifyInstance, deps: Dependencie
     let outputAudioBytes = 0;
     let audibleAudioBytes = 0;
     let droppedSilenceBytes = 0;
-    let lastAudibleAt = 0;
+    let trailingSilenceBytes = LIVE_NATURAL_PAUSE_BYTES;
     let lastTurnActivityAt = 0;
     const pendingAudio: string[] = [];
     let outputPlaybackUntil = 0;
@@ -356,17 +373,17 @@ export function registerLiveConversation(app: FastifyInstance, deps: Dependencie
           delegationAnswered();
           lastTurnActivityAt = Date.now();
           const pcm = Buffer.from(event.delta, "base64");
-          const audible = containsAudiblePcm(pcm);
+          const filtered = filterLivePcm(pcm, trailingSilenceBytes);
+          trailingSilenceBytes = filtered.trailingSilenceBytes;
           outputAudioBytes += pcm.length;
-          if (audible) {
-            lastAudibleAt = Date.now();
+          droppedSilenceBytes += filtered.droppedBytes;
+          if (filtered.audible) {
             audibleAudioBytes += pcm.length;
             send({ type: "audio", audio: event.delta });
             postponeIdleClose(pcm.length);
-          } else if (lastAudibleAt && Date.now() - lastAudibleAt <= NATURAL_PAUSE_MS) {
-            send({ type: "audio", audio: event.delta });
-          } else {
-            droppedSilenceBytes += pcm.length;
+          } else if (filtered.audio.length) {
+            send({ type: "audio", audio: filtered.audio.toString("base64") });
+            postponeIdleClose(filtered.audio.length);
           }
         } else if (event.type === "session.delegation.created") {
           waitForDelegation(event.delegation.id);
