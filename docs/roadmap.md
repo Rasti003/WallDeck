@@ -79,7 +79,7 @@
 - [x] trwała historia GPT-Live: pełna tekstowa oś rozmowy, przerwania, delegacje, narzędzia, wyniki, zużycie i dane obserwacji mówcy;
 - [x] niezależne od publicznego MCP wykonanie zadań przez Lunę oraz hybrydowa dostawa: ciche powiadomienie, TTS albo rozmowa GPT‑Live wybrana przez model;
 - [ ] fizyczny test obu trybów w hałasie tła i dostrojenie progu ECAPA/czasu końca tury;
-- [ ] dopracować barge-in, echo cancellation oraz ewaluację jakości wake wordu; ciągła fraza bez wymaganej pauzy ma już bufor przed otwarciem GPT-Live;
+- [ ] dopracować barge-in i echo cancellation; wake word ma regulowany próg confidence oraz trwały dziennik zaakceptowanych i odrzuconych kandydatów, a dalsza ewaluacja wymaga danych z docelowego pomieszczenia;
 - [ ] zastąpić diagnostyczny klaster głosu zweryfikowanym lokalnym modelem speaker verification i rejestracją profili;
 - [x] provider ElevenLabs z szyfrowanym kluczem, listą głosów konta, próbką w adminie i PCM 24 kHz dla trybu Luna;
 - [ ] aktualizacja konfiguracji i modeli bez wydawania nowego APK.

@@ -11,6 +11,7 @@ type Callbacks = {
 };
 
 type WakeEvent = { transcript?: string; remainder?: string };
+type WakeCandidateEvent = { transcript?: string; phrase?: string; confidence?: number; threshold?: number; accepted?: boolean; engine?: string };
 type AudioChunkEvent = { audio?: string };
 type SpeakerEvent = { label?: string; confidence?: number; experimental?: boolean };
 
@@ -55,6 +56,7 @@ export class VoiceAssistantRuntime {
 
   async start() {
     window.addEventListener("wallpanel:wakeWordDetected", this.onWake as EventListener);
+    window.addEventListener("wallpanel:wakeWordCandidate", this.onWakeCandidate as EventListener);
     window.addEventListener("wallpanel:assistantAudioChunk", this.onAudioChunk as EventListener);
     window.addEventListener("wallpanel:speakerObserved", this.onSpeaker as EventListener);
     await this.configureWake();
@@ -116,6 +118,7 @@ export class VoiceAssistantRuntime {
   async dispose() {
     this.disposed = true;
     window.removeEventListener("wallpanel:wakeWordDetected", this.onWake as EventListener);
+    window.removeEventListener("wallpanel:wakeWordCandidate", this.onWakeCandidate as EventListener);
     window.removeEventListener("wallpanel:assistantAudioChunk", this.onAudioChunk as EventListener);
     window.removeEventListener("wallpanel:speakerObserved", this.onSpeaker as EventListener);
     this.socket?.send(JSON.stringify({ type: "close" }));
@@ -129,7 +132,7 @@ export class VoiceAssistantRuntime {
       await Promise.allSettled([
         nativeBridge.call("assistantAudio.stopInput"),
         nativeBridge.call("assistantAudio.stopOutput"),
-        nativeBridge.call("wakeWord.configure", { enabled: false, phrase: this.settings.voice.live.wakePhrase }),
+        nativeBridge.call("wakeWord.configure", { enabled: false, phrase: this.settings.voice.live.wakePhrase, confidenceThreshold: this.settings.voice.live.wakeConfidenceThreshold }),
       ]);
     }
   }
@@ -142,7 +145,7 @@ export class VoiceAssistantRuntime {
   private async configureWake() {
     if (!nativeBridge.available) return;
     try {
-      const status = await nativeBridge.call("wakeWord.configure", { enabled: this.wakeEnabled(), phrase: this.settings.voice.live.wakePhrase }) as { localAvailable?: boolean; permission?: boolean };
+      const status = await nativeBridge.call("wakeWord.configure", { enabled: this.wakeEnabled(), phrase: this.settings.voice.live.wakePhrase, confidenceThreshold: this.settings.voice.live.wakeConfidenceThreshold }) as { localAvailable?: boolean; permission?: boolean };
       if (this.wakeEnabled() && status.localAvailable === false) this.callbacks.onStatus?.("Brak lokalnego recognizera mowy na tablecie");
       else if (this.wakeEnabled() && status.permission === false) this.callbacks.onStatus?.("Czekam na zgodę na mikrofon");
     } catch (error) {
@@ -153,6 +156,12 @@ export class VoiceAssistantRuntime {
   private onWake = (event: CustomEvent<WakeEvent>) => {
     if (!this.wakeEnabled() || this.socket) return;
     void this.openConversation(event.detail?.remainder?.trim() ?? "");
+  };
+
+  private onWakeCandidate = (event: CustomEvent<WakeCandidateEvent>) => {
+    const { transcript, phrase, confidence, threshold, accepted, engine } = event.detail ?? {};
+    if (typeof transcript !== "string" || typeof phrase !== "string" || typeof confidence !== "number" || typeof threshold !== "number" || typeof accepted !== "boolean") return;
+    void api.diagnostics.wakeWord({ transcript, phrase, confidence, threshold, accepted, engine }).catch(() => undefined);
   };
 
   private onAudioChunk = (event: CustomEvent<AudioChunkEvent>) => {

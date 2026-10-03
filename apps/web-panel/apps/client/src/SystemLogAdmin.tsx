@@ -37,7 +37,7 @@ export function SystemLogAdmin() {
   return <section className="diagnostic-log">
     <div className="diagnostic-summary">
       <button type="button" className={scope === "errors" ? "is-active is-errors" : "is-errors"} onClick={() => { setScope("errors"); setCategory("all"); }}><span>×</span><small>BŁĘDY</small><strong>{errorCount}</strong><p>Backend, zadania, integracje i interfejs</p></button>
-      <button type="button" className={scope === "activity" ? "is-active is-activity" : "is-activity"} onClick={() => { setScope("activity"); setCategory("all"); }}><span>⌁</span><small>AKTYWNOŚĆ TABLETU</small><strong>{activityCount}</strong><p>Połączenie, ekran, dotyk, bateria i zasilanie</p></button>
+      <button type="button" className={scope === "activity" ? "is-active is-activity" : "is-activity"} onClick={() => { setScope("activity"); setCategory("all"); }}><span>⌁</span><small>AKTYWNOŚĆ TABLETU</small><strong>{activityCount}</strong><p>Połączenie, ekran, wake word, bateria i zasilanie</p></button>
     </div>
     <article className="admin-card diagnostic-card">
       <header>

@@ -28,6 +28,7 @@ import java.util.zip.ZipInputStream
 class WakeWordRecognizer(
     private val context: Context,
     private val onWake: (JSONObject) -> Unit,
+    private val onCandidate: (JSONObject) -> Unit,
     private val onStatus: (JSONObject) -> Unit,
 ) {
     private val handler = Handler(Looper.getMainLooper())
@@ -39,14 +40,16 @@ class WakeWordRecognizer(
     private var suspended = false
     private var listening = false
     private var phrase = "ej waldek"
+    private var confidenceThreshold = .78
     private var state = "idle"
     private var progress = 0
     private var generation = 0
     private var recognitionSession = 0
     private var lastTranscript = ""
 
-    fun configure(shouldEnable: Boolean, wakePhrase: String): JSONObject {
+    fun configure(shouldEnable: Boolean, wakePhrase: String, threshold: Double = .78): JSONObject {
         phrase = normalize(wakePhrase).ifEmpty { "ej waldek" }
+        confidenceThreshold = threshold.coerceIn(.5, .98)
         enabled = shouldEnable
         suspended = !shouldEnable
         generation++
@@ -88,6 +91,7 @@ class WakeWordRecognizer(
         .put("modelReady", model != null)
         .put("permission", hasPermission())
         .put("phrase", phrase)
+        .put("confidenceThreshold", confidenceThreshold)
         .put("state", state)
         .put("progress", progress)
         .put("engine", "vosk-pl")
@@ -140,11 +144,12 @@ class WakeWordRecognizer(
             } else {
                 Recognizer(loaded, SAMPLE_RATE, "[${JSONObject.quote(phrase)}, \"[unk]\"]")
             }
+            recognizer.setWords(true)
             speech = SpeechService(recognizer, SAMPLE_RATE).also { service ->
                 listening = true
                 publish("listening")
                 service.startListening(object : RecognitionListener {
-                    override fun onPartialResult(hypothesis: String) = inspect(session, hypothesis, "partial")
+                    override fun onPartialResult(hypothesis: String) = rememberTranscript(session, hypothesis, "partial")
                     override fun onResult(hypothesis: String) = inspect(session, hypothesis, "text")
                     override fun onFinalResult(hypothesis: String) = finishRecognition(session, hypothesis)
                     override fun onError(exception: Exception) = failRecognition(session, "recognizer-error", exception.message ?: exception.javaClass.simpleName, 1_500)
@@ -174,6 +179,22 @@ class WakeWordRecognizer(
         val normalized = normalize(transcript)
         if (normalized.isNotEmpty()) lastTranscript = normalized
         val matched = findWakeMatch(normalized) ?: return
+        val textConfidence = phraseSimilarity(matched, phrase)
+        val acousticConfidence = acousticConfidence(hypothesis)
+        val confidence = if (acousticConfidence == null) textConfidence else acousticConfidence * .7 + textConfidence * .3
+        val accepted = confidence >= confidenceThreshold
+        val candidate = JSONObject()
+            .put("phrase", phrase)
+            .put("transcript", transcript)
+            .put("confidence", confidence)
+            .put("textConfidence", textConfidence)
+            .put("threshold", confidenceThreshold)
+            .put("accepted", accepted)
+            .put("local", true)
+            .put("engine", "vosk-pl")
+        if (acousticConfidence != null) candidate.put("acousticConfidence", acousticConfidence)
+        onCandidate(candidate)
+        if (!accepted) return
         val index = normalized.indexOf(matched)
         val remainder = normalized.substring(index + matched.length).trim(' ', ',', '.', '!', '?')
         generation++
@@ -183,9 +204,31 @@ class WakeWordRecognizer(
                 .put("phrase", phrase)
                 .put("transcript", transcript)
                 .put("remainder", remainder)
+                .put("confidence", confidence)
+                .put("threshold", confidenceThreshold)
                 .put("local", true)
                 .put("engine", "vosk-pl"),
         )
+    }
+
+    private fun rememberTranscript(session: Int, hypothesis: String, key: String) {
+        if (session != recognitionSession || !enabled || !listening) return
+        val transcript = runCatching { JSONObject(hypothesis).optString(key) }.getOrDefault("")
+        val normalized = normalize(transcript)
+        if (normalized.isNotEmpty()) lastTranscript = normalized
+    }
+
+    private fun acousticConfidence(hypothesis: String): Double? = runCatching {
+        val words = JSONObject(hypothesis).optJSONArray("result") ?: return@runCatching null
+        val values = (0 until words.length()).mapNotNull { index ->
+            words.optJSONObject(index)?.optDouble("conf", Double.NaN)?.takeIf { it.isFinite() }
+        }
+        values.takeIf { it.isNotEmpty() }?.average()?.coerceIn(0.0, 1.0)
+    }.getOrNull()
+
+    private fun phraseSimilarity(match: String, expected: String): Double {
+        val distance = editDistance(match, expected)
+        return (1.0 - distance.toDouble() / maxOf(match.length, expected.length, 1)).coerceIn(0.0, 1.0)
     }
 
     private fun wakeVariants(): List<String> = if (phrase == "ej waldek") {

@@ -50,6 +50,9 @@ export const api = {
   diagnostics: {
     list: () => json<DiagnosticEntry[]>("/api/diagnostics?scope=all&limit=1000", { cache: "no-store" }),
     clear: (scope: "errors" | "activity") => json<{ ok: true }>(`/api/diagnostics?scope=${scope}`, { method: "DELETE" }),
+    wakeWord: (event: { transcript: string; phrase: string; confidence: number; threshold: number; accepted: boolean; engine?: string }) => json<{ ok: true; id: string }>("/api/diagnostics/wake-word", {
+      method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(event), keepalive: true,
+    }),
   },
   photos: () => json<PhotoItem[]>("/api/photos"),
   photoSyncStatus: () => json<PhotoSyncStatus>("/api/photos/sync"),

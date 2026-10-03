@@ -184,6 +184,22 @@ app.post("/api/diagnostics/client", async (request, reply) => {
   const entry = await diagnostics.add({ ...parsed.data, category: "client" });
   return reply.code(201).send({ ok: true as const, id: entry.id });
 });
+app.post("/api/diagnostics/wake-word", async (request, reply) => {
+  const body = request.body as Record<string, unknown> | null;
+  if (!body || typeof body.transcript !== "string" || typeof body.phrase !== "string" || typeof body.confidence !== "number" || !Number.isFinite(body.confidence) || typeof body.threshold !== "number" || !Number.isFinite(body.threshold) || typeof body.accepted !== "boolean") {
+    return reply.code(400).send({ error: "Nieprawidłowy wpis wake word" });
+  }
+  const confidence = Math.max(0, Math.min(1, body.confidence));
+  const threshold = Math.max(0, Math.min(1, body.threshold));
+  const entry = await diagnostics.add({
+    level: body.accepted ? "info" : "warning",
+    category: "tablet",
+    title: body.accepted ? "Wake word zaakceptowany" : "Wake word odrzucony",
+    message: `Usłyszano „${body.transcript.trim().slice(0, 160) || "(pusty wynik)"}” · pewność ${(confidence * 100).toFixed(0)}% · próg ${(threshold * 100).toFixed(0)}%`,
+    details: `Fraza: ${body.phrase.trim().slice(0, 80)}\nSilnik: ${typeof body.engine === "string" ? body.engine.slice(0, 80) : "nieznany"}`,
+  });
+  return reply.code(201).send({ ok: true as const, id: entry.id });
+});
 app.post("/api/notifications/preview", async (request, reply) => {
   const parsed = notificationPreviewSchema.safeParse(request.body);
   if (!parsed.success) return reply.code(400).send({ error: "Nieprawidłowa próbka powiadomienia" });

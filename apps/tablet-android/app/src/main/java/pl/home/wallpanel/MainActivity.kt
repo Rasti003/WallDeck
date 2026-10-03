@@ -63,6 +63,7 @@ class MainActivity : ComponentActivity() {
         WakeWordRecognizer(
             this,
             onWake = { data -> runOnUiThread { event("wakeWordDetected", data) } },
+            onCandidate = { data -> runOnUiThread { event("wakeWordCandidate", data) } },
             onStatus = { data -> runOnUiThread { event("wakeWordStatus", data) } },
         )
     }
@@ -541,13 +542,13 @@ class MainActivity : ComponentActivity() {
                 return
             }
             val result: Any = when (req.getString("method")) {
-                "capabilities" -> JSONObject().put("bridgeVersion", 7).put("methods", JSONArray(listOf("capabilities", "deviceInfo", "sensors", "cameraLightSampling", "battery", "brightness", "mediaVolume", "keepAwake", "haptics", "reload", "exitToTablet", "appVersion", "permissions", "signChallenge", "notification.playSound", "music.connect", "music.disconnect", "music.getState", "music.command", "music.getQueue", "audio.getOutputs", "audio.selectOutput", "audio.openSystemOutputPicker", "wakeWord.configure", "wakeWord.status", "wakeWord.pause", "wakeWord.resume", "assistantAudio.startInput", "assistantAudio.stopInput", "assistantAudio.startOutput", "assistantAudio.appendOutput", "assistantAudio.finishOutput", "assistantAudio.stopOutput"))).put("wakeWord", true).put("wakeWordLocalOnly", true).put("speakerObservation", true).put("spotify", true).put("youtube", false).put("homeAssistant", false)
+                "capabilities" -> JSONObject().put("bridgeVersion", 8).put("methods", JSONArray(listOf("capabilities", "deviceInfo", "sensors", "cameraLightSampling", "battery", "brightness", "mediaVolume", "keepAwake", "haptics", "reload", "exitToTablet", "appVersion", "permissions", "signChallenge", "notification.playSound", "music.connect", "music.disconnect", "music.getState", "music.command", "music.getQueue", "audio.getOutputs", "audio.selectOutput", "audio.openSystemOutputPicker", "wakeWord.configure", "wakeWord.status", "wakeWord.pause", "wakeWord.resume", "assistantAudio.startInput", "assistantAudio.stopInput", "assistantAudio.startOutput", "assistantAudio.appendOutput", "assistantAudio.finishOutput", "assistantAudio.stopOutput"))).put("wakeWord", true).put("wakeWordLocalOnly", true).put("speakerObservation", true).put("spotify", true).put("youtube", false).put("homeAssistant", false)
                 "wakeWord.configure" -> {
                     val enabled = args.optBoolean("enabled", false)
                     if (enabled && checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) runOnUiThread {
                         requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), MICROPHONE_PERMISSION_REQUEST)
                     }
-                    wakeWord.configure(enabled, args.optString("phrase", "Ej Waldek"))
+                    wakeWord.configure(enabled, args.optString("phrase", "Ej Waldek"), args.optDouble("confidenceThreshold", .78))
                 }
                 "wakeWord.status" -> wakeWord.status()
                 "wakeWord.pause" -> { wakeWord.pause(); wakeWord.status() }
