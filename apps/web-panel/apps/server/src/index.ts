@@ -447,11 +447,11 @@ const assistantToolDependencies = {
   homeAssistantStatus: () => homeAssistant.status(),
   searchHomeEntities: (query?: string) => homeAssistant.searchEntities(query),
   homeEntity: (entityId: string) => homeAssistant.entity(entityId),
-  searchWeb: async (query: string) => {
+  searchWeb: async (query: string, includeImages = false) => {
     const apiKey = await openAiKeyStore.load();
     if (!apiKey) throw new Error("Najpierw zapisz klucz OpenAI API");
     const settings = (await readSettings()).aiAssistant;
-    return searchWeb(apiKey, settings.primaryModel, query);
+    return searchWeb(apiKey, settings.primaryModel, query, includeImages);
   },
   showAssistantCanvas: (canvas: AssistantCanvasInput) => {
     assistantCanvas = { ...canvas, id: randomUUID(), updatedAt: new Date().toISOString() };
