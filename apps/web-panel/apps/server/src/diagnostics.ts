@@ -19,7 +19,7 @@ export class DiagnosticStore {
 
   async list(scope: "all" | "errors" | "activity" = "all", limit = 250) {
     const entries = await this.load();
-    const filtered = scope === "all" ? entries : entries.filter(entry => scope === "errors" ? entry.level === "error" : entry.category === "tablet");
+    const filtered = scope === "all" ? entries : entries.filter(entry => scope === "errors" ? entry.level === "error" : entry.level !== "error");
     return filtered.slice(-Math.max(1, Math.min(limit, 1_000))).reverse();
   }
 
@@ -45,7 +45,7 @@ export class DiagnosticStore {
     const entries = await this.load();
     if (scope === "all") entries.splice(0);
     else {
-      const keep = entries.filter(entry => scope === "errors" ? entry.level !== "error" : entry.category !== "tablet");
+      const keep = entries.filter(entry => scope === "errors" ? entry.level !== "error" : entry.level === "error");
       entries.splice(0, entries.length, ...keep);
     }
     await this.persist(entries);

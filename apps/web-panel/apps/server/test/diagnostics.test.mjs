@@ -11,15 +11,16 @@ test("diagnostic store persists, filters and clears errors independently", async
   try {
     const store = new DiagnosticStore(file, 10);
     await store.add({ level: "info", category: "tablet", title: "Tablet online", message: "Połączono", deviceId: "wallpanel-01" });
+    await store.add({ level: "info", category: "scheduler", title: "Wykonano zadanie", message: "Przypomnienie" });
     await store.add({ level: "error", category: "scheduler", title: "Błąd zadania", message: "Brak narzędzia", details: "tool unavailable" });
-    assert.equal((await store.list("activity")).length, 1);
+    assert.deepEqual((await store.list("activity")).map(entry => entry.category), ["scheduler", "tablet"]);
     assert.equal((await store.list("errors"))[0].details, "tool unavailable");
-    assert.equal(JSON.parse(await readFile(file, "utf8")).length, 2);
+    assert.equal(JSON.parse(await readFile(file, "utf8")).length, 3);
     const restored = new DiagnosticStore(file, 10);
-    assert.equal((await restored.list()).length, 2);
-    await restored.clear("errors");
+    assert.equal((await restored.list()).length, 3);
+    await restored.clear("activity");
     assert.equal((await restored.list()).length, 1);
-    assert.equal((await restored.list())[0].category, "tablet");
+    assert.equal((await restored.list())[0].level, "error");
   } finally {
     await rm(directory, { recursive: true, force: true });
   }

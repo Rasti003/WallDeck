@@ -163,6 +163,13 @@ schedules = new ScheduleStore(path.join(runtimeRoot, "schedules.json"), {
       await assistantHistory.add({ source: "scheduled-task", startedAt, transcript: item.automationPrompt, result }).catch(error => {
         void recordDiagnostic({ level: "error", category: "assistant", title: "Nie zapisano historii zadania", message: item.label, details: error instanceof Error ? error.message : String(error) });
       });
+      await recordDiagnostic({
+        level: "info",
+        category: "scheduler",
+        title: "Wykonano zadanie asystenta",
+        message: item.label,
+        details: [`Model: ${result.model}`, `Narzędzia: ${result.toolCalls.map(call => call.name).join(", ") || "brak"}`, `Wynik: ${result.text}`].join("\n"),
+      });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       await schedules.setAutomationResult(item.id, `Błąd zadania: ${message}`, true);
