@@ -155,3 +155,4 @@
 - [ ] Kontrolowane proxy obrazów z limitami pobierania i ochroną SSRF.
 - [ ] Interaktywne akcje Canvas: minutnik, przypomnienie, odtworzenie i potwierdzenie działania.
 - [x] Jawne wyszukiwanie obrazów dla próśb o zdjęcie (`search_content_types: image,text`), z podpisem, stroną źródłową i przekazaniem prawdziwych wyników do Canvas.
+- [x] Proaktywny tryb prezentacyjny: opowieści o wizualnych tematach automatycznie łączą tekst, ciekawostki, zdjęcia i źródła w Canvas bez wymagania słowa „pokaż”.
