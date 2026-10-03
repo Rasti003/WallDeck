@@ -33,6 +33,7 @@ export function AssistantCanvasView() {
     </article>)}</section>}
 
     {canvas.status === "preparing" && <div className="canvas-loading" role="status"><i/>Luna przygotowuje prezentację…</div>}
+    {canvas.status === "cancelled" && <p className="canvas-notice" role="status">Przygotowanie prezentacji zostało anulowane.</p>}
     {canvas.status === "error" && <p className="canvas-notice" role="status">Nie udało się przygotować tekstu prezentacji. Możesz poprosić ponownie.</p>}
     <div className="canvas-grid">
       {canvas.imagesStatus === "loading" && !canvas.images.length && <section className="canvas-image-placeholder" role="status"><div className="canvas-orb"/><span>Dobieram zdjęcia</span><small>Możesz dalej słuchać odpowiedzi</small></section>}

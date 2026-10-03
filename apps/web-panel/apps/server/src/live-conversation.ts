@@ -280,7 +280,7 @@ export function registerLiveConversation(app: FastifyInstance, deps: Dependencie
                 responses: {
                   model: settings.primaryModel,
                   instructions: liveBackendInstructions(settings.systemPrompt),
-                  tools: [...liveTools(enabledTools), { type: "web_search" as const }],
+                  tools: [...liveTools(enabledTools), ...(enabledTools.search_web ? [{ type: "web_search" as const }] : [])],
                   tool_choice: "auto",
                   parallel_tool_calls: false,
                   reasoning: { effort: settings.primaryReasoning },
@@ -333,6 +333,12 @@ export function registerLiveConversation(app: FastifyInstance, deps: Dependencie
               item: { type: "function_call_output", call_id: item.call_id, output: JSON.stringify(output) },
             });
             });
+          } else if (["response.failed", "response.incomplete"].includes(String(nested.type)) && delegationId) {
+            const message = "Backend rozmowy nie ukończył odpowiedzi";
+            deps.recordError(message);
+            conversationError = message;
+            send({ type: "error", error: message });
+            requestClose("delegation-failed");
           } else if (nested.type === "response.completed" && delegationId) {
             toolQueue.completed(delegationId);
           }

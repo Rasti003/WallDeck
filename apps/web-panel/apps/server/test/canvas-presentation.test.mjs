@@ -35,7 +35,7 @@ test("image failure keeps the readable text", async () => {
 });
 test("navigation cancels late publication even if a provider ignores abort", async () => {
   const {service,t,i,documents}=setup(); service.start(request); service.cancel("navigation");
-  t.resolve(text); i.resolve({images:[],rejected:[]}); await tick(); assert.equal(documents.length,1);
+  t.resolve(text); i.resolve({images:[],rejected:[]}); await tick(); assert.equal(documents.length,2); assert.equal(documents.at(-1).status,"cancelled");
 });
 test("new request cannot be overwritten by an older worker", async () => {
   const first=deferred(), second=deferred(), docs=[];

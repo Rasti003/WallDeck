@@ -468,7 +468,7 @@ export const assistantCanvasInputSchema = z.object({
   sources: z.array(assistantCanvasSourceSchema).max(10).default([]),
 });
 export type AssistantCanvasInput = z.infer<typeof assistantCanvasInputSchema>;
-export interface AssistantCanvasDocument extends AssistantCanvasInput { id: string; updatedAt: string; revision?: number; status?: "preparing" | "ready" | "error"; imagesStatus?: "loading" | "ready" | "unavailable"; }
+export interface AssistantCanvasDocument extends AssistantCanvasInput { id: string; updatedAt: string; revision?: number; status?: "preparing" | "ready" | "error" | "cancelled"; imagesStatus?: "loading" | "ready" | "unavailable"; }
 export interface ScheduledItem {
   id: string;
   kind: "timer" | "alarm" | "task";
