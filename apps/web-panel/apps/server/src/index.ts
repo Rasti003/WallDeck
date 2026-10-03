@@ -554,6 +554,7 @@ registerLiveConversation(app, {
   },
   recordConversation: value => assistantHistory.add(value).then(() => undefined),
   recordError: message => { void recordDiagnostic({ level: "error", category: "assistant", title: "Błąd rozmowy GPT-Live", message }); },
+  recordProgress: (message, details) => { void recordDiagnostic({ level: "info", category: "assistant", title: "Delegacja GPT-Live", message, details }); },
 });
 
 registerLunaConversation(app, {

@@ -25,6 +25,7 @@ type Dependencies = LiveToolDependencies & {
   onSpeakerObservation(observation: SpeakerObservation): void;
   recordConversation(value: { source: "tablet-live"; startedAt: string; transcript: string; liveSession: AiAssistantLiveSessionTrace; error?: string }): Promise<void>;
   recordError(message: string): void;
+  recordProgress(message: string, details: string): void;
 };
 
 type DelegationResultTrace = { model?: string; durationMs?: number; error?: string; toolCalls?: AiAssistantToolTrace[] };
@@ -44,7 +45,7 @@ export const LIVE_NATURAL_PAUSE_BYTES = Math.round(PCM_RATE * 2 * 0.18);
 const FOLLOW_UP_WINDOW_MS = 12_000;
 const HARD_LIMIT_FINISH_GRACE_MS = 30_000;
 const ACTIVE_TURN_GRACE_MS = 3_000;
-const DELEGATION_GRACE_MS = 35_000;
+const DELEGATION_GRACE_MS = 60_000;
 
 export function appendLiveTranscript(
   transcript: AiAssistantLiveSessionTrace["transcript"],
@@ -199,7 +200,12 @@ export function registerLiveConversation(app: FastifyInstance, deps: Dependencie
       awaitingDelegationResponse = true;
       if (idleTimer) clearTimeout(idleTimer);
       if (delegationTimer) clearTimeout(delegationTimer);
-      delegationTimer = setTimeout(() => requestClose("delegation-timeout"), DELEGATION_GRACE_MS);
+      delegationTimer = setTimeout(() => {
+        conversationError = "Backend rozmowy nie odpowiedział w ciągu 60 sekund";
+        deps.recordError(conversationError);
+        send({ type: "error", error: conversationError });
+        requestClose("delegation-timeout");
+      }, DELEGATION_GRACE_MS);
     };
     const delegationAnswered = () => {
       if (pendingDelegations.size > 0) return;
@@ -283,7 +289,8 @@ export function registerLiveConversation(app: FastifyInstance, deps: Dependencie
                   tools: [...liveTools(enabledTools), ...(enabledTools.search_web ? [{ type: "web_search" as const }] : [])],
                   tool_choice: "auto",
                   parallel_tool_calls: false,
-                  reasoning: { effort: settings.primaryReasoning },
+                  // Live delegates tool routing, not long-form answer generation.
+                  reasoning: { effort: settings.primaryModel === "gpt-6-luna" ? "low" : settings.primaryReasoning },
                   text: { verbosity: "low" },
                   max_output_tokens: LIVE_DELEGATION_MAX_OUTPUT_TOKENS,
                 },
@@ -298,6 +305,9 @@ export function registerLiveConversation(app: FastifyInstance, deps: Dependencie
         if (event.type === "response.event") {
           const delegationId = event.delegation_id ?? null;
           const nested = event.event as { type?: unknown; item?: { type?: unknown; call_id?: unknown; name?: unknown; arguments?: unknown } };
+          if (["response.created", "response.output_item.added", "response.output_item.done", "response.completed", "response.failed", "response.incomplete"].includes(String(nested.type))) {
+            deps.recordProgress(String(nested.type), JSON.stringify({ delegationId, itemType: nested.item?.type, tool: nested.item?.name, offsetMs: Date.now() - startedAt }));
+          }
           if (nested.type === "response.output_item.done" && nested.item?.type === "function_call" && delegationId
             && typeof nested.item.call_id === "string" && typeof nested.item.name === "string" && typeof nested.item.arguments === "string") {
             waitForDelegation(delegationId);
@@ -385,6 +395,7 @@ export function registerLiveConversation(app: FastifyInstance, deps: Dependencie
         } else if (event.type === "session.delegation.created") {
           waitForDelegation(event.delegation.id);
           delegationStartedAt.set(event.delegation.id, new Date().toISOString());
+          deps.recordProgress("delegation.created", JSON.stringify({ delegationId: event.delegation.id, target: event.delegation.target, offsetMs: event.offset_ms }));
           send({ type: "working", status: "Pracuję nad odpowiedzią…" });
           app.log.info({ delegationId: event.delegation.id, target: event.delegation.target, offsetMs: event.offset_ms }, "GPT-Live delegation created");
           if (event.delegation.target === "client") send({ type: "delegation", delegationId: event.delegation.id, offsetMs: event.offset_ms });
