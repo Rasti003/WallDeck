@@ -12,6 +12,7 @@ import type {
 } from "@walldeck/contracts";
 import type { LiveVoiceUsageStore } from "./live-voice.js";
 import { executeLiveTool, liveTools, type LiveToolDependencies } from "./live-tools.js";
+import { liveBackendInstructions, liveConversationInstructions, needsVisualDelegation, visualDelegationInstruction } from "./live-prompts.js";
 import type { SpeakerObserverClient, SpeakerObservationSession } from "./speaker-observer.js";
 
 type Dependencies = LiveToolDependencies & {
@@ -141,6 +142,9 @@ export function registerLiveConversation(app: FastifyInstance, deps: Dependencie
     let delegationTimer: ReturnType<typeof setTimeout> | undefined;
     let hardGraceDeadline = 0;
     let awaitingDelegationResponse = false;
+    let currentUserTurn = "";
+    let lastTranscriptRole: "user" | "assistant" | null = null;
+    let visualSteerSentForTurn = false;
     const pendingDelegations = new Set<string>();
     const delegationsNeedingContinuation = new Set<string>();
     let speakerSession: SpeakerObservationSession | null = settings.voice.live.speakerObservationEnabled
@@ -248,19 +252,14 @@ export function registerLiveConversation(app: FastifyInstance, deps: Dependencie
             session: {
               model: settings.voice.live.model,
               store: false,
-              instructions: `${settings.voice.instructions}
-Język i styl: Rozmawiaj wyłącznie po polsku, naturalnie i zwięźle. Odpowiadaj głosem bezpośrednio na zwykłe pytania i swobodną rozmowę. Jeżeli startowy input kończy się wiadomością użytkownika, odpowiedz na nią natychmiast po uruchomieniu sesji.
-Backchannel policy: Nie deleguj prostych odpowiedzi, powitań, krótkich wyjaśnień ani wiedzy, którą znasz. Możesz krótko powiedzieć, że sprawdzasz, gdy backend rzeczywiście pracuje.
-Interruption policy: Słuchaj także podczas mówienia. Gdy użytkownik zacznie mówić lub Cię poprawi, przerwij obecną wypowiedź, wysłuchaj go i odpowiedz na najnowszą intencję.
-Delegation policy: Deleguj do klienta tylko zadania wymagające narzędzi WallDeck/MCP, Spotify, Home Assistant, aktualnych danych, działania w systemie, pamięci albo wyraźnie trudniejszego rozumowania. Po otrzymaniu wyniku delegacji przedstaw go naturalnie użytkownikowi.
-Music policy: Prośba typu „wybierz mi muzykę do nauki i puść” jest kompletna: deleguj wybór oraz uruchomienie Spotify bez pytania o konkretną playlistę. Nigdy nie twierdź, że wykonujesz lub wykonałeś akcję, jeśli nie utworzyłeś delegacji i nie otrzymałeś jej wyniku.`,
+              instructions: liveConversationInstructions(settings.voice.instructions),
               input: initialCommand ? [{ type: "message", role: "user", content: [{ type: "input_text", text: initialCommand }] }] : [],
               audio: { format: { type: "audio/pcm", rate: PCM_RATE }, output: { voice: settings.voice.live.voice } },
               delegation: {
                 type: "responses",
                 responses: {
                   model: settings.primaryModel,
-                  instructions: `${settings.systemPrompt}\nJesteś backendem narzędziowym rozmowy głosowej. Masz pełny kontekst rozmowy. Wykonuj proste, zatwierdzone działania od razu. Krótkie odpowiedzi typu „tak” interpretuj w kontekście ostatniego pytania asystenta. Raportuj sukces dopiero po potwierdzeniu narzędzia. Aktualne odpowiedzi internetowe oraz zestawienia wielu temperatur, CO₂ i innych encji Home Assistant pokazuj narzędziem show_assistant_canvas; używaj dużych metrics, wykresu porównawczego i prawdziwych źródeł.`,
+                  instructions: liveBackendInstructions(settings.systemPrompt),
                   tools: [...liveTools(enabledTools), { type: "web_search" as const }],
                   tool_choice: "auto",
                   parallel_tool_calls: false,
@@ -331,11 +330,23 @@ Music policy: Prośba typu „wybierz mi muzykę do nauki i puść” jest kompl
           if (idleTimer) clearTimeout(idleTimer);
           lastTurnActivityAt = Date.now();
           inputTranscript += event.delta;
+          if (lastTranscriptRole !== "user") {
+            currentUserTurn = "";
+            visualSteerSentForTurn = false;
+          }
+          lastTranscriptRole = "user";
+          currentUserTurn += event.delta;
+          if (!visualSteerSentForTurn && needsVisualDelegation(currentUserTurn)) {
+            visualSteerSentForTurn = true;
+            live.send({ type: "session.instructions.append", event_id: `visual_${Date.now()}`, delegation_id: null, content: visualDelegationInstruction });
+            app.log.info({ transcript: currentUserTurn.slice(-240) }, "GPT-Live visual delegation guard applied");
+          }
           const lastAssistant = [...transcript].reverse().find(segment => segment.role === "assistant");
           if (lastAssistant && outputPlaybackUntil > Date.now()) lastAssistant.interrupted = true;
           appendLiveTranscript(transcript, "user", event.delta, event.start_ms, event.end_ms);
           send({ type: "inputTranscript", delta: event.delta, startMs: event.start_ms, endMs: event.end_ms });
         } else if (event.type === "session.output_transcript.delta") {
+          lastTranscriptRole = "assistant";
           delegationAnswered();
           lastTurnActivityAt = Date.now();
           outputTranscript += event.delta;
