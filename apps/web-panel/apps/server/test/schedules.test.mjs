@@ -56,6 +56,27 @@ test("assistant task runs silently and keeps its result as history", async () =>
   }
 });
 
+test("scheduled assistant task can be edited without changing its identity", async () => {
+  const directory = await mkdtemp(path.join(os.tmpdir(), "walldeck-assistant-task-edit-"));
+  const file = path.join(directory, "schedules.json");
+  const store = new ScheduleStore(file, { onChanged() {}, onFired() {} });
+  try {
+    await store.load();
+    const original = await store.createTask({ label: "Bank", time: "08:00", repeatDays: [1], automationPrompt: "Stara instrukcja" });
+    const updated = await store.updateTask(original.id, { label: "Telefon do banku", time: "09:30", repeatDays: [1, 3, 5], automationPrompt: "Wyślij przypomnienie na Telegram" });
+    assert.equal(updated.id, original.id);
+    assert.equal(updated.createdAt, original.createdAt);
+    assert.equal(updated.label, "Telefon do banku");
+    assert.equal(updated.time, "09:30");
+    assert.deepEqual(updated.repeatDays, [1, 3, 5]);
+    assert.equal(updated.automationPrompt, "Wyślij przypomnienie na Telegram");
+    assert.equal(JSON.parse(await readFile(file, "utf8"))[0].label, "Telefon do banku");
+  } finally {
+    store.stop();
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
 test("saved alarms can be disabled and enabled without deleting them", async () => {
   const directory = await mkdtemp(path.join(os.tmpdir(), "walldeck-alarm-toggle-"));
   const file = path.join(directory, "schedules.json");

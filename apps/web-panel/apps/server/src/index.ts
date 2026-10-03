@@ -177,6 +177,12 @@ app.post("/api/assistant-tasks", async (request, reply) => {
   try { return await schedules.createTask(parsed.data); }
   catch (error) { return reply.code(400).send({ error: error instanceof Error ? error.message : String(error) }); }
 });
+app.put<{ Params: { id: string } }>("/api/assistant-tasks/:id", async (request, reply) => {
+  const parsed = assistantTaskInputSchema.safeParse(request.body);
+  if (!parsed.success) return reply.code(400).send({ error: "Nieprawidłowe zadanie asystenta", details: parsed.error.issues });
+  try { return await schedules.updateTask(request.params.id, parsed.data); }
+  catch (error) { return reply.code(400).send({ error: error instanceof Error ? error.message : String(error) }); }
+});
 app.delete<{ Params: { id: string } }>("/api/schedules/:id", async (request, reply) => {
   try { return await schedules.remove(request.params.id); } catch (error) { return reply.code(404).send({ error: error instanceof Error ? error.message : String(error) }); }
 });

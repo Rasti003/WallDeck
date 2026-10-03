@@ -162,8 +162,10 @@
 .clock-alarm-toggle[aria-checked="false"] { border-color: rgba(255,255,255,.12); background: rgba(255,255,255,.06); }
 .clock-alarm-toggle[aria-checked="false"] i { left: 5px; background: rgba(255,255,255,.45); box-shadow: none; }
 .clock-alarm-toggle:focus-visible { outline: 2px solid var(--clock-cyan); outline-offset: 2px; }
-.clock-remove { width: 30px; height: 30px; border: 0; border-radius: 50%; color: rgba(255,255,255,.35) !important; font-size: 20px !important; background: transparent; cursor: pointer; transition: color .2s, background .2s; }
-.clock-remove:hover { color: #fff !important; background: rgba(255,255,255,.1); }
+.clock-edit, .clock-remove { width: 30px; height: 30px; border: 0; border-radius: 50%; color: rgba(255,255,255,.35) !important; background: transparent; cursor: pointer; transition: color .2s, background .2s; }
+.clock-edit { font-size: 16px !important; }
+.clock-remove { font-size: 20px !important; }
+.clock-edit:hover, .clock-remove:hover { color: #fff !important; background: rgba(255,255,255,.1); }
 .clock-task-history { display: grid; gap: 8px; margin-top: 19px; }
 .clock-task-history > .clock-stack-label { margin-bottom: 1px; }
 .clock-task-result { display: grid; grid-template-columns: minmax(150px,.7fr) minmax(0,1.3fr) 30px; align-items: center; gap: 16px; padding: 13px 12px 13px 16px; border: 1px solid rgba(255,255,255,.08); border-radius: 19px; background: rgba(255,255,255,.03); }

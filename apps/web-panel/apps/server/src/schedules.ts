@@ -90,6 +90,25 @@ export class ScheduleStore {
     this.items.push(item); await this.commit(); return structuredClone(item);
   }
 
+  async updateTask(id: string, raw: AssistantTaskInput) {
+    const input = assistantTaskInputSchema.parse(raw);
+    const item = this.require(id);
+    if (item.kind !== "task") throw new Error("Ten wpis nie jest zadaniem asystenta");
+    if (item.status !== "scheduled") throw new Error("Można edytować tylko zaplanowane zadanie");
+    const now = new Date();
+    const trigger = input.triggerAt ? new Date(input.triggerAt) : nextRecurringOccurrence(input.time!, input.repeatDays, now);
+    if (!Number.isFinite(trigger.getTime()) || trigger.getTime() <= now.getTime()) throw new Error("Termin zadania musi być w przyszłości");
+    item.label = input.label || "Zadanie asystenta";
+    item.automationPrompt = input.automationPrompt;
+    item.triggerAt = trigger.toISOString();
+    item.time = input.time;
+    item.repeatDays = input.repeatDays;
+    item.enabled = true;
+    item.automationResult = undefined;
+    item.lastAutomationSucceeded = undefined;
+    await this.commit(); return structuredClone(item);
+  }
+
   async remove(id: string) {
     const before = this.items.length;
     this.items = this.items.filter(item => item.id !== id);

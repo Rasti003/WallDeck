@@ -48,6 +48,7 @@ export const api = {
     createTimer: (input: TimerInput) => json<ScheduledItem>("/api/timers", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(input) }),
     createAlarm: (input: AlarmInput) => json<ScheduledItem>("/api/alarms", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(input) }),
     createAssistantTask: (input: AssistantTaskInput) => json<ScheduledItem>("/api/assistant-tasks", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(input) }),
+    updateAssistantTask: (id: string, input: AssistantTaskInput) => json<ScheduledItem>(`/api/assistant-tasks/${encodeURIComponent(id)}`, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify(input) }),
     setAlarmEnabled: (id: string, enabled: boolean) => json<ScheduledItem>(`/api/schedules/${encodeURIComponent(id)}/enabled`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ enabled }) }),
     remove: (id: string) => json<{ ok: true; id: string }>(`/api/schedules/${encodeURIComponent(id)}`, { method: "DELETE" }),
     dismiss: (id: string) => json<{ ok: true; id: string }>(`/api/schedules/${encodeURIComponent(id)}/dismiss`, { method: "POST" }),
