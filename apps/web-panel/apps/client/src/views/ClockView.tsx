@@ -45,6 +45,8 @@ export function ClockView() {
   const [timerFullscreen, setTimerFullscreen] = useState(true);
   const [fullscreenSettled, setFullscreenSettled] = useState(false);
   const [compactActivity, setCompactActivity] = useState(0);
+  const [timerPhotoReturnArmed, setTimerPhotoReturnArmed] = useState(false);
+  const [timerPhotoReturnActivity, setTimerPhotoReturnActivity] = useState(0);
   const ringing = items.filter(item => item.status === "ringing");
   const scheduled = items.filter(item => item.status === "scheduled");
 
@@ -67,6 +69,7 @@ export function ClockView() {
   const scheduledTasks = scheduled.filter(item => item.kind === "task");
   const next = clockSchedules.find(item => item.enabled);
   const focusedTimer = (schedulePresentation?.kind === "timer" ? clockSchedules.find(item => item.id === schedulePresentation.id && item.enabled) : undefined) ?? clockSchedules.find(item => item.kind === "timer" && item.enabled);
+  const ringingTimer = ringing.find(item => item.kind === "timer");
   const fullscreenActive = Boolean(focusedTimer && timerFullscreen && screen === "clock" && !ringing.length);
   const remainingSchedules = focusedTimer ? clockSchedules.filter(item => item.id !== focusedTimer.id) : clockSchedules;
   const timerCount = scheduled.filter(item => item.kind === "timer").length;
@@ -75,6 +78,27 @@ export function ClockView() {
   const taskCount = scheduledTasks.length;
   const taskHistory = items.filter(item => item.kind === "task" && item.status !== "scheduled").sort((a, b) => Date.parse(b.lastTriggeredAt ?? b.createdAt) - Date.parse(a.lastTriggeredAt ?? a.createdAt)).slice(0, 5);
   const resetComposer = () => { setComposer(null); setEditingTaskId(null); setLabel(""); setPrompt(""); setError(""); };
+  useEffect(() => {
+    if (ringingTimer) setTimerPhotoReturnArmed(true);
+  }, [ringingTimer?.id]);
+  useEffect(() => {
+    if (focusedTimer) setTimerPhotoReturnArmed(false);
+  }, [focusedTimer?.id]);
+  useEffect(() => {
+    if (!timerPhotoReturnArmed || composer || focusedTimer || ringing.some(item => item.kind === "alarm")) return;
+    const timer = setTimeout(() => {
+      const finish = ringingTimer ? api.schedules.dismiss(ringingTimer.id) : Promise.resolve();
+      void finish.then(() => api.activateView("photos")).catch(error => setError(error instanceof Error ? error.message : String(error)));
+    }, 30_000);
+    const activity = () => setTimerPhotoReturnActivity(value => value + 1);
+    window.addEventListener("keydown", activity);
+    window.addEventListener("wallpanel:userInteraction", activity);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener("keydown", activity);
+      window.removeEventListener("wallpanel:userInteraction", activity);
+    };
+  }, [composer, focusedTimer, ringingTimer?.id, timerPhotoReturnActivity, timerPhotoReturnArmed, ringing.map(item => `${item.id}:${item.kind}`).join("|")]);
   useEffect(() => { if (focusedTimer) setTimerFullscreen(true); }, [focusedTimer?.id]);
   useEffect(() => {
     if (!schedulePresentation) {
@@ -210,7 +234,7 @@ export function ClockView() {
     </motion.div>}</AnimatePresence>
 
     {focusedTimer && !ringing.length && <FullscreenTimer item={focusedTimer} now={now} active={fullscreenActive} reduced={Boolean(reduced)} onMinimize={minimizeTimer} onRemove={() => void api.schedules.remove(focusedTimer.id).then(refresh)} />}
-    <AnimatePresence>{ringing[0] && <Ringing item={ringing[0]} onDismiss={() => void api.schedules.dismiss(ringing[0].id).then(refresh)} onSnooze={() => void api.schedules.snooze(ringing[0].id, 10).then(refresh)} reduced={Boolean(reduced)} />}</AnimatePresence>
+    <AnimatePresence>{ringing[0] && <Ringing item={ringing[0]} onDismiss={() => void api.schedules.dismiss(ringing[0].id).then(() => { if (ringing[0].kind === "timer") { setTimerPhotoReturnArmed(true); setTimerPhotoReturnActivity(value => value + 1); } return refresh(); })} onSnooze={() => { setTimerPhotoReturnArmed(false); void api.schedules.snooze(ringing[0].id, 10).then(refresh); }} reduced={Boolean(reduced)} />}</AnimatePresence>
   </main>;
 }
 
