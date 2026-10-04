@@ -42,6 +42,7 @@ export function PanelApp({ forcedView }: { forcedView?: ViewId }) {
   const voiceRuntime = useRef<VoiceAssistantRuntime | null>(null);
   const [assistantState, setAssistantState] = useState<AssistantState>("idle");
   const [voiceStatus, setVoiceStatus] = useState("");
+  const [conversationMode, setConversationMode] = useState<"gpt-live" | "luna" | null>(null);
   const [requestedAssistantState, setRequestedAssistantState] = useState<AssistantState | null>(null);
   const connection = useRef<ReturnType<typeof connectEvents> | null>(null);
   const touchStart = useRef<{ x: number; y: number; time: number } | null>(null);
@@ -252,8 +253,10 @@ export function PanelApp({ forcedView }: { forcedView?: ViewId }) {
         voiceReturnView.current = current === "assistant-expressive" ? "photos" : current;
         activate("assistant-expressive", true);
       },
+      onConversationChange: setConversationMode,
       hideAssistant: () => {
         setVoiceStatus("");
+        if (activeViewRef.current !== "assistant-expressive") return;
         if (pinnedTimerId.current || schedulePresentationRef.current || scheduleReturnTransitionRef.current) return;
         const target = musicPlaying.current ? "music" : voiceReturnView.current;
         activate(target === "assistant-expressive" ? "photos" : target, true);
@@ -557,6 +560,13 @@ export function PanelApp({ forcedView }: { forcedView?: ViewId }) {
       }}
     >
       {!forcedView && settings.tabletMenu.enabled && <TabletMenu open={menuOpen} showHandle={settings.tabletMenu.showHandle} current={activeView} views={settings.tabletMenu.views} onOpen={activateSwipeDown} onClose={() => setMenuOpen(false)} onSelect={view => { setMenuOpen(false); setDanceTransition(false); setAssistantIdleTransition(false); setRequestedAssistantState(null); activate(view); }} />}
+      {conversationMode && <div className="conversation-indicator"
+        onPointerDown={event => event.stopPropagation()} onPointerUp={event => event.stopPropagation()}>
+        <span className="conversation-indicator__dot" aria-hidden="true" />
+        <span role="status">{conversationMode === "gpt-live" ? "GPT-Live" : "Luna"} · rozmowa aktywna</span>
+        <button type="button" aria-label="Zakończ rozmowę natychmiast" title="Zakończ rozmowę"
+          onClick={() => { void voiceRuntime.current?.stopConversation(); }}>×</button>
+      </div>}
       <PanelContext.Provider value={{ settings, activeView, requestedAssistantState, voiceStatus, schedulePresentation, menuOpen, stayOnThisView, setStayOnThisView, setInteractionLocked }}>
       <AnimatePresence mode="wait" custom={instantTransition}>
         <motion.div

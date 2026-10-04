@@ -211,3 +211,7 @@ Usunięto reguły słów kluczowych dopisywane do Live w połowie zdania oraz do
 Test integracyjny uruchamiany ręcznie: `WALLDECK_URL=http://host:8080 node tools/live-canvas-smoke.mjs`. Korzysta z płatnego API i przełącza Canvas; mierzy głos, tekst i obrazy. Opcja `--audio-input` syntetyzuje i wysyła wypowiedź PCM; domyślnie wysyła tekst oraz ciche PCM. Żaden wariant nie potwierdza działania mikrofonu, wake wordu ani jakości głośnika.
 
 Backend delegacji GPT-Live na gpt-6-luna używa reasoning=low (wybór narzędzi), podczas gdy osobny worker tekstu Canvas używa none. Pozostałe modele respektują ustawiony poziom podstawowy. Delegacja ma 60 s na odpowiedź, a przekroczenie jest błędem widocznym w historii i dzienniku. Dziennik zapisuje również fazy Responses i nazwy narzędzi bez ich prywatnych argumentów.
+
+## Globalny wskaźnik rozmowy — 2026-10-04
+
+Na każdym widoku tabletu aktywna rozmowa GPT-Live/Luna ma niewielki wskaźnik w prawym dolnym rogu. Przycisk × zatrzymuje sesję, przechwytywanie mikrofonu oraz odtwarzanie, odrzuca kolejkę audio i przywraca wake word. Zamknięcie na Canvas/HA/zegarze zachowuje aktualny widok. Dotyk ma pole 44 px.

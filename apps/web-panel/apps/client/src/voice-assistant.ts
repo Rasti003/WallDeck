@@ -9,6 +9,7 @@ type Callbacks = {
   hideAssistant(): void;
   playActivationSound?(): void;
   onStatus?(status: string): void;
+  onConversationChange?(mode: "gpt-live" | "luna" | null): void;
 };
 
 type WakeEvent = { transcript?: string; remainder?: string };
@@ -48,6 +49,40 @@ export class VoiceAssistantRuntime {
   private livePrebufferTimer: ReturnType<typeof setTimeout> | null = null;
   private audioWriteChain: Promise<void> = Promise.resolve();
   private pendingUserTurn = false;
+  private generation = 0;
+  private conversationActive = false;
+  private cancelDrain: (() => void) | null = null;
+
+  async stopConversation() {
+    const generation = ++this.generation;
+    this.conversationActive = false;
+    const socket = this.socket;
+    this.socket = null;
+    this.sessionReady = false;
+    this.pendingAudio = [];
+    this.liveAudioChunks = [];
+    this.liveAudioBytes = 0;
+    this.inputActive = false;
+    this.outputStarted = false;
+    this.nativeOutputReady = false;
+    this.bufferedSpeechTask = null;
+    if (this.livePrebufferTimer) clearTimeout(this.livePrebufferTimer);
+    this.livePrebufferTimer = null;
+    this.cancelDrain?.();
+    this.callbacks.onConversationChange?.(null);
+    // Explicit stop discards buffered speech instead of waiting for it to drain.
+    const stopped = Promise.allSettled([
+      nativeBridge.call("assistantAudio.stopInput"),
+      nativeBridge.call("assistantAudio.stopOutput"),
+    ]);
+    if (socket && socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify({ type: "close" }));
+    socket?.close();
+    this.callbacks.setState("idle");
+    this.callbacks.onStatus?.("");
+    this.callbacks.hideAssistant();
+    await stopped;
+    if (!this.disposed && generation === this.generation) await this.configureWake();
+  }
 
   constructor(private settings: AiAssistantSettings, private callbacks: Callbacks) {}
 
@@ -77,7 +112,7 @@ export class VoiceAssistantRuntime {
     const spoken = text.trim();
     if (!nativeBridge.available) throw new Error("Głos jest dostępny tylko na tablecie WallDeck");
     if (!this.settings.enabled || !this.settings.voice.enabled) throw new Error("Głos asystenta jest wyłączony");
-    if (this.socket) throw new Error("Rozmowa głosowa jest już aktywna");
+    if (this.conversationActive || this.socket) throw new Error("Rozmowa głosowa jest już aktywna");
     this.callbacks.showAssistant();
     this.callbacks.setState("speaking");
     this.callbacks.onStatus?.("Generuję komunikat głosowy…");
@@ -106,7 +141,7 @@ export class VoiceAssistantRuntime {
   async startLiveConversation(openingMessage: string, context = "") {
     if (!nativeBridge.available) throw new Error("Rozmowa jest dostępna tylko na tablecie WallDeck");
     if (!this.settings.enabled || !this.settings.voice.enabled || !this.settings.voice.live.conversationEnabled) throw new Error("Rozmowy GPT-Live są wyłączone");
-    if (this.socket) throw new Error("Rozmowa głosowa jest już aktywna");
+    if (this.conversationActive || this.socket) throw new Error("Rozmowa głosowa jest już aktywna");
     const initial = `To zaplanowana rozmowa zainicjowana przez system. Rozpocznij naturalnie od wiadomości: „${openingMessage.trim()}”.${context.trim() ? ` Kontekst zadania: ${context.trim()}.` : ""} Po wiadomości otwierającej zaczekaj na odpowiedź użytkownika.`;
     await this.openConversation(initial, "gpt-live");
     return { ok: true, startedAt: new Date().toISOString() };
@@ -114,11 +149,13 @@ export class VoiceAssistantRuntime {
 
   async dispose() {
     this.disposed = true;
+    ++this.generation;
+    this.cancelDrain?.();
     window.removeEventListener("wallpanel:wakeWordDetected", this.onWake as EventListener);
     window.removeEventListener("wallpanel:wakeWordCandidate", this.onWakeCandidate as EventListener);
     window.removeEventListener("wallpanel:assistantAudioChunk", this.onAudioChunk as EventListener);
     window.removeEventListener("wallpanel:speakerObserved", this.onSpeaker as EventListener);
-    this.socket?.send(JSON.stringify({ type: "close" }));
+    if (this.socket?.readyState === WebSocket.OPEN) this.socket.send(JSON.stringify({ type: "close" }));
     this.socket?.close();
     this.socket = null;
     if (this.livePrebufferTimer) clearTimeout(this.livePrebufferTimer);
@@ -149,7 +186,7 @@ export class VoiceAssistantRuntime {
   }
 
   private onWake = (event: CustomEvent<WakeEvent>) => {
-    if (!this.wakeEnabled() || this.socket) return;
+    if (!this.wakeEnabled() || this.conversationActive) return;
     void this.openConversation(event.detail?.remainder?.trim() ?? "");
   };
 
@@ -179,7 +216,10 @@ export class VoiceAssistantRuntime {
   };
 
   private async openConversation(remainder: string, forcedMode?: "gpt-live") {
+    const generation = ++this.generation;
+    this.conversationActive = true;
     const lunaPipeline = forcedMode ? false : this.settings.voice.conversationMode === "luna-pipeline";
+    this.callbacks.onConversationChange?.(lunaPipeline ? "luna" : "gpt-live");
     this.callbacks.showAssistant();
     this.callbacks.setState("attention");
     this.callbacks.onStatus?.(lunaPipeline ? "Uruchamiam Lunę…" : "Łączenie z GPT-Live…");
@@ -200,6 +240,7 @@ export class VoiceAssistantRuntime {
     this.pendingUserTurn = false;
     void nativeBridge.call("haptics").catch(() => undefined);
     await nativeBridge.call("wakeWord.pause").catch(() => undefined);
+    if (generation !== this.generation || this.disposed) return;
     const protocol = location.protocol === "https:" ? "wss:" : "ws:";
     const query = new URLSearchParams();
     if (!lunaPipeline && remainder.length >= 2) query.set("initial", remainder.slice(0, 1_800));
@@ -208,24 +249,29 @@ export class VoiceAssistantRuntime {
     const route = lunaPipeline ? "/api/assistant/luna" : "/api/assistant/live";
     const socket = new WebSocket(`${protocol}//${location.host}${route}${initial}`);
     this.socket = socket;
-    socket.addEventListener("message", (message) => { void this.handleMessage(JSON.parse(String(message.data)) as Record<string, unknown>); });
-    socket.addEventListener("close", () => { void this.finish(); });
-    socket.addEventListener("error", () => this.callbacks.onStatus?.(lunaPipeline ? "Błąd połączenia z Luną" : "Błąd połączenia GPT-Live"));
-    await this.startInput();
+    socket.addEventListener("message", (message) => { if (generation === this.generation && this.socket === socket) void this.handleMessage(JSON.parse(String(message.data)) as Record<string, unknown>); });
+    socket.addEventListener("close", () => { if (generation === this.generation && this.socket === socket) void this.finish(); });
+    socket.addEventListener("error", () => { if (generation === this.generation) this.callbacks.onStatus?.(lunaPipeline ? "Błąd połączenia z Luną" : "Błąd połączenia GPT-Live"); });
+    try { await this.startInput(); } catch {
+      if (generation === this.generation) await this.stopConversation();
+    }
   }
 
   private async handleMessage(message: Record<string, unknown>) {
+    const generation = this.generation;
     if (message.type === "ready") {
       this.sessionReady = true;
       this.callbacks.setState("listening");
       this.callbacks.onStatus?.("Słucham");
       await this.startInput();
+      if (generation !== this.generation) return;
       for (const audio of this.pendingAudio.splice(0)) {
         if (this.socket?.readyState !== WebSocket.OPEN) break;
         this.socket.send(JSON.stringify({ type: "audio", audio }));
       }
     } else if (message.type === "processing") {
       await this.stopInput();
+      if (generation !== this.generation) return;
       this.callbacks.setState("thinking");
       this.callbacks.onStatus?.("Rozpoznaję i wykonuję polecenie…");
     } else if (message.type === "answer") {
@@ -279,12 +325,14 @@ export class VoiceAssistantRuntime {
   }
 
   private async handleDelegation(delegationId: string | null, commandOverride?: string) {
+    const generation = this.generation;
     const delegationKey = delegationId ?? "transcript-fallback";
     if (this.pendingDelegations.has(delegationKey)) return;
     this.pendingDelegations.add(delegationKey);
     this.callbacks.setState("thinking");
     this.callbacks.onStatus?.("Pracuję nad odpowiedzią…");
     if (!commandOverride) await this.waitForTranscriptToSettle();
+    if (generation !== this.generation) return;
     const latestTurn = this.inputTranscript.slice(this.handledTranscriptLength).trim();
     const fullTranscript = this.inputTranscript.trim();
     const command = commandOverride?.trim()
@@ -314,6 +362,7 @@ export class VoiceAssistantRuntime {
       speechText = `Zadanie nie zostało wykonane: ${message}`;
       trace = { error: message };
     }
+    if (generation !== this.generation) return;
     this.handledTranscriptLength = this.inputTranscript.length;
     this.pendingUserTurn = false;
     if (socket.readyState === WebSocket.OPEN) {
@@ -340,6 +389,7 @@ export class VoiceAssistantRuntime {
   }
 
   private async flushLiveAudio() {
+    const generation = this.generation;
     if (this.livePrebufferTimer) clearTimeout(this.livePrebufferTimer);
     this.livePrebufferTimer = null;
     const chunks = this.liveAudioChunks.splice(0);
@@ -347,13 +397,16 @@ export class VoiceAssistantRuntime {
     if (!chunks.length) return;
     this.livePlaybackStarted = true;
     this.audioWriteChain = this.audioWriteChain.then(async () => {
+      if (generation !== this.generation) return;
       await this.ensureOutputReady();
       for (const audio of chunks) {
         for (const bridgeChunk of this.bridgeSizedAudioChunks(audio)) {
+          if (generation !== this.generation) return;
           await nativeBridge.call("assistantAudio.appendOutput", { audio: bridgeChunk });
         }
       }
     }).catch(error => {
+      if (generation !== this.generation) return;
       this.callbacks.onStatus?.(error instanceof Error ? error.message : String(error));
     });
     await this.audioWriteChain;
@@ -381,11 +434,13 @@ export class VoiceAssistantRuntime {
 
   private async ensureOutputReady() {
     if (this.nativeOutputReady) return;
+    const generation = this.generation;
     await nativeBridge.call("assistantAudio.startOutput");
-    this.nativeOutputReady = true;
+    if (generation === this.generation) this.nativeOutputReady = true;
   }
 
   private async finish() {
+    const generation = this.generation;
     if (!this.socket && this.disposed) return;
     this.socket = null;
     this.pendingAudio = [];
@@ -395,14 +450,19 @@ export class VoiceAssistantRuntime {
     this.inputActive = false;
     await nativeBridge.call("assistantAudio.stopInput").catch(() => undefined);
     if (this.bufferedSpeechTask) await this.bufferedSpeechTask.catch(() => undefined);
+    if (generation !== this.generation) return;
     await this.flushLiveAudio();
     await this.audioWriteChain;
+    if (generation !== this.generation) return;
     await this.finishOutput();
+    if (generation !== this.generation) return;
     if (!this.disposed) {
+      this.conversationActive = false;
+      this.callbacks.onConversationChange?.(null);
       this.callbacks.setState("success");
       this.callbacks.onStatus?.("Rozmowa zakończona");
       await this.configureWake();
-      this.callbacks.hideAssistant();
+      if (generation === this.generation) this.callbacks.hideAssistant();
     }
   }
 
@@ -442,6 +502,7 @@ export class VoiceAssistantRuntime {
     let timeout: ReturnType<typeof setTimeout> | undefined;
     let listener: EventListener | undefined;
     const drained = new Promise<void>(resolve => {
+      this.cancelDrain = resolve;
       listener = () => resolve();
       window.addEventListener("wallpanel:assistantOutputDrained", listener, { once: true });
       timeout = setTimeout(resolve, 20_000);
@@ -452,6 +513,7 @@ export class VoiceAssistantRuntime {
     } catch {
       await nativeBridge.call("assistantAudio.stopOutput").catch(() => undefined);
     } finally {
+      this.cancelDrain = null;
       this.nativeOutputReady = false;
       if (timeout) clearTimeout(timeout);
       if (listener) window.removeEventListener("wallpanel:assistantOutputDrained", listener);

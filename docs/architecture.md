@@ -180,3 +180,7 @@ Jedynym właścicielem delegacji rozmowy jest serwer GPT-Live/Responses; klient 
 CanvasPresentationService to osobna ścieżka poza blokadą AssistantService. prepare_assistant_canvas zwraca potwierdzenie kolejki, nie wykonania. Dwa anulowalne zadania (tekst bez narzędzi i wyszukiwanie samych obrazów) aktualizują jeden dokument. Wspólny jobId łączy historię wywołania z trwałymi diagnostykami. Publikacja sprawdza tożsamość aktywnego zadania; tylko pierwsza aktywuje widok. Rewizje dokumentów chronią klienta przed nadpisaniem WebSocket przez spóźniony GET. Bezpośredni Canvas również publikuje tekst przed pobraniem obrazów.
 
 Cache obrazów zachowuje poprzednie adresy do limitu 32 wpisów / 80 MB, zamiast kasować je przy każdym odświeżeniu. Worker zamyka się po 60 s; obrazy mają 12 s na cały łańcuch pobrania. Głos, tekst i zdjęcia nie mają wspólnej bariery zakończenia. Aktualne pomiary pozostają w torze narzędzi HA, nie w generacji wiedzy ogólnej.
+
+### Globalna kontrola rozmowy (2026-10-04)
+
+PanelApp wyświetla wskaźnik na podstawie jawnego cyklu rozmowy VoiceAssistantRuntime, poza kontenerami przejść widoków. Home Assistant jest iframe i pozostaje pod wskaźnikiem. stopConversation unieważnia generację sesji, zamyka WebSocket, czyści audio i zatrzymuje natywne wejście/wyjście bez drain. Stare zdarzenia i kontynuacje kolejki nie mogą wznowić głosu. Protokół Android bez zmian.

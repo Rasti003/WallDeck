@@ -166,3 +166,6 @@
 - [x] Usunięcie wymuszania prezentacji słowami kluczowymi oraz podwójnej delegacji klienta.
 - [x] Narzędzia poza pętlą odbioru audio, blokada zagnieżdżonego głosu i niebezpiecznego odtwarzania polecenia po błędzie.
 - [ ] Ocena subiektywnej płynności mikrofon → głośnik podczas kilku naturalnych rozmów domowników.
+
+- [x] Globalny wskaźnik aktywnej rozmowy i natychmiastowy przycisk × (2026-10-04).
+- [ ] Fizyczny test przycisku × podczas głosu i przełączania HA/Canvas/zegara.
