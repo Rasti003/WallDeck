@@ -184,3 +184,7 @@ Cache obrazów zachowuje poprzednie adresy do limitu 32 wpisów / 80 MB, zamiast
 ### Globalna kontrola rozmowy (2026-10-04)
 
 PanelApp wyświetla wskaźnik na podstawie jawnego cyklu rozmowy VoiceAssistantRuntime, poza kontenerami przejść widoków. Home Assistant jest iframe i pozostaje pod wskaźnikiem. stopConversation unieważnia generację sesji, zamyka WebSocket, czyści audio i zatrzymuje natywne wejście/wyjście bez drain. Stare zdarzenia i kontynuacje kolejki nie mogą wznowić głosu. Protokół Android bez zmian.
+
+### Opcjonalna dystrybucja Android Standard — 2026-10-06
+
+Gradle -Pstandalone=true tworzy pl.home.wallpanel.standard z BuildConfig.MANAGED_KIOSK=false, osobnym katalogiem build-standard, nazwą i danymi aplikacji. Domyślny build pozostaje zarządzanym pl.home.wallpanel. Wspólne UI i bridge nie zmieniają protokołu. Standard ma wyłączony DeviceAdminReceiver i bramki uniemożliwiające lock task, ograniczenia systemowe oraz OEM task recovery. PowerService pozostaje opcjonalnym monitorem zasilania, z powiadomieniem i zależnym od Androida otwieraniem przez overlay. Standard domyślnie nie uruchamia monitora.

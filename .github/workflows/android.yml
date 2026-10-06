@@ -13,6 +13,9 @@ on:
 jobs:
   verify:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        standalone: ['false', 'true']
     defaults:
       run:
         working-directory: apps/tablet-android
@@ -28,4 +31,4 @@ jobs:
         shell: pwsh
         run: ./scripts/setup-spotify.ps1
       - run: chmod +x gradlew
-      - run: ./gradlew assembleDebug testDebugUnitTest lintDebug
+      - run: ./gradlew -Pstandalone=${{ matrix.standalone }} assembleDebug testDebugUnitTest lintDebug

@@ -117,7 +117,7 @@ class MainActivity : ComponentActivity() {
                 val saved = store.load()
                 val debugUrl = intent.getStringExtra(DEBUG_PANEL_URL_EXTRA)?.takeIf { BuildConfig.DEBUG }
                 config = if (debugUrl != null) {
-                    PanelConfig(debugUrl, saved?.deviceId ?: "wallpanel-01", "", saved?.dock ?: true).also { store.save(it) }
+                    PanelConfig(debugUrl, saved?.deviceId ?: defaultDeviceId(), "", saved?.dock ?: BuildConfig.MANAGED_KIOSK).also { store.save(it) }
                 } else saved
                 config?.let { showPanel(it) } ?: showConfig()
             }
@@ -206,6 +206,8 @@ class MainActivity : ComponentActivity() {
         if (requestCode == CAMERA_LIGHT_PERMISSION_REQUEST && grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED) cameraLightSampler.permissionGranted()
         if (requestCode == MICROPHONE_PERMISSION_REQUEST && grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED) wakeWord.resume()
     }
+    private fun defaultDeviceId() = if (BuildConfig.MANAGED_KIOSK) "wallpanel-01" else "wallpanel-standard-01"
+
     private fun showConfig() {
         if (dialog?.isShowing == true) return
         val layout = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(28, 20, 28, 20) }
@@ -215,17 +217,21 @@ class MainActivity : ComponentActivity() {
             it.importantForAutofill = View.IMPORTANT_FOR_AUTOFILL_NO
             layout.addView(TextView(this).apply { text = label }); layout.addView(it)
         }
+        if (!BuildConfig.MANAGED_KIOSK) layout.addView(TextView(this).apply {
+            text = "WallDeck Standard — bez Device Ownera. Wyjdź gestem Wstecz lub Home. Monitor zasilania jest opcjonalny; automatyczne otwieranie wymaga zgody na powrót z tła i zależy od Androida."
+            setPadding(0, 0, 0, 16)
+        })
         val url = field("Panel URL", config?.url ?: "http://127.0.0.1:8080")
-        val id = field("Device ID", config?.deviceId ?: "wallpanel-01")
+        val id = field("Device ID", config?.deviceId ?: defaultDeviceId())
         val key = field("Device Key (puste = bez zmiany)", "", true)
         val clearKey = CheckBox(this).apply { text = "Usuń zapisany Device Key" }; layout.addView(clearKey)
-        val dock = CheckBox(this).apply { text = "Monitoruj dock / undock"; isChecked = config?.dock ?: true }; layout.addView(dock)
+        val dock = CheckBox(this).apply { text = "Monitoruj dock / undock"; isChecked = config?.dock ?: BuildConfig.MANAGED_KIOSK }; layout.addView(dock)
         layout.addView(TextView(this).apply { text = "Konfigurator: 7 szybkich dotknięć lewego górnego rogu. HTTP tylko do testów bez sekretu; klucz wymaga HTTPS lub tunelu localhost. Powrót z tła zależy od uprawnień Androida." })
         layout.addView(Button(this).apply { text = "Zezwól na powrót panelu z tła"; setOnClickListener { startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName"))) } })
         layout.addView(Button(this).apply { text = "Powiadomienia monitora"; setOnClickListener { if (Build.VERSION.SDK_INT >= 33) requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 1) } })
         layout.addView(Button(this).apply { text = "Tryb tabletu"; setOnClickListener { exitToTablet() } })
         val scroll = ScrollView(this).apply { addView(layout) }
-        dialog = AlertDialog.Builder(this).setTitle("WallDeck • konfiguracja").setView(scroll).setNegativeButton("Anuluj", null).setPositiveButton("Zapisz", null).create()
+        dialog = AlertDialog.Builder(this).setTitle(if (BuildConfig.MANAGED_KIOSK) "WallDeck • konfiguracja" else "WallDeck Standard • konfiguracja").setView(scroll).setNegativeButton("Anuluj", null).setPositiveButton("Zapisz", null).create()
         dialog!!.setOnShowListener {
             dialog!!.window?.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
             dialog!!.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
@@ -412,10 +418,10 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun dp(value: Int) = (value * resources.displayMetrics.density + 0.5f).toInt()
-    private fun kioskActive() = getSystemService(android.app.ActivityManager::class.java).lockTaskModeState != android.app.ActivityManager.LOCK_TASK_MODE_NONE
+    private fun kioskActive() = BuildConfig.MANAGED_KIOSK && getSystemService(android.app.ActivityManager::class.java).lockTaskModeState != android.app.ActivityManager.LOCK_TASK_MODE_NONE
 
     private fun updateKiosk() {
-        if (leavingKiosk || config == null) return
+        if (!BuildConfig.MANAGED_KIOSK || leavingKiosk || config == null) return
         val policy = getSystemService(android.app.admin.DevicePolicyManager::class.java)
         if (!policy.isDeviceOwnerApp(packageName)) return
         val admin = ComponentName(this, WallDeckAdminReceiver::class.java)
@@ -443,7 +449,7 @@ class MainActivity : ComponentActivity() {
             return
         }
         val policy = getSystemService(android.app.admin.DevicePolicyManager::class.java)
-        if (policy.isDeviceOwnerApp(packageName)) policy.clearUserRestriction(ComponentName(this, WallDeckAdminReceiver::class.java), UserManager.DISALLOW_CREATE_WINDOWS)
+        if (BuildConfig.MANAGED_KIOSK && policy.isDeviceOwnerApp(packageName)) policy.clearUserRestriction(ComponentName(this, WallDeckAdminReceiver::class.java), UserManager.DISALLOW_CREATE_WINDOWS)
         dialog?.dismiss()
         finishAndRemoveTask()
     }

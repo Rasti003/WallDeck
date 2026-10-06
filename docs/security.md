@@ -93,3 +93,7 @@ Canvas przyjmuje wyłącznie dane zgodne ze wspólnym schematem i renderuje je j
 ## Worker Canvas — 2026-10-03
 
 Worker tekstu ma tylko temat/kontekst, bez narzędzi sterujących domem i bez możliwości wykonania akcji. Jego JSON jest walidowany i nie może dostarczyć adresów obrazów ani źródeł. Zdjęcia pochodzą wyłącznie z wyszukiwarki, przechodzą istniejący proxy HTTPS i limity pobierania. Linki źródłowe akceptują tylko HTTP(S). Przełączniki prepare_assistant_canvas, show_assistant_canvas i search_web są sprawdzane osobno; wyłączenie zatrzymuje pracę. Live nie może wywołać własnego TTS lub nowej rozmowy. Automatyczne ponawianie całego polecenia po błędzie zostało usunięte, bo wykonanie wcześniejszej akcji może być niepewne.
+
+### WallDeck Standard — 2026-10-06
+
+Wariant Standard nie korzysta z Device Owner ani uprawnień administratora: odbiornik Device Admin jest disabled w manifeście, a BuildConfig.MANAGED_KIOSK blokuje wszystkie ścieżki polityk i odzyskiwania kiosku. Użytkownik może normalnie wyjść z aplikacji. Overlay i powiadomienia służą opcjonalnemu monitorowi zasilania, nie dają blokady systemu. Oddzielny applicationId izoluje DataStore/Keystore od głównej instalacji. Pozostałe ograniczenia zaufanego originu, sekretów i bridge obowiązują bez zmian. Dostarczane debug APK służą testom; release wymaga osobnego procesu podpisania.

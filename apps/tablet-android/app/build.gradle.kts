@@ -1,13 +1,20 @@
 plugins { id("com.android.application"); id("org.jetbrains.kotlin.android") }
+// Managed remains the default; a separate application ID keeps installations isolated.
+val standalone = providers.gradleProperty("standalone").map { it.toBooleanStrict() }.getOrElse(false)
+if (standalone) layout.buildDirectory.set(layout.projectDirectory.dir("build-standard"))
 android {
     namespace = "pl.home.wallpanel"
     compileSdk = 35
     defaultConfig {
-        applicationId = "pl.home.wallpanel"
+        applicationId = if (standalone) "pl.home.wallpanel.standard" else "pl.home.wallpanel"
         minSdk = 28
         targetSdk = 35
         versionCode = 1
-        versionName = "0.1.0"
+        versionName = if (standalone) "0.1.0-standard" else "0.1.0"
+        buildConfigField("boolean", "MANAGED_KIOSK", (!standalone).toString())
+        manifestPlaceholders["appLabel"] = if (standalone) "WallDeck Standard" else "WallDeck"
+        manifestPlaceholders["managedKiosk"] = (!standalone).toString()
+        manifestPlaceholders["excludeFromRecents"] = (!standalone).toString()
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
     buildFeatures { buildConfig = true }

@@ -169,3 +169,10 @@
 
 - [x] Globalny wskaźnik aktywnej rozmowy i natychmiastowy przycisk × (2026-10-04).
 - [ ] Fizyczny test przycisku × podczas głosu i przełączania HA/Canvas/zegara.
+
+## Alternatywne APK Standard — 2026-10-06
+
+- [x] Osobny pakiet i nazwa Standard, bez Device Ownera, polityk kiosku i automatycznego odzyskiwania zamkniętego zadania.
+- [x] Główna dystrybucja zarządzana pozostaje domyślna; osobne katalogi wynikowe i CI obu wariantów.
+- [x] Opcjonalny monitor zasilania, domyślnie wyłączony w Standard; instrukcja zwykłej instalacji.
+- [ ] Test użytkowy Standard: gesty Home/Wstecz, dock/undock, zgody i Spotify na urządzeniu bez Device Ownera.

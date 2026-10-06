@@ -17,7 +17,7 @@ class PowerService : Service() {
             }
             PowerEvents.events.tryEmit(event)
             if (event == "powerConnected") {
-                if (Settings.canDrawOverlays(this@PowerService) || getSystemService(android.app.admin.DevicePolicyManager::class.java).isDeviceOwnerApp(packageName)) {
+                if (Settings.canDrawOverlays(this@PowerService) || (BuildConfig.MANAGED_KIOSK && getSystemService(android.app.admin.DevicePolicyManager::class.java).isDeviceOwnerApp(packageName))) {
                     runCatching { startActivity(panelIntent()) }
                 }
                 getSystemService(NotificationManager::class.java).notify(1, notification("Podłączono zasilanie — dotknij, aby otworzyć panel"))
@@ -26,7 +26,7 @@ class PowerService : Service() {
     }
     private fun panelIntent() = Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
     private fun notification(text: String): Notification = Notification.Builder(this, "dock")
-        .setSmallIcon(android.R.drawable.ic_lock_idle_charging).setContentTitle("WallDeck — monitor zasilania")
+        .setSmallIcon(android.R.drawable.ic_lock_idle_charging).setContentTitle(if (BuildConfig.MANAGED_KIOSK) "WallDeck — monitor zasilania" else "WallDeck Standard — monitor zasilania")
         .setContentText(text).setOngoing(true).setContentIntent(PendingIntent.getActivity(this, 0, panelIntent(), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)).build()
     override fun onCreate() {
         super.onCreate()
@@ -37,7 +37,7 @@ class PowerService : Service() {
     }
     override fun onTaskRemoved(rootIntent: Intent?) {
         super.onTaskRemoved(rootIntent)
-        if (rootIntent?.component?.packageName != packageName) return
+        if (!BuildConfig.MANAGED_KIOSK || rootIntent?.component?.packageName != packageName) return
         // OEM close controls can remove a locked task; deliberate exits must stay closed.
         Handler(Looper.getMainLooper()).postDelayed({
             val powered = registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))

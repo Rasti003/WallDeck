@@ -1,6 +1,8 @@
 .gradle/
+.gradle-standard/
 .kotlin/
 **/build/
+**/build-standard/
 local.properties
 *.jks
 .idea/

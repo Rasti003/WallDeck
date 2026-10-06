@@ -88,3 +88,22 @@ Further diagnosis: HyperOS X hides the existing task while LOCKED remains active
 Touch activity is emitted at release after excluding the native downward swipe, so assistant inactivity handling cannot consume the menu gesture before it completes.
 
 The large always-visible tablet-mode button was removed. Exit is now the small tablet icon in the web menu. Native configuration exit and 2-second Volume Down emergency exit remain available without the web page.
+
+## Dwie dystrybucje APK — 2026-10-06
+
+Główny wariant **WallDeck** nadal ma pakiet pl.home.wallpanel i obsługuje zarządzany kiosk Device Owner. Alternatywny **WallDeck Standard** ma pakiet pl.home.wallpanel.standard, własny magazyn ustawień i nie wymaga ADB, Device Ownera ani resetu urządzenia.
+
+Standard wyłącza odbiornik Device Admin w manifeście i wszystkie ścieżki polityk kiosku. Nie wywołuje lock task ani odzyskiwania ukrytego/zamkniętego zadania. Jest widoczny na liście ostatnich aplikacji; Home/Wstecz umożliwiają zwykłe wyjście. Pełnoekranowy WebView, bridge v8, głos, zdjęcia, HA i muzyka pozostają wspólne. Nasłuch głosu działa podczas aktywnego panelu, nie jest usługą rozmowy w tle.
+
+Monitor zasilania jest w Standard domyślnie wyłączony. Można go włączyć w konfiguratorze (7 dotknięć lewego górnego rogu): odłączenie zamyka panel, podłączenie próbuje go otworzyć przy zgodzie „wyświetlanie nad innymi aplikacjami”. Bez tej opcjonalnej zgody pozostaje powiadomienie do otwarcia panelu (na Android 13+ wymaga zgody na powiadomienia). Ograniczenia Androida/producenta nadal obowiązują. Po restarcie lub force-stop trzeba ponownie otworzyć aplikację. Nie ma blokady systemowego paska, Home ani innych aplikacji.
+
+Budowanie i sprawdzanie:
+- Główna: scripts/build.ps1 lub gradlew.bat -Pstandalone=false assembleDebug testDebugUnitTest lintDebug.
+- Standard: scripts/build.ps1 -Standard lub gradlew.bat --project-cache-dir .gradle-standard -Pstandalone=true assembleDebug testDebugUnitTest lintDebug.
+- Wyjścia: app/build/outputs/apk/debug/app-debug.apk oraz app/build-standard/outputs/apk/debug/app-debug.apk. Osobne katalogi zapobiegają pomyleniu artefaktów.
+- Instalacja developerska Standard: scripts/install.ps1 -Standard -Serial SERIAL; produkcyjny pakiet pozostaje nienaruszony. Do ręcznej instalacji wystarczy plik APK i zgoda Androida na instalację z danego źródła.
+- Oba polecenia tworzą podpisane **debug APK do testów**, nie docelowe wydanie release.
+
+Standard wymaga osobnego wpisu Android w Spotify Developer Dashboard: pl.home.wallpanel.standard i SHA-1 certyfikatu tego APK; redirect pozostaje walldeck://spotify-callback. Ustawienia i zgody trzeba nadać osobno. Nie należy utrzymywać dwóch jednocześnie aktywnych paneli głosowych na tym samym tablecie; bieżący backend współdzieli widok między panelami.
+
+Weryfikacja 2026-10-06: oba warianty przeszły assembleDebug, 7 testów jednostkowych i lintDebug. Sprawdzono osobne identyfikatory pakietów, ustawienia DeviceAdminReceiver/Recents w manifestach oraz podpis Standard przez apksigner. Nie instalowano Standard na fizycznym tablecie; test użytkowy bez Device Ownera pozostaje do wykonania.

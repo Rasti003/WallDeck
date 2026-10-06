@@ -73,3 +73,7 @@ ssh -N -L 8888:127.0.0.1:8888 walldeck
 Następnie w Admin → Music · Spotify wybierz „Połącz wyszukiwanie”. Odśwież stan po zakończeniu logowania.
 
 WallDeck MCP udostępnia pięć niezależnych funkcji Spotify: wyszukiwanie, odczyt kolejki, listę playlist, odtwarzanie elementu oraz dodanie utworu lub podcastu do kolejki. Każdą można osobno wyłączyć w Admin → MCP · AI.
+
+### Opcjonalny WallDeck Standard
+
+Dla alternatywnego APK bez Device Ownera dodaj osobny wpis Android: pl.home.wallpanel.standard oraz SHA-1 podpisu instalowanego APK. Główna wersja nadal używa pl.home.wallpanel. Redirect URI jest wspólne: walldeck://spotify-callback. Zgoda App Remote i ustawienia Standard są niezależne od głównej aplikacji.
