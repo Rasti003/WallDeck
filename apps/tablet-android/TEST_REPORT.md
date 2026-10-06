@@ -271,3 +271,10 @@ Xiaomi 2603ARP14G, Android 16, bridge v5. Android `assembleDebug`, testy jednost
 - Potwierdzono nowy widok YouTube, załadowanie oficjalnego iframe YouTube oraz brak `WallPanelNative` w kontekście iframe. Istniejący zainstalowany Android Bridge v8 pozostał dostępny w głównej ramce. Przywrócono poprzedni widok. Nie zmieniono konfiguracji Device Key.
 - Nowe APK Managed i Standard przeszły assembleDebug, testDebugUnitTest i lintDebug. Próba aktualizacji Managed na fizycznym tablecie została odrzucona przez Android (`INSTALL_FAILED_USER_RESTRICTED`).
 - Ten test NIE potwierdza odtwarzania filmu, autoplay z nowym APK, akustycznego wake wordu podczas filmu ani prawdziwego Data API. Serwer nie ma jeszcze klucza YouTube; scenariusze search/latest i pełne odtwarzanie pozostają do odbioru po konfiguracji klucza i zezwoleniu na aktualizację APK. Standard nie został zainstalowany na fizycznym urządzeniu.
+
+## 2026-10-06 — YouTube: rzeczywisty klucz Data API
+
+- Administrator zapisał klucz; test YouTube Data API v3: PASS. Włączono funkcję i dodano YouTube do menu bez zmiany kolejności pozostałych ekranów.
+- Rzeczywiste wyszukiwanie: PASS (wyniki bez autoplay). Resolve @Konopskyy i uploads playlist: PASS; wybrano film `W3ZZX2NcAGA` opublikowany 2026-10-03, długość 2274 s. Zapisano kanał UCR7uLtPuXsDpN8N6ocFQyeg i aliasy Konopsky/konopski.
+- Komenda dotarła do działającego tabletu. Player zwrócił `status=blocked`, `playing=false`, pozycja 0 — poprawna obsługa blokady autoplay, nie potwierdzenie odtwarzania. Na urządzeniu pozostaje starszy APK; wcześniejsza instalacja aktualizacji została odrzucona przez Android.
+- Przywrócono poprzedni ekran zdjęć. Realne odtwarzanie po dotknięciu przycisku oraz autoplay nowego APK nadal wymagają odbioru. Klucza nie odczytywano ani nie umieszczano w dokumentacji.
