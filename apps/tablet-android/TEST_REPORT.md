@@ -278,3 +278,10 @@ Xiaomi 2603ARP14G, Android 16, bridge v5. Android `assembleDebug`, testy jednost
 - Rzeczywiste wyszukiwanie: PASS (wyniki bez autoplay). Resolve @Konopskyy i uploads playlist: PASS; wybrano film `W3ZZX2NcAGA` opublikowany 2026-10-03, długość 2274 s. Zapisano kanał UCR7uLtPuXsDpN8N6ocFQyeg i aliasy Konopsky/konopski.
 - Komenda dotarła do działającego tabletu. Player zwrócił `status=blocked`, `playing=false`, pozycja 0 — poprawna obsługa blokady autoplay, nie potwierdzenie odtwarzania. Na urządzeniu pozostaje starszy APK; wcześniejsza instalacja aktualizacji została odrzucona przez Android.
 - Przywrócono poprzedni ekran zdjęć. Realne odtwarzanie po dotknięciu przycisku oraz autoplay nowego APK nadal wymagają odbioru. Klucza nie odczytywano ani nie umieszczano w dokumentacji.
+
+## 2026-10-06 — YouTube: aktualizacja Managed i rzeczywiste autoplay
+
+- Fizyczny Redmi Pad 2 / Xiaomi 2603ARP14G, Android 16 / API 36. Po ręcznym wyjściu użytkownika z kiosku aktualizacja Managed przez `adb install -r` zakończyła się `Success`. Uruchomiono `pl.home.wallpanel/.MainActivity`; potwierdzono Device Owner `pl.home.wallpanel` i `mLockTaskModeState=LOCKED`.
+- Najnowszy film @Konopskyy (`W3ZZX2NcAGA`) uruchomił się bez dotykania przycisku: `status=playing`, `playing=true`, bez błędu. Raportowana pozycja wzrosła z 0,104 s do 2,795 s. Autoplay na nowym Managed APK: PASS; zastępuje wcześniejszy wynik `blocked` starszej wersji.
+- Przewinięcie `seekBy=15` i dalsze odtwarzanie: PASS, pozycja wzrosła do 31,753 s. Osobna próba z oczekiwaniem na raporty potwierdziła `pause → paused/playing=false`, `resume → playing/playing=true` oraz `stop → stopped/playing=false`.
+- Po zatrzymaniu przywrócono wcześniejszy widok `photos`; głośność pozostała 70. Nie zmieniano Device Key. Standard nie był instalowany. Ta próba nie obejmuje odsłuchu, akustycznego wake wordu, duckingu rozmowy ani współpracy z odtwarzającym Spotify.
