@@ -285,3 +285,10 @@ Xiaomi 2603ARP14G, Android 16, bridge v5. Android `assembleDebug`, testy jednost
 - Najnowszy film @Konopskyy (`W3ZZX2NcAGA`) uruchomił się bez dotykania przycisku: `status=playing`, `playing=true`, bez błędu. Raportowana pozycja wzrosła z 0,104 s do 2,795 s. Autoplay na nowym Managed APK: PASS; zastępuje wcześniejszy wynik `blocked` starszej wersji.
 - Przewinięcie `seekBy=15` i dalsze odtwarzanie: PASS, pozycja wzrosła do 31,753 s. Osobna próba z oczekiwaniem na raporty potwierdziła `pause → paused/playing=false`, `resume → playing/playing=true` oraz `stop → stopped/playing=false`.
 - Po zatrzymaniu przywrócono wcześniejszy widok `photos`; głośność pozostała 70. Nie zmieniano Device Key. Standard nie był instalowany. Ta próba nie obejmuje odsłuchu, akustycznego wake wordu, duckingu rozmowy ani współpracy z odtwarzającym Spotify.
+
+### Poprawka po zgłoszeniu błędu użytkownika
+
+- Logi produkcyjne ujawniły błędy 500 w `/api/youtube/report`: podczas inicjalizacji iframe niepoprawna wartość głośności była serializowana jako null. Klient zachowuje teraz ostatnią poprawną głośność i usuwa przejściowy komunikat po udanym raporcie. Błąd playera pokazuje numer YouTube.
+- Po wdrożeniu i przeładowaniu fizycznego Managed WebView ponownie uruchomiono `W3ZZX2NcAGA`: playing=true, volume=70, error=null; pozycja wzrosła z 0,124 do 3,255 s. Kolejna próba również odtwarzała film. Brak nowych błędów 500/ZodError w logach podczas tych prób. Film zatrzymano.
+- Smoke widoku i izolacji iframe: PASS, bridge v8, brak natywnego bridge w iframe. Pierwsza próba smoke wykazała wyścig nawigacji iframe w samym skrypcie; po dodaniu oczekiwania na właściwą ramkę ponowiona próba przeszła. Test regresji inicjalizacji głośności, 56 testów klienta i build produkcyjny: PASS.
+- To potwierdza naprawę błędu raportowania. Zgłoszenie użytkownika nie zawierało numeru błędu YouTube; ewentualna osobna awaria konkretnego filmu wymaga tego komunikatu. Odsłuch pozostaje niepotwierdzony.

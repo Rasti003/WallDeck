@@ -37,9 +37,14 @@ try {
   }
   const state=await (await fetch(`${base}/api/youtube/state`)).json();
   assert.equal(iframe.title,state.video?.title??"Co dziś oglądamy?");assert.ok(iframe.src?.startsWith("https://www.youtube.com/embed/"),JSON.stringify(iframe));assert.deepEqual(iframe.errors,[]);
-  const frames=(await command("Page.getFrameTree")).frameTree;
   const flatten=tree=>[tree.frame,...(tree.childFrames??[]).flatMap(flatten)];
-  const youtube=flatten(frames).find(f=>f.url.startsWith("https://www.youtube.com/embed/"));assert.ok(youtube);
+  let youtube;
+  for(let attempt=0;attempt<20;attempt++) {
+    const frames=(await command("Page.getFrameTree")).frameTree;
+    youtube=flatten(frames).find(f=>f.url.startsWith("https://www.youtube.com/embed/"));
+    if(youtube)break;await delay(500);
+  }
+  assert.ok(youtube,"Official iframe must finish navigating before checking isolation");
   const world=await command("Page.createIsolatedWorld",{frameId:youtube.id,worldName:"youtube-smoke-isolation"});
   assert.equal(await evaluate("typeof window.WallPanelNative",world.executionContextId),"undefined","YouTube iframe must not receive native bridge");
   console.log(JSON.stringify({result:"PASS",bridgeVersion:native.bridgeVersion,view:"youtube",officialIframe:true,iframeNativeBridge:false,playbackTested:false,dataApiTested:false}));
