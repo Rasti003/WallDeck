@@ -35,7 +35,8 @@ try {
     iframe=await evaluate(`({title:document.querySelector('.youtube-view h1')?.textContent,src:document.querySelector('.youtube-player iframe')?.src,errors:Array.from(document.querySelectorAll('.youtube-view [role=alert]')).map(e=>e.textContent)})`);
     if(iframe.src)break;await delay(500);
   }
-  assert.equal(iframe.title,"Co dziś oglądamy?");assert.ok(iframe.src?.startsWith("https://www.youtube.com/embed/"),JSON.stringify(iframe));assert.deepEqual(iframe.errors,[]);
+  const state=await (await fetch(`${base}/api/youtube/state`)).json();
+  assert.equal(iframe.title,state.video?.title??"Co dziś oglądamy?");assert.ok(iframe.src?.startsWith("https://www.youtube.com/embed/"),JSON.stringify(iframe));assert.deepEqual(iframe.errors,[]);
   const frames=(await command("Page.getFrameTree")).frameTree;
   const flatten=tree=>[tree.frame,...(tree.childFrames??[]).flatMap(flatten)];
   const youtube=flatten(frames).find(f=>f.url.startsWith("https://www.youtube.com/embed/"));assert.ok(youtube);

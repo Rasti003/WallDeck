@@ -20,6 +20,7 @@ Status pokazuje liczbę rzeczywistych wywołań API od restartu i ostatni bezpie
 - Media Surface wstrzymuje Spotify przed startem YouTube i zatrzymuje YouTube przed startem Spotify. Rozmowa pozostaje nad playerem, ścisza film do maksymalnie 20% i przywraca poprzednią głośność po zakończeniu. Player nie ma elementów WallDeck przykrywających reklam ani kontrolek YouTube.
 - Zamknięcie, stop i koniec filmu (autoNext wyłączone) wracają do zapamiętanego ekranu. Zmiana widoku usuwa player i zapisuje pozycję. Film nie jest odtwarzany w tle. Natywny audio focus i akustyczne usuwanie echa to osobne przyszłe zadania.
 - Błąd osadzania pokazuje link do YouTube. „Najnowszy” próbuje do trzech kandydatów po błędzie playera; nie tworzy nieskończonej kolejki ponowień.
+- Komunikat błędu playera zawiera numer YouTube. Podczas startu, gdy iframe nie zwraca jeszcze poprawnej głośności, raport zachowuje ostatnią znaną wartość; udany raport usuwa przejściowy komunikat o braku połączenia.
 
 ## Dane
 

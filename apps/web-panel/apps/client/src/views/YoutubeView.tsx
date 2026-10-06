@@ -20,10 +20,10 @@ export function YoutubeView() {
       if(cancelled || !host.current)return;
       const target=document.createElement("div"); host.current.replaceChildren(target);
       player.current=new YT.Player(target,{width:"100%",height:"100%",playerVars:{playsinline:1,origin:location.origin,controls:1,rel:0},events:{
-        onReady:(event:any)=>{if(cancelled)return; attachYoutubePlayer(event.target,report=>{ void api.youtube.report(report).then(refresh).catch(()=>{if(!cancelled)setError("Brak połączenia z WallDeck");}); });},
+        onReady:(event:any)=>{if(cancelled)return; attachYoutubePlayer(event.target,report=>{ void api.youtube.report(report).then(()=>{if(!cancelled)setError("");return refresh();}).catch(()=>{if(!cancelled)setError("Brak połączenia z WallDeck");}); });},
         onStateChange:(event:any)=>youtubePlayerChanged(event.data===0?"ended":event.data===1?"playing":event.data===2?"paused":"loading"),
         onAutoplayBlocked:()=>youtubePlayerChanged("blocked"),
-        onError:(event:any)=>{youtubePlayerChanged("error",[101,150].includes(event.data)?"Autor nie zezwala na odtwarzanie tutaj. Otwórz film w YouTube.":event.data===153?"YouTube nie rozpoznał aplikacji. Sprawdź referer WebView.":"Film jest niedostępny w tym urządzeniu lub regionie.");},
+        onError:(event:any)=>{youtubePlayerChanged("error",`Błąd YouTube ${event.data}: `+([101,150].includes(event.data)?"Autor nie zezwala na odtwarzanie tutaj. Otwórz film w YouTube.":event.data===153?"YouTube nie rozpoznał aplikacji. Sprawdź referer WebView.":"Film jest niedostępny w tym urządzeniu lub regionie."));},
       }});
     }).catch(e=>{if(!cancelled)setError(e.message);});
     interval=setInterval(()=>{const report=youtubeSnapshot();if(report && report.status!=="ended")void api.youtube.report(report).then(refresh).catch(()=>undefined);else void refresh();},5000);

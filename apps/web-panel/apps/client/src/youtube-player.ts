@@ -26,7 +26,8 @@ const ready = () => player ? Promise.resolve(player) : new Promise<Player>((reso
 export function youtubeSnapshot(status?: YoutubeReport["status"]): YoutubeReport | null {
   if (!video || !player) return null;
   const code=player.getPlayerState();
-  if(!ducked) baseVolume=Math.min(100,Math.max(0,player.getVolume()));
+  const volume=player.getVolume();
+  if(!ducked && Number.isFinite(volume)) baseVolume=Math.min(100,Math.max(0,volume));
   return { sessionId, videoId:video.videoId, positionSeconds:stopped ? stoppedPosition : Math.max(0,player.getCurrentTime()||0), playing:!stopped && code===1, volume:baseVolume, status:stopped ? "stopped" : status ?? (lastError ? "error" : blocked ? "blocked" : code===1 ? "playing" : code===0 ? "ended" : code===2 ? "paused" : "loading"), error:lastError };
 }
 export function youtubePlayerChanged(status?: YoutubeReport["status"], error: string | null = null) { if(status==="blocked") blocked=true; if(status==="playing") blocked=false; lastError=error; const state=youtubeSnapshot(status); if(state) { onChange(state); if(["playing","blocked","error","stopped"].includes(state.status)) { firstState?.(state); firstState=null; } } }
@@ -49,7 +50,7 @@ export function controlYoutube(action: string, value?: number) {
   return { accepted:true };
 }
 export function duckYoutube(active: boolean) {
-  if(active && !ducked && player) baseVolume=player.getVolume();
+  if(active && !ducked && player) { const volume=player.getVolume(); if(Number.isFinite(volume)) baseVolume=Math.min(100,Math.max(0,volume)); }
   ducked=active; player?.setVolume(active ? Math.min(20,baseVolume) : baseVolume);
 }
 // All Spotify starts (including UI buttons) stop the web provider first.

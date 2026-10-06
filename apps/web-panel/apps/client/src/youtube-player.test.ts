@@ -1,9 +1,19 @@
 import { afterEach, expect, it, vi } from "vitest";
 import { attachYoutubePlayer, controlYoutube, detachYoutubePlayer, duckYoutube, playYoutube, stopYoutubeForSpotify, youtubePlayerChanged, youtubeSnapshot } from "./youtube-player";
 import type { YoutubeVideo } from "@walldeck/contracts";
+import { youtubeReportSchema } from "@walldeck/contracts";
 const video: YoutubeVideo={videoId:"abcdefghijk",title:"Fixture",channelName:"Channel",channelId:"UC1234567890123456789012",durationSeconds:300,publishedAt:"2026-10-06T00:00:00Z",thumbnail:""};
 const session="12345678-1234-4234-8234-123456789012";
 afterEach(()=>{detachYoutubePlayer();vi.unstubAllGlobals();});
+it("keeps a valid volume when the iframe has no volume during startup or ducking",async()=>{
+  vi.stubGlobal("window",{});let volume=Number.NaN;
+  const player={loadVideoById:vi.fn(),playVideo:vi.fn(),pauseVideo:vi.fn(),stopVideo:vi.fn(),seekTo:vi.fn(),getCurrentTime:()=>0,getVolume:()=>volume,setVolume:vi.fn(),getPlayerState:()=>1,destroy:vi.fn()};
+  attachYoutubePlayer(player,vi.fn());const playback=playYoutube(video,70,session);
+  await Promise.resolve();await Promise.resolve();youtubePlayerChanged("playing");
+  expect(youtubeReportSchema.parse(JSON.parse(JSON.stringify((await playback).report))).volume).toBe(70);
+  duckYoutube(true);duckYoutube(false);expect(player.setVolume).toHaveBeenLastCalledWith(70);
+  volume=35;expect(youtubeSnapshot()?.volume).toBe(35);
+});
 it("waits for actual playback, clamps seeking and restores volume after ducking",async()=>{
   vi.stubGlobal("window",{});let code=1,position=40,volume=70;
   const player={loadVideoById:vi.fn(),playVideo:vi.fn(),pauseVideo:vi.fn(()=>{code=2;}),stopVideo:vi.fn(()=>{code=-1;position=0;}),seekTo:vi.fn((p:number)=>{position=p;}),getCurrentTime:()=>position,getVolume:()=>volume,setVolume:vi.fn((v:number)=>{volume=v;}),getPlayerState:()=>code,destroy:vi.fn()};
