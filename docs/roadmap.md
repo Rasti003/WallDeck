@@ -176,3 +176,10 @@
 - [x] Główna dystrybucja zarządzana pozostaje domyślna; osobne katalogi wynikowe i CI obu wariantów.
 - [x] Opcjonalny monitor zasilania, domyślnie wyłączony w Standard; instrukcja zwykłej instalacji.
 - [ ] Test użytkowy Standard: gesty Home/Wstecz, dock/undock, zgody i Spotify na urządzeniu bez Device Ownera.
+
+## 2026-10-06 — YouTube Media Surface MVP
+
+- Implemented official embedded player, Data API v3 configuration, encrypted key, search selection and latest uploads with the default 181-second threshold.
+- Added channel aliases, bounded cache, playback position/history, validated Live/Luna/MCP tools, Spotify arbitration and conversation ducking.
+- Enabled WebView autoplay for Managed and Standard. OAuth, private playlists, background playback, downloads, native audio focus and echo cancellation remain outside MVP.
+- Full real Data API/search/latest acceptance requires an administrator-provided key; device results are recorded separately in TEST_REPORT.md.

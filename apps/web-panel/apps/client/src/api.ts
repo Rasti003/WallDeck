@@ -1,3 +1,4 @@
+import type { YoutubeConfig, YoutubeChannel, YoutubeReport, YoutubeState, YoutubeVideo } from "@walldeck/contracts";
 import type {
   AiAssistantConfigInput,
   AiAssistantRunInput,
@@ -46,7 +47,23 @@ async function json<T>(url: string, init?: RequestInit): Promise<T> {
   return response.json() as Promise<T>;
 }
 
+const youtubeRequest = <T,>(path: string, body?: unknown, method = "POST") => json<T>(`/api/youtube/${path}`, { method, headers: { "content-type":"application/json" }, ...(body === undefined ? {} : { body:JSON.stringify(body) }) });
+export type YoutubeAdminConfig = YoutubeConfig & { configured:boolean; channels:YoutubeChannel[]; apiCallsSinceRestart:number; lastError:string|null; quotaRemaining:null };
 export const api = {
+  youtube: {
+    config: () => json<YoutubeAdminConfig>("/api/youtube/config"),
+    save: (body: YoutubeConfig & {apiKey?:string;clearKey?:boolean}) => youtubeRequest<YoutubeAdminConfig>("config",body,"PUT"),
+    test: () => youtubeRequest<{ok:boolean}>("test"),
+    clearCache: () => youtubeRequest("cache",undefined,"DELETE"),
+    channels: (body:YoutubeChannel[]) => youtubeRequest<YoutubeAdminConfig>("channels",body,"PUT"),
+    addChannel: (channel:string) => youtubeRequest<{channel?:YoutubeChannel;candidates?:Array<{channelId:string;canonicalName:string}>}>("channels",{channel}),
+    state: () => json<YoutubeState>("/api/youtube/state"),
+    report: (body:YoutubeReport) => youtubeRequest("report",body),
+    search: (query:string) => youtubeRequest<{results:YoutubeVideo[]}>("search",{query}),
+    play: (videoId:string) => youtubeRequest("play",{videoId}),
+    latest: (channel:string) => youtubeRequest("latest",{channel}),
+    control: (body:{action:string;value?:number}) => youtubeRequest("control",body),
+  },
   devices: () => json<DeviceStatus[]>("/api/devices"),
   diagnostics: {
     list: () => json<DiagnosticEntry[]>("/api/diagnostics?scope=all&limit=1000", { cache: "no-store" }),

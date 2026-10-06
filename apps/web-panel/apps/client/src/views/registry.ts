@@ -1,3 +1,4 @@
+import { YoutubeView } from "./YoutubeView";
 import type { ComponentType } from "react";
 import type { ViewId } from "@walldeck/contracts";
 import { PhotoAlbumView } from "./PhotoAlbumView";
@@ -11,6 +12,7 @@ export const viewRegistry: Record<ViewId, ComponentType> = {
   photos: PhotoAlbumView,
   ha: HomeAssistantView,
   music: MusicView,
+  youtube: YoutubeView,
   "assistant-expressive": AssistantDemoView,
   "assistant-canvas": AssistantCanvasView,
   timers: ClockView,

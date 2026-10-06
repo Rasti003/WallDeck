@@ -97,3 +97,7 @@ Worker tekstu ma tylko temat/kontekst, bez narzędzi sterujących domem i bez mo
 ### WallDeck Standard — 2026-10-06
 
 Wariant Standard nie korzysta z Device Owner ani uprawnień administratora: odbiornik Device Admin jest disabled w manifeście, a BuildConfig.MANAGED_KIOSK blokuje wszystkie ścieżki polityk i odzyskiwania kiosku. Użytkownik może normalnie wyjść z aplikacji. Overlay i powiadomienia służą opcjonalnemu monitorowi zasilania, nie dają blokady systemu. Oddzielny applicationId izoluje DataStore/Keystore od głównej instalacji. Pozostałe ograniczenia zaufanego originu, sekretów i bridge obowiązują bez zmian. Dostarczane debug APK służą testom; release wymaga osobnego procesu podpisania.
+
+## YouTube — 2026-10-06
+
+The server stores the YouTube Data API key with EncryptedSecretStore (AES-256-GCM; key and encrypted value mode 0600). Status endpoints reveal configured/error/request counts, never the key. Fetch failures use controlled messages to prevent credential-bearing URLs in diagnostics. Data API requests use a fixed Google endpoint; channel URLs accept only youtube.com hosts. Inputs accept validated video IDs and a finite command vocabulary, never JavaScript. Restrict the key to YouTube Data API v3 and, when possible, the server outgoing IP. The official YouTube iframe does not receive the trusted native bridge. API/admin endpoints retain the existing LAN trust boundary; this feature does not add public authentication. Playback metadata is bounded to 100 entries/30 days. See [youtube.md](youtube.md).

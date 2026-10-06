@@ -107,3 +107,7 @@ Budowanie i sprawdzanie:
 Standard wymaga osobnego wpisu Android w Spotify Developer Dashboard: pl.home.wallpanel.standard i SHA-1 certyfikatu tego APK; redirect pozostaje walldeck://spotify-callback. Ustawienia i zgody trzeba nadać osobno. Nie należy utrzymywać dwóch jednocześnie aktywnych paneli głosowych na tym samym tablecie; bieżący backend współdzieli widok między panelami.
 
 Weryfikacja 2026-10-06: oba warianty przeszły assembleDebug, 7 testów jednostkowych i lintDebug. Sprawdzono osobne identyfikatory pakietów, ustawienia DeviceAdminReceiver/Recents w manifestach oraz podpis Standard przez apksigner. Nie instalowano Standard na fizycznym tablecie; test użytkowy bez Device Ownera pozostaje do wykonania.
+
+## YouTube w WebView
+
+Managed i Standard pozwalają na odtwarzanie multimediów po wyraźnym poleceniu aplikacji bez wymaganego gestu (`mediaPlaybackRequiresUserGesture=false`). Player YouTube i jego sterowanie należą do webu; iframe nie otrzymuje natywnego bridge. Przy zablokowanym autoplay web pokazuje zewnętrzny przycisk uruchomienia. Zobacz [YouTube](../../docs/youtube.md).

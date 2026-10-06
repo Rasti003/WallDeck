@@ -188,3 +188,7 @@ PanelApp wyświetla wskaźnik na podstawie jawnego cyklu rozmowy VoiceAssistantR
 ### Opcjonalna dystrybucja Android Standard — 2026-10-06
 
 Gradle -Pstandalone=true tworzy pl.home.wallpanel.standard z BuildConfig.MANAGED_KIOSK=false, osobnym katalogiem build-standard, nazwą i danymi aplikacji. Domyślny build pozostaje zarządzanym pl.home.wallpanel. Wspólne UI i bridge nie zmieniają protokołu. Standard ma wyłączony DeviceAdminReceiver i bramki uniemożliwiające lock task, ograniczenia systemowe oraz OEM task recovery. PowerService pozostaje opcjonalnym monitorem zasilania, z powiadomieniem i zależnym od Androida otwieraniem przez overlay. Standard domyślnie nie uruchamia monitora.
+
+## YouTube Media Surface — 2026-10-06
+
+Backend `YoutubeService` owns encrypted Data API credentials, channel resolution/uploads cache, video metadata and playback position. React hosts the official IFrame API in a separate `youtube` view; only validated `youtube.play`/`youtube.control` commands reach the tablet through the existing command bus. Session-bound reports reject stale playback updates. The shared Media Surface adapter arbitrates Spotify and YouTube; voice callbacks duck the web player while the global conversation indicator stays visible. Android only enables WebView autoplay; no YouTube OAuth or iframe bridge is added. Detailed flows and retention: [youtube.md](youtube.md).

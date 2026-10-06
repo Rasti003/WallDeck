@@ -215,3 +215,7 @@ Backend delegacji GPT-Live na gpt-6-luna używa reasoning=low (wybór narzędzi)
 ## Globalny wskaźnik rozmowy — 2026-10-04
 
 Na każdym widoku tabletu aktywna rozmowa GPT-Live/Luna ma niewielki wskaźnik w prawym dolnym rogu. Przycisk × zatrzymuje sesję, przechwytywanie mikrofonu oraz odtwarzanie, odrzuca kolejkę audio i przywraca wake word. Zamknięcie na Canvas/HA/zegarze zachowuje aktualny widok. Dotyk ma pole 44 px.
+
+## YouTube — Media Surface
+
+Media → YouTube (`/admin/youtube`) konfiguruje szyfrowany klucz Data API v3, próg długości, wyniki i kanały. Nowy widok `/youtube` używa oficjalnego IFrame API, współpracuje ze Spotify i rozmową. Live/Luna/MCP mają pięć wspólnych narzędzi `youtube_*`. Konfiguracja, cache i zachowanie: [docs/youtube.md](../../docs/youtube.md).

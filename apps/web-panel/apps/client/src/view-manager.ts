@@ -27,14 +27,14 @@ function thresholdAction(value: number, sleepBelow: number, resetAbove: number, 
 }
 
 export function viewAfterTap(current: ViewId, router: RouterSettings, assistantState?: AssistantState): ViewId | null {
-  if (current === "music") return null;
+  if (current === "music" || current === "youtube") return null;
   if (current === "assistant-expressive" && assistantState === "sleep") return "ha";
   const rule = router.tapAction;
   return rule.enabled && current === rule.sourceView && rule.targetView !== current ? rule.targetView : null;
 }
 
 export function viewAfterSwipeDown(current: ViewId, router: RouterSettings): ViewId | null {
-  if (current === "music") return null;
+  if (current === "music" || current === "youtube") return null;
   const rule = router.swipeDownAction;
   return rule.enabled && current === rule.sourceView && rule.targetView !== current ? rule.targetView : null;
 }
@@ -47,6 +47,7 @@ export interface ScheduledViewTransition {
 }
 
 export function inactivityTransition(current: ViewId, router: RouterSettings, assistantIdleTransition = false, stayOnThisView = false): ScheduledViewTransition | null {
+  if (current === "youtube") return null;
   const rule = router.inactivityAction;
   if (!rule.enabled) return null;
   if (assistantIdleTransition) {

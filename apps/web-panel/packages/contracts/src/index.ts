@@ -1,13 +1,20 @@
+export * from "./youtube.js";
 import { z } from "zod";
 export type { MusicState, AudioOutputState, MusicController, SpotifyItem, SpotifyStatus, SpotifyQueue } from "./music.js";
 
 export const assistantStates = ["idle", "attention", "listening", "thinking", "speaking", "success", "error", "sleep", "curious", "uncertain", "confirm", "surprised", "wink", "laughing", "dancing"] as const;
 export const assistantStateSchema = z.enum(assistantStates);
 export type AssistantState = z.infer<typeof assistantStateSchema>;
-export const mcpToolIds = ["get_status", "get_current_time", "show_view", "show_assistant_mood", "search_web", "prepare_assistant_canvas", "show_assistant_canvas", "control_music", "search_spotify", "get_spotify_queue", "list_spotify_playlists", "play_spotify_item", "add_spotify_to_queue", "set_tablet_volume", "adjust_tablet_volume", "send_notification", "speak_on_tablet", "start_live_conversation", "set_view_brightness", "search_home_entities", "get_home_entity", "list_schedules", "create_timer", "create_alarm", "create_assistant_task", "set_alarm_enabled", "cancel_schedule", "dismiss_schedule", "snooze_schedule"] as const;
+export const mcpToolIds = ["get_status", "get_current_time", "show_view", "show_assistant_mood", "search_web", "prepare_assistant_canvas", "show_assistant_canvas", "control_music", "search_spotify", "get_spotify_queue", "list_spotify_playlists", "play_spotify_item", "add_spotify_to_queue", "set_tablet_volume", "adjust_tablet_volume", "send_notification", "speak_on_tablet", "start_live_conversation", "set_view_brightness", "search_home_entities", "get_home_entity", "list_schedules", "create_timer", "create_alarm", "create_assistant_task", "set_alarm_enabled", "cancel_schedule", "dismiss_schedule", "snooze_schedule", "youtube_search", "youtube_play", "youtube_play_latest", "youtube_control", "youtube_get_state"] as const;
 export const mcpToolIdSchema = z.enum(mcpToolIds);
 export type McpToolId = z.infer<typeof mcpToolIdSchema>;
 export const assistantToolCatalog = {
+  youtube_search: { label: "YouTube · Wyszukiwanie", summary: "Filmy do wyboru bez automatycznego odtwarzania.", kind: "akcja" },
+  youtube_play: { label: "YouTube · Odtwarzanie", summary: "Film według ID lub numeru wyniku.", kind: "akcja" },
+  youtube_play_latest: { label: "YouTube · Najnowszy film", summary: "Ostatni długi film z kanału.", kind: "akcja" },
+  youtube_control: { label: "YouTube · Sterowanie", summary: "Pauza, przewijanie, głośność i powrót.", kind: "akcja" },
+  youtube_get_state: { label: "YouTube · Stan", summary: "Aktualny film, pozycja i wyniki.", kind: "odczyt" },
+
   get_status: { label: "Stan WallDeck", summary: "Aktywny widok, tablet, Home Assistant i dostępne narzędzia.", kind: "odczyt" },
   get_current_time: { label: "Aktualna data i godzina", summary: "Dokładny czas lokalny w strefie Europe/Warsaw oraz czas UTC.", kind: "odczyt" },
   show_view: { label: "Przełączanie widoku", summary: "Zdjęcia, Dom, Music lub ekran asystenta.", kind: "akcja" },
@@ -41,6 +48,12 @@ export const assistantToolCatalog = {
 export const mcpSettingsSchema = z.object({
   enabled: z.boolean().default(false),
   tools: z.object({
+    youtube_search: z.boolean().default(true),
+    youtube_play: z.boolean().default(true),
+    youtube_play_latest: z.boolean().default(true),
+    youtube_control: z.boolean().default(true),
+    youtube_get_state: z.boolean().default(true),
+
     get_status: z.boolean().default(true),
     get_current_time: z.boolean().default(true),
     show_view: z.boolean().default(true),
@@ -65,7 +78,7 @@ export const mcpSettingsSchema = z.object({
     list_schedules: z.boolean().default(true), create_timer: z.boolean().default(true), create_alarm: z.boolean().default(true), create_assistant_task: z.boolean().default(true),
     set_alarm_enabled: z.boolean().default(true), cancel_schedule: z.boolean().default(true), dismiss_schedule: z.boolean().default(true), snooze_schedule: z.boolean().default(true),
   }).default({
-    get_status: true, get_current_time: true, show_view: true, show_assistant_mood: true, search_web: true, prepare_assistant_canvas: true, show_assistant_canvas: true, control_music: true, search_spotify: true, get_spotify_queue: true, list_spotify_playlists: true, play_spotify_item: true, add_spotify_to_queue: true,
+    youtube_search: true, youtube_play: true, youtube_play_latest: true, youtube_control: true, youtube_get_state: true, get_status: true, get_current_time: true, show_view: true, show_assistant_mood: true, search_web: true, prepare_assistant_canvas: true, show_assistant_canvas: true, control_music: true, search_spotify: true, get_spotify_queue: true, list_spotify_playlists: true, play_spotify_item: true, add_spotify_to_queue: true,
     set_tablet_volume: true, adjust_tablet_volume: true, send_notification: true, speak_on_tablet: true, start_live_conversation: true, set_view_brightness: true,
     search_home_entities: true, get_home_entity: true,
     list_schedules: true, create_timer: true, create_alarm: true, create_assistant_task: true, set_alarm_enabled: true, cancel_schedule: true, dismiss_schedule: true, snooze_schedule: true,
@@ -73,7 +86,7 @@ export const mcpSettingsSchema = z.object({
 }).default({
   enabled: false,
   tools: {
-    get_status: true, get_current_time: true, show_view: true, show_assistant_mood: true, search_web: true, prepare_assistant_canvas: true, show_assistant_canvas: true, control_music: true, search_spotify: true, get_spotify_queue: true, list_spotify_playlists: true, play_spotify_item: true, add_spotify_to_queue: true,
+    youtube_search: true, youtube_play: true, youtube_play_latest: true, youtube_control: true, youtube_get_state: true, get_status: true, get_current_time: true, show_view: true, show_assistant_mood: true, search_web: true, prepare_assistant_canvas: true, show_assistant_canvas: true, control_music: true, search_spotify: true, get_spotify_queue: true, list_spotify_playlists: true, play_spotify_item: true, add_spotify_to_queue: true,
     set_tablet_volume: true, adjust_tablet_volume: true, send_notification: true, speak_on_tablet: true, start_live_conversation: true, set_view_brightness: true,
     search_home_entities: true, get_home_entity: true,
     list_schedules: true, create_timer: true, create_alarm: true, create_assistant_task: true, set_alarm_enabled: true, cancel_schedule: true, dismiss_schedule: true, snooze_schedule: true,
@@ -270,7 +283,7 @@ export const ambientSleepSchema = z.object({
   path: ["homeAssistantResetAbove"],
 }).default({ enabled: true, source: "home-assistant", homeAssistantEntityId: null, homeAssistantSleepBelow: 5, homeAssistantResetAbove: 15, sleepEntryDelaySeconds: 1.6, sleepBelowLux: 5, resetAboveLux: 15, cameraEnabled: false, cameraSleepBelowPercent: 5, cameraResetAbovePercent: 15, cameraSampleSeconds: 30 });
 
-export const viewIdSchema = z.preprocess(value => value === "assistant-demo" ? "assistant-expressive" : value, z.enum(["photos", "ha", "assistant-expressive", "assistant-canvas", "music", "timers"]));
+export const viewIdSchema = z.preprocess(value => value === "assistant-demo" ? "assistant-expressive" : value, z.enum(["photos", "ha", "assistant-expressive", "assistant-canvas", "music", "timers", "youtube"]));
 export type ViewId = z.infer<typeof viewIdSchema>;
 
 export const viewRouterSettingsSchema = z.object({
@@ -312,7 +325,7 @@ export const settingsSchema = z.object({
   }).default({ normal: { durationSeconds: 5, sound: "none" }, alarm: { persistent: true, durationSeconds: 30, sound: "alarm" }, volume: .35, ttsEnabled: false }),
   mcp: mcpSettingsSchema,
   aiAssistant: aiAssistantSettingsSchema,
-  tabletMenu: z.object({ enabled: z.boolean().default(true), showHandle: z.boolean().default(false), views: z.array(z.enum(["photos", "ha", "music", "assistant-expressive", "assistant-canvas", "timers"])).min(1).max(6).refine(v => new Set(v).size === v.length).default(["photos", "ha", "timers", "music", "assistant-expressive"]) }).default({ enabled: true, showHandle: false, views: ["photos", "ha", "timers", "music", "assistant-expressive"] }),
+  tabletMenu: z.object({ enabled: z.boolean().default(true), showHandle: z.boolean().default(false), views: z.array(z.enum(["photos", "ha", "music", "assistant-expressive", "assistant-canvas", "timers", "youtube"])).min(1).max(7).refine(v => new Set(v).size === v.length).default(["photos", "ha", "timers", "music", "assistant-expressive"]) }).default({ enabled: true, showHandle: false, views: ["photos", "ha", "timers", "music", "assistant-expressive"] }),
   music: z.object({ clientId: z.string().trim().regex(/^([a-fA-F0-9]{32})?$/).default("") }).default({ clientId: "" }),
   photoIntervalSeconds: z.number().int().min(10).max(3600),
   transitionSeconds: z.number().min(0.3).max(5),
@@ -320,10 +333,11 @@ export const settingsSchema = z.object({
     photos: z.number().min(0.05).max(1).default(0.75),
     ha: z.number().min(0.05).max(1).default(0.85),
     music: z.number().min(0.05).max(1).default(0.65),
+    youtube: z.number().min(0.05).max(1).default(0.75),
     "assistant-expressive": z.number().min(0.05).max(1).default(0.65),
     "assistant-canvas": z.number().min(0.05).max(1).default(0.75),
     timers: z.number().min(0.05).max(1).default(0.75),
-  }).default({ photos: 0.75, ha: 0.85, music: 0.65, "assistant-expressive": 0.65, "assistant-canvas": 0.75, timers: 0.75 }),
+  }).default({ photos: 0.75, ha: 0.85, music: 0.65, youtube: 0.75, "assistant-expressive": 0.65, "assistant-canvas": 0.75, timers: 0.75 }),
   viewRouter: viewRouterSettingsSchema,
   assistantBrightness: assistantBrightnessSchema,
   ambientSleep: ambientSleepSchema,
@@ -352,7 +366,7 @@ export const defaultSettings: WallDeckSettings = {
   music: { clientId: "" },
   photoIntervalSeconds: 30,
   transitionSeconds: 1.4,
-  viewBrightness: { photos: 0.75, ha: 0.85, music: 0.65, "assistant-expressive": 0.65, "assistant-canvas": 0.75, timers: 0.75 },
+  viewBrightness: { photos: 0.75, ha: 0.85, music: 0.65, youtube: 0.75, "assistant-expressive": 0.65, "assistant-canvas": 0.75, timers: 0.75 },
   assistantBrightness: { globalEnabled: true, overrides: { sleep: .05 } },
   ambientSleep: { enabled: true, source: "home-assistant", homeAssistantEntityId: null, homeAssistantSleepBelow: 5, homeAssistantResetAbove: 15, sleepEntryDelaySeconds: 1.6, sleepBelowLux: 5, resetAboveLux: 15, cameraEnabled: false, cameraSleepBelowPercent: 5, cameraResetAbovePercent: 15, cameraSampleSeconds: 30 },
   viewRouter: {

@@ -270,7 +270,7 @@ class MainActivity : ComponentActivity() {
             allowFileAccess = false; allowContentAccess = false
             mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
             setSupportMultipleWindows(false); javaScriptCanOpenWindowsAutomatically = false
-            mediaPlaybackRequiresUserGesture = true
+            mediaPlaybackRequiresUserGesture = false
         }
         CookieManager.getInstance().setAcceptThirdPartyCookies(view, false)
         view.webViewClient = object : WebViewClient() {

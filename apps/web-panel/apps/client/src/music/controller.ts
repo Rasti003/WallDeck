@@ -1,3 +1,4 @@
+import { mediaSurface } from "../media-surface";
 import type { AudioOutputState, MusicController, MusicState } from "@walldeck/contracts";
 import { nativeBridge } from "../native";
 
@@ -14,6 +15,7 @@ export function playbackPosition(state: MusicState, now: number): number {
 
 // Unmounting Music never disconnects or pauses Spotify.
 const command = async (action: string, args: Record<string, unknown> = {}) => {
+  if (["play", "playContext", "next", "previous"].includes(action)) await mediaSurface.activate("spotify");
   await nativeBridge.call("music.command", { action, ...args });
 };
 export const musicController: MusicController = {
@@ -35,3 +37,8 @@ export const musicController: MusicController = {
   selectOutput: async id => await nativeBridge.call("audio.selectOutput", { id }) as unknown as { supported: false; fallback: string },
   openSystemOutputPicker: async () => { await nativeBridge.call("audio.openSystemOutputPicker"); },
 };
+
+mediaSurface.register("spotify", {
+  pause: async () => { if(!nativeBridge.available)return; const state=await musicController.getPlaybackState(); if(state.connection==="connected" && !state.paused) await musicController.pause(); },
+  stop: () => musicController.pause(),
+});

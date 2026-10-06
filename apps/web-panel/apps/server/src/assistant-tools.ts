@@ -1,3 +1,5 @@
+import { youtubeSearchSchema, youtubePlaySchema, youtubeLatestSchema, youtubeControlSchema } from "@walldeck/contracts";
+import type { YoutubeService } from "./youtube.js";
 import { z } from "zod";
 import {
   assistantStateSchema,
@@ -23,6 +25,7 @@ import { currentTimeSnapshot } from "./current-time.js";
 type HomeEntity = { entityId: string; friendlyName: string; state: string; unit?: string | null; deviceClass?: string | null; lastChanged?: string | null };
 
 export interface AssistantToolDependencies {
+  youtube: YoutubeService;
   readSettings(): Promise<WallDeckSettings>;
   writeSettings(settings: WallDeckSettings): Promise<WallDeckSettings>;
   currentView(): string;
@@ -34,7 +37,7 @@ export interface AssistantToolDependencies {
   searchSpotify(query: string, types?: SpotifyItem["type"][]): Promise<SpotifyItem[]>;
   spotifyQueue(): Promise<SpotifyQueue>;
   spotifyPlaylists(): Promise<SpotifyItem[]>;
-  activateView(viewId: "photos" | "ha" | "assistant-expressive" | "assistant-canvas" | "music" | "timers"): void;
+  activateView(viewId: "photos" | "ha" | "assistant-expressive" | "assistant-canvas" | "music" | "timers" | "youtube" | "youtube"): void;
   searchWeb(query: string, includeImages?: boolean): Promise<unknown>;
   prepareAssistantCanvas(request: { topic: string; context: string; includeImages: boolean }): unknown;
   showAssistantCanvas(canvas: AssistantCanvasInput): unknown;
@@ -64,6 +67,11 @@ const spotifyTypes = z.array(z.enum(["track", "album", "artist", "playlist", "ep
 const spotifyUri = z.string().regex(/^spotify:(track|album|artist|playlist|episode|show):[A-Za-z0-9]+$/);
 
 export const assistantToolDefinitions = {
+  youtube_search: { description: "Wyszukuje filmy YouTube i pokazuje wyniki bez odtwarzania. Poproś o wybór; puść drugi oznacza youtube_play index=2.", input: youtubeSearchSchema, annotations: action(true), run: (args,deps) => deps.youtube.search(args) },
+  youtube_play: { description: "Odtwarza film w WallDeck. Podaj videoId ALBO index (od 1) z ostatnich wyników. Loading to przyjęcie komendy, blocked wymaga dotknięcia, dopiero playing potwierdza odtwarzanie.", input: youtubePlaySchema, annotations: action(true), run: (args,deps) => deps.youtube.play(args) },
+  youtube_play_latest: { description: "Najnowszy długi film kanału bez Shorts/live. Nazwa, @handle, URL lub channelId. Przy candidates poproś o wybór kanału i ponów z channelId; nie zgaduj.", input: youtubeLatestSchema, annotations: action(true), run: (args,deps) => deps.youtube.latest(args.channel) },
+  youtube_control: { description: "YouTube: pause, resume, stop, returnView, seek (sekundy), seekBy (±sekundy), volume (0–100), restart, next/previous z wyników. W trakcie filmu użyj tego zamiast Spotify.", input: youtubeControlSchema, annotations: action(), run: (args,deps) => deps.youtube.control(args) },
+  youtube_get_state: { description: "Stan YouTube, film, pozycja, głośność, status playera i wyniki wyszukiwania.", input: z.object({}), annotations: readOnly(), run: (_args,deps) => deps.youtube.state },
   get_status: {
     description: "Sprawdza aktywny widok, dostępność tabletu, integrację Home Assistant oraz włączone możliwości. Użyj przed sterowaniem, gdy bieżący stan ma znaczenie.",
     input: z.object({}), annotations: readOnly(),

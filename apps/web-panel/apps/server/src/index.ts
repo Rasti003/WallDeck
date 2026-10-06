@@ -1,3 +1,4 @@
+import { YoutubeService, registerYoutube } from "./youtube.js";
 import { registerPhotos } from "./photos.js";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
@@ -122,7 +123,7 @@ function panelCommand(name: string, args: Record<string, unknown>) {
   if (!socket) return Promise.reject(new Error("Tablet WallDeck jest offline"));
   const id = randomUUID();
   return new Promise<unknown>((resolve, reject) => {
-    const timer = setTimeout(() => { pendingPanelCommands.delete(id); reject(new Error("Tablet nie odpowiedział na komendę")); }, 15_000);
+    const timer = setTimeout(() => { pendingPanelCommands.delete(id); reject(new Error("Tablet nie odpowiedział na komendę")); }, name === "youtube.play" ? 30_000 : 15_000);
     pendingPanelCommands.set(id, { resolve, reject, timer });
     socket.send(JSON.stringify({ type: "mcp.command", id, command: name, args }));
   });
@@ -478,7 +479,12 @@ canvasPresentations = new CanvasPresentationService({
   },
 });
 
+const youtube = new YoutubeService(runtimeRoot, { currentView: () => currentView, activateView, command: panelCommand, broadcast });
+await youtube.load();
+registerYoutube(app, youtube);
+
 const assistantToolDependencies = {
+  youtube,
   readSettings,
   writeSettings: writeSettingsValue,
   currentView: () => currentView,
@@ -626,6 +632,7 @@ app.get("/api/views", async () => ({ current: currentView, available: [
   { id: "assistant-expressive", name: "Asystent — ekspresyjny" },
   { id: "assistant-canvas", name: "Asystent — Canvas" },
   { id: "music", name: "Music · Spotify" },
+  { id: "youtube", name: "YouTube" },
   { id: "timers", name: "Czas · minutniki i budziki" },
 ] }));
 app.get("/api/assistant/canvas", async (_request, reply) => assistantCanvas ?? reply.code(204).send());

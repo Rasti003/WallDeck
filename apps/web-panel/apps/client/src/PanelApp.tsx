@@ -1,3 +1,6 @@
+import { playYoutube, controlYoutube, stopYoutubeForSpotify } from "./youtube-player";
+import { mediaSurface } from "./media-surface";
+import type { YoutubeVideo } from "@walldeck/contracts";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { defaultSettings, type AppNotification, type AssistantState, type DeviceReport, type ScheduledItem, type ViewId, type WallDeckSettings } from "@walldeck/contracts";
@@ -38,6 +41,7 @@ export function PanelApp({ forcedView }: { forcedView?: ViewId }) {
   const cameFromMusic = useRef(false);
   const previousView = useRef<ViewId>(forcedView ?? "photos");
   const activeViewRef = useRef<ViewId>(forcedView ?? "photos");
+  const youtubeReturnView = useRef<ViewId>("photos");
   const voiceReturnView = useRef<ViewId>("photos");
   const voiceRuntime = useRef<VoiceAssistantRuntime | null>(null);
   const [assistantState, setAssistantState] = useState<AssistantState>("idle");
@@ -86,6 +90,7 @@ export function PanelApp({ forcedView }: { forcedView?: ViewId }) {
       if (!forcedView && (message.type === "snapshot" || message.type === "view.activated") && message.viewId) {
         const nextView = pinnedTimerId.current && message.viewId !== "timers" ? "timers" : message.viewId;
         if (nextView === "assistant-canvas") voiceReturnView.current = "assistant-canvas";
+        if (nextView === "youtube" && activeViewRef.current !== "youtube") youtubeReturnView.current = activeViewRef.current === "assistant-expressive" ? voiceReturnView.current : activeViewRef.current;
         setViewId(nextView);
         if (nextView !== message.viewId) void api.activateView(nextView);
         if (nextView !== "assistant-expressive") setAssistantIdleTransition(false);
@@ -125,6 +130,8 @@ export function PanelApp({ forcedView }: { forcedView?: ViewId }) {
             if (!voiceRuntime.current) throw new Error("Asystent głosowy tabletu nie jest gotowy");
             return await voiceRuntime.current.startLiveConversation(String(args.openingMessage ?? ""), String(args.context ?? ""));
           }
+          if (message.command === "youtube.play") return { ...await playYoutube(args.video as YoutubeVideo, Number(args.volume ?? 70), String(args.sessionId)), returnView: youtubeReturnView.current };
+          if (message.command === "youtube.control") return controlYoutube(String(args.action), args.value === undefined ? undefined : Number(args.value));
           if (message.command === "music.control") {
             await ensureMusicConnected(musicController, settingsRef.current.music.clientId);
             const action = String(args.action ?? "");
@@ -251,9 +258,9 @@ export function PanelApp({ forcedView }: { forcedView?: ViewId }) {
       showAssistant: () => {
         const current = activeViewRef.current;
         voiceReturnView.current = current === "assistant-expressive" ? "photos" : current;
-        activate("assistant-expressive", true);
+        if (current !== "youtube") activate("assistant-expressive", true);
       },
-      onConversationChange: setConversationMode,
+      onConversationChange: mode => { setConversationMode(mode); mediaSurface.duck(Boolean(mode)); },
       hideAssistant: () => {
         setVoiceStatus("");
         if (activeViewRef.current !== "assistant-expressive") return;
@@ -292,6 +299,7 @@ export function PanelApp({ forcedView }: { forcedView?: ViewId }) {
       if (disposed) return;
       musicPlaying.current = state.connection === "connected" && !state.paused && Boolean(state.track);
       setMusicInactive(!musicPlaying.current);
+      if(musicPlaying.current && playbackView.current === "youtube") stopYoutubeForSpotify();
       if (!started(state) || forcedView || playbackView.current === "music" || lockedRef.current) return;
       if (idleTimer.current) clearTimeout(idleTimer.current);
       interruptionPending.current = false;

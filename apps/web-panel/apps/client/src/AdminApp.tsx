@@ -1,3 +1,4 @@
+import { YoutubeAdmin } from "./YoutubeAdmin";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import {
   defaultSettings,
@@ -210,6 +211,8 @@ export function AdminApp() {
 
         {section === "notifications" && <NotificationAdmin settings={settings} setSettings={setSettings} save={save} status={status} />}
 
+        {section === "youtube" && <YoutubeAdmin />}
+
         {section === "music" && <MusicAdmin settings={settings} setSettings={setSettings} save={save} activate={() => activate("music")} status={status} />}
 
         {section === "overview" && <section className="admin-dashboard">
@@ -219,7 +222,7 @@ export function AdminApp() {
             <button onClick={() => setSection("ha")}><small>Home Assistant</small><strong>{haStatus?.connected ? "Połączono" : "Rozłączono"}</strong><span>{haStatus?.entityCount ?? 0} dostępnych encji →</span></button>
             <button onClick={() => setSection("device")}><small>Tablet</small><strong>{device?.online ? "Online" : "Brak danych"}</strong><span>{device?.sensors.length ?? 0} sensorów →</span></button>
           </div>
-          <div className="admin-directory">{["Panel tabletu", "Asystent", "System"].map(group => <article className="admin-card" key={group}><span className="admin-kicker">Konfiguracja</span><h2>{group}</h2><div>{adminSections.filter(item => item.group === group).map(item => <a key={item.id} href={sectionPath(item.id)} onClick={event => { if (!event.ctrlKey && !event.metaKey && !event.shiftKey && !event.altKey) { event.preventDefault(); setSection(item.id); } }}><span><strong>{item.label}</strong><small>{item.description}</small></span><b aria-hidden="true">↗</b></a>)}</div></article>)}</div>
+          <div className="admin-directory">{["Panel tabletu", "Media", "Asystent", "System"].map(group => <article className="admin-card" key={group}><span className="admin-kicker">Konfiguracja</span><h2>{group}</h2><div>{adminSections.filter(item => item.group === group).map(item => <a key={item.id} href={sectionPath(item.id)} onClick={event => { if (!event.ctrlKey && !event.metaKey && !event.shiftKey && !event.altKey) { event.preventDefault(); setSection(item.id); } }}><span><strong>{item.label}</strong><small>{item.description}</small></span><b aria-hidden="true">↗</b></a>)}</div></article>)}</div>
         </section>}
 
         {section === "assistant" && <AssistantAdmin settings={settings} setSettings={setSettings} save={save} status={status} />}
