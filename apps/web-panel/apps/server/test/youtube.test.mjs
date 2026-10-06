@@ -71,3 +71,12 @@ test("routes do not disclose secret and missing key produces a controlled failur
   const config=await app.inject({url:"/api/youtube/config"});assert.equal(config.statusCode,200);assert.equal(config.body.includes("fixture-secret"),false);
   await f.service.configure({enabled:true,clearKey:true});await assert.rejects(f.service.test(),/Zapisz klucz/);
 });
+test("navigation cancels a pending player command without reopening an old view",async t=>{
+  const root=await mkdtemp(path.join(tmpdir(),"walldeck-youtube-cancel-"));t.after(()=>rm(root,{recursive:true,force:true}));
+  let view="ha",rejectCommand;const service=new YoutubeService(root,{currentView:()=>view,activateView:next=>{service.onNavigation(next,view);view=next;},broadcast:()=>{},command:()=>new Promise((_resolve,reject)=>{rejectCommand=reject;})},async()=>Response.json({items:[video("longvideo01")]}));
+  await service.configure({enabled:true,apiKey:"fixture"});
+  const playing=service.play({videoId:"longvideo01"});
+  while(!rejectCommand)await new Promise(resolve=>setTimeout(resolve,1));
+  service.onNavigation("timers",view);view="timers";rejectCommand(Error("stale failure"));
+  assert.deepEqual(await playing,{superseded:true});assert.equal(view,"timers");assert.equal(service.state.playing,false);
+});

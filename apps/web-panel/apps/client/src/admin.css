@@ -243,3 +243,13 @@
 @media (prefers-reduced-motion: reduce) {
   .admin-shell *, .admin-shell *::before, .admin-shell *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
 }
+
+/* YouTube reuses the admin form system; rules stay outside tablet views. */
+.admin-shell .youtube-admin .admin-form{display:grid;gap:16px}
+.admin-shell .youtube-admin .admin-form>p{margin:0;font-size:12px}
+.admin-shell .youtube-admin label:not(.switch-row){display:grid;gap:7px;font-size:12px;color:var(--admin-muted)}
+.admin-shell .youtube-admin input:not([type=checkbox]),.admin-shell .youtube-admin select{width:100%;min-width:0;box-sizing:border-box}
+.admin-shell .youtube-admin .button-row{flex-wrap:wrap;gap:8px}
+.admin-shell .youtube-admin form,.admin-shell .youtube-admin article{display:grid;gap:14px}
+.admin-shell .youtube-admin article{border-top:1px solid var(--admin-border);padding-top:16px}
+.admin-shell .youtube-admin article small{overflow-wrap:anywhere}

@@ -58,6 +58,7 @@ export const api = {
     channels: (body:YoutubeChannel[]) => youtubeRequest<YoutubeAdminConfig>("channels",body,"PUT"),
     addChannel: (channel:string) => youtubeRequest<{channel?:YoutubeChannel;candidates?:Array<{channelId:string;canonicalName:string}>}>("channels",{channel}),
     state: () => json<YoutubeState>("/api/youtube/state"),
+    returnView: (view:ViewId) => youtubeRequest("return-view",{view}),
     report: (body:YoutubeReport) => youtubeRequest("report",body),
     search: (query:string) => youtubeRequest<{results:YoutubeVideo[]}>("search",{query}),
     play: (videoId:string) => youtubeRequest("play",{videoId}),

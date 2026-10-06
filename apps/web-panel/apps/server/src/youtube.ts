@@ -3,7 +3,7 @@ import { readFile, writeFile, rename } from "node:fs/promises";
 import path from "node:path";
 import { z } from "zod";
 import type { FastifyInstance } from "fastify";
-import { youtubeConfigSchema, youtubeSearchSchema, youtubePlaySchema, youtubeLatestSchema, youtubeControlSchema, youtubeReportSchema, type YoutubeVideo, type YoutubeChannel, type YoutubeState, type YoutubeReport, type ViewId } from "@walldeck/contracts";
+import { viewIdSchema, youtubeConfigSchema, youtubeSearchSchema, youtubePlaySchema, youtubeLatestSchema, youtubeControlSchema, youtubeReportSchema, type YoutubeVideo, type YoutubeChannel, type YoutubeState, type YoutubeReport, type ViewId } from "@walldeck/contracts";
 import { EncryptedSecretStore } from "./secret-store.js";
 
 type Dependencies = { currentView(): ViewId; activateView(view: ViewId): void; command(name: string, args: Record<string, unknown>): Promise<unknown>; broadcast(event: unknown): void };
@@ -35,6 +35,13 @@ export class YoutubeService {
     return this.writes;
   }
   private emit() { this.deps.broadcast({ type: "youtube.changed", state: this.state }); }
+  captureReturnView(view: ViewId) { if(view !== "youtube" && view !== "assistant-expressive") this.state.returnView=view; return { ok:true }; }
+  onNavigation(next: ViewId, previous: ViewId) {
+    if(next === "youtube" && previous !== "youtube") this.captureReturnView(previous);
+    if(next !== "youtube" && previous === "youtube") {
+      this.generation++; this.state.playing=false; this.state.status="stopped"; this.emit();
+    }
+  }
   async status() { return { ...this.config, configured: Boolean(await this.secret.load()), channels: this.channels, apiCallsSinceRestart: this.apiCalls, lastError: this.lastError, quotaRemaining: null }; }
   async configure(input: unknown) {
     const value = youtubeConfigSchema.extend({ apiKey: z.string().trim().max(200).optional(), clearKey: z.boolean().optional() }).parse(input);
@@ -151,10 +158,10 @@ export class YoutubeService {
     this.state = { ...this.state, video: selected, sessionId: randomUUID(), positionSeconds: 0, playing: false, status: "loading", error: null, startedAt: new Date().toISOString() }; this.emit(); this.deps.activateView("youtube");
     try { const result = await this.deps.command("youtube.play", { video: selected, sessionId: this.state.sessionId, volume: this.state.volume }) as {report?:YoutubeReport;returnView?:ViewId};
       if (generation !== this.generation) return { superseded: true };
-      if(result.returnView && result.returnView !== "youtube" && result.returnView !== "assistant-expressive") this.state.returnView=result.returnView;
+      if(result.returnView) this.captureReturnView(viewIdSchema.parse(result.returnView));
       if(result.report) await this.report(youtubeReportSchema.parse(result.report));
       return { result, state: this.state }; }
-    catch (error) { if (generation === this.generation) { this.state.status = "error"; this.state.error = error instanceof Error ? error.message : "Nie można uruchomić filmu"; this.emit(); this.deps.activateView(this.state.returnView as ViewId); } throw error; }
+    catch (error) { if (generation !== this.generation) return { superseded:true }; this.state.status = "error"; this.state.error = error instanceof Error ? error.message : "Nie można uruchomić filmu"; this.emit(); this.deps.activateView(this.state.returnView as ViewId); throw error; }
   }
   async control(input: z.infer<typeof youtubeControlSchema>) {
     const {action,value} = input;
@@ -171,6 +178,7 @@ export class YoutubeService {
   }
   async report(input: YoutubeReport) {
     if (input.sessionId !== this.state.sessionId || input.videoId !== this.state.video?.videoId) return { ok: false };
+    if(this.deps.currentView() !== "youtube" && input.playing) return { ok:false };
     const endedAlready = this.state.status === "ended";
     Object.assign(this.state, input);
     if (this.state.video) {
@@ -197,6 +205,7 @@ export function registerYoutube(app: FastifyInstance, service: YoutubeService) {
   app.put("/api/youtube/channels", r => service.editChannels(r.body));
   app.post("/api/youtube/channels", r => service.resolveChannel(z.object({ channel: z.string().trim().min(1).max(200) }).parse(r.body).channel));
   app.get("/api/youtube/state", () => service.state);
+  app.post("/api/youtube/return-view", r => service.captureReturnView(viewIdSchema.parse((r.body as {view?:unknown})?.view)));
   app.get("/api/youtube/history", () => service.history);
   app.post("/api/youtube/search", r => service.search(youtubeSearchSchema.parse(r.body)));
   app.post("/api/youtube/play", r => service.play(youtubePlaySchema.parse(r.body)));

@@ -34,3 +34,5 @@ Klucz: `youtube-api-key.secret.json`, AES-256-GCM, lokalny `.youtube-api-key.key
 Build Androida: `scripts/build.ps1` i `scripts/build.ps1 -Standard` — każdy uruchamia assembleDebug, testDebugUnitTest, lintDebug. Rzeczywiste wyniki na tablecie są zapisywane wyłącznie w `apps/tablet-android/TEST_REPORT.md`. Pełny test wyszukiwania/latest z rzeczywistym Data API wymaga klucza skonfigurowanego przez administratora.
 
 Źródła: [IFrame API](https://developers.google.com/youtube/iframe_api_reference), [videos.list](https://developers.google.com/youtube/v3/docs/videos/list), [channels.list](https://developers.google.com/youtube/v3/docs/channels/list), [wymagania YouTube API](https://developers.google.com/youtube/terms/required-minimum-functionality).
+
+Smoke widoku i izolacji iframe na istniejącym debug APK: `adb forward tcp:9222 localabstract:webview_devtools_remote_<pid>` i `node apps/tablet-android/scripts/youtube-smoke.mjs`. Przełącza ekran i przywraca poprzedni; nie uruchamia filmu ani Data API.

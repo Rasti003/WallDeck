@@ -110,8 +110,10 @@ function broadcast(message: unknown) {
   for (const socket of sockets) if (socket.readyState === 1) socket.send(data);
 }
 
+let youtube: YoutubeService | undefined;
 function activateView(viewId: ViewId) {
   const previousView = currentView;
+  youtube?.onNavigation(viewId, previousView);
   if (viewId !== "assistant-canvas") { canvasPresentations?.cancel("navigation"); directCanvasGeneration++; }
   currentView = viewId;
   broadcast({ type: "view.activated", viewId });
@@ -479,12 +481,12 @@ canvasPresentations = new CanvasPresentationService({
   },
 });
 
-const youtube = new YoutubeService(runtimeRoot, { currentView: () => currentView, activateView, command: panelCommand, broadcast });
+youtube = new YoutubeService(runtimeRoot, { currentView: () => currentView, activateView, command: panelCommand, broadcast });
 await youtube.load();
 registerYoutube(app, youtube);
 
 const assistantToolDependencies = {
-  youtube,
+  youtube: youtube!,
   readSettings,
   writeSettings: writeSettingsValue,
   currentView: () => currentView,

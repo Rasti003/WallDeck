@@ -111,8 +111,10 @@ export function PanelApp({ forcedView }: { forcedView?: ViewId }) {
             setAssistantIdleTransition(false);
             setDanceTransition(mood === "dancing");
             setRequestedAssistantState(mood);
-            setViewId("assistant-expressive");
-            await api.activateView("assistant-expressive");
+            if(activeViewRef.current !== "youtube") {
+              setViewId("assistant-expressive");
+              await api.activateView("assistant-expressive");
+            }
             return { ok: true, mood };
           }
           if (message.command === "notification.show") {
@@ -186,6 +188,9 @@ export function PanelApp({ forcedView }: { forcedView?: ViewId }) {
 
   const activeView = forcedView ?? viewId;
   activeViewRef.current = activeView;
+  useEffect(() => {
+    if(activeView === "youtube" && nativeBridge.available && !forcedView) void api.youtube.returnView(youtubeReturnView.current).catch(()=>undefined);
+  }, [activeView, forcedView]);
   useEffect(() => { if (!settings.tabletMenu.enabled) setMenuOpen(false); }, [settings.tabletMenu.enabled]);
 
   useEffect(() => {
@@ -201,6 +206,7 @@ export function PanelApp({ forcedView }: { forcedView?: ViewId }) {
   const activate = useCallback((nextView: ViewId, instant = false) => {
     if (forcedView) return;
     if (pinnedTimerId.current && nextView !== "timers") return;
+    if(nextView === "youtube" && activeViewRef.current !== "youtube") youtubeReturnView.current = activeViewRef.current === "assistant-expressive" ? voiceReturnView.current : activeViewRef.current;
     setInstantTransition(instant);
     setViewId(nextView);
     api.activateView(nextView).catch(() => undefined);

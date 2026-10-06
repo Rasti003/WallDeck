@@ -264,3 +264,10 @@ Xiaomi 2603ARP14G, Android 16, bridge v5. Android `assembleDebug`, testy jednost
 - Odczyt `capabilities` z działającego WebView potwierdził Android Bridge v8. PASS.
 - Odczyt `wakeWord.status` potwierdził: `enabled=true`, `listening=true`, `localAvailable=true`, `modelReady=true`, uprawnienie mikrofonu, frazę `ej waldek`, silnik `vosk-pl` i próg `confidenceThreshold=0.78`. PASS.
 - Akustyczne zaakceptowanie i odrzucenie kandydatów oraz ich wpisy w dzienniku wymagają zebrania rzeczywistych prób głosowych; nie były symulowane w tym teście.
+
+## 2026-10-06 — YouTube: widok i izolacja iframe
+
+- Fizyczne urządzenie: Xiaomi 2603ARP14G (Redmi Pad 2), Android 16, USB. `scripts/youtube-smoke.mjs` na rzeczywistym WebView panelu produkcyjnego: PASS.
+- Potwierdzono nowy widok YouTube, załadowanie oficjalnego iframe YouTube oraz brak `WallPanelNative` w kontekście iframe. Istniejący zainstalowany Android Bridge v8 pozostał dostępny w głównej ramce. Przywrócono poprzedni widok. Nie zmieniono konfiguracji Device Key.
+- Nowe APK Managed i Standard przeszły assembleDebug, testDebugUnitTest i lintDebug. Próba aktualizacji Managed na fizycznym tablecie została odrzucona przez Android (`INSTALL_FAILED_USER_RESTRICTED`).
+- Ten test NIE potwierdza odtwarzania filmu, autoplay z nowym APK, akustycznego wake wordu podczas filmu ani prawdziwego Data API. Serwer nie ma jeszcze klucza YouTube; scenariusze search/latest i pełne odtwarzanie pozostają do odbioru po konfiguracji klucza i zezwoleniu na aktualizację APK. Standard nie został zainstalowany na fizycznym urządzeniu.
